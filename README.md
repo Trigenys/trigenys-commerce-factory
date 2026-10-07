@@ -35,3 +35,11 @@ The generated repository owns product-specific routing, state, API boundaries, a
 
 Preset: `react-vite`  
 Blueprint version: `1`
+
+
+## Product planning
+
+- [MVP architecture](docs/architecture/ADR-001-mvp-platform.md)
+- [RAIDER](docs/RAIDER.md)
+- [MVP delivery order](docs/ROADMAP.md)
+- [GitHub epic #1](https://github.com/Trigenys/trigenys-commerce-factory/issues/1)
