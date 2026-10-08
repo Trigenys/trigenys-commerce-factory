@@ -35,8 +35,8 @@ RAIDER means **Risks, Assumptions, Issues, Dependencies, Evidence, Results**.
 
 - AppFactory-generated React/Vite baseline.
 - AppFactory Project Automation.
-- Supabase for MVP Postgres/Auth/Storage per ADR-001.
-- Cloudflare Pages for web delivery.
+- Neon PostgreSQL for relational data; Neon Auth is the preferred integrated auth direction once the dedicated project is provisioned.
+- Cloudflare Pages + Worker/Hono for web delivery and the trusted API boundary.
 - WhatsApp deep-link behavior.
 - Meta platform APIs only for later integrations.
 

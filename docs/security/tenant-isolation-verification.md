@@ -2,37 +2,48 @@
 
 Issue: #9
 
-The MVP security boundary is `store_id`. UI filtering is never authorization.
+Commerce Factory uses Neon PostgreSQL behind a Cloudflare Worker/Hono API.
+
+The browser must never connect with a privileged Neon connection string.
+
+## Security boundary
+
+Every tenant-scoped request must follow:
+
+`authenticated subject → API authorization → store membership → parameterized Neon query`
+
+The API derives the authenticated subject from the verified session/token. It must never trust a client-supplied user id as authorization.
 
 ## Required automated scenarios
 
-Run these against a disposable Supabase project/branch before #9 can close.
+1. User A owns Store A.
+2. User B owns Store B.
+3. User A can read/update Store A.
+4. User A cannot read/update/delete Store B by guessing its UUID.
+5. User B cannot add themselves to Store A.
+6. An unauthenticated request cannot access merchant-private endpoints.
+7. A public storefront endpoint returns only published storefront fields.
+8. Changing a client-supplied `store_id` to another tenant fails at the API authorization boundary.
+9. Database queries are parameterized.
+10. The browser bundle/environment contains no Neon database credential.
 
-1. User A creates Merchant A + Store A.
-2. User B creates Merchant B + Store B.
-3. User A can select/update Store A.
-4. User A cannot select/update/delete Store B by guessing its UUID.
-5. User B cannot select Merchant A.
-6. User B cannot insert a membership into Store A.
-7. A store owner can read their own membership row.
-8. Unauthenticated callers cannot read merchant-private store/member data.
-9. Creating Store A automatically creates exactly one owner membership.
-10. Changing a client-supplied `merchant_id` to another merchant fails at the database policy boundary.
+## Database defense
 
-## Public storefront warning
+The first migration provides relational constraints and store membership records. Provider-specific RLS is intentionally not coupled to a third-party auth schema.
 
-Do not add anonymous `select` policies directly to the private merchant tables just to make storefront pages work.
+When Neon Auth/Data API wiring is finalized, database-level RLS can be added as defense in depth, but API authorization remains mandatory.
 
-Issue #6 should introduce a dedicated public projection/view or narrowly scoped read path that exposes only published storefront fields.
+## Secrets
 
-## Secret handling
+Browser-safe:
+- `VITE_API_BASE_URL`
 
-The browser may receive only:
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-
-Never expose a Supabase service-role key or any future Meta access token in Vite/client environment variables.
+Server-only:
+- Neon database URL / role credentials;
+- Neon Auth server secrets;
+- future Meta access tokens;
+- R2 write credentials.
 
 ## Status
 
-The repository contains the schema/RLS foundation and browser auth adapter. Automated negative tests still require a real disposable Supabase project/branch, so #9 remains open.
+Schema foundation exists in the repository. #9 remains open until the dedicated Neon project exists and cross-tenant negative tests pass against a real development branch.
