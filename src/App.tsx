@@ -381,10 +381,10 @@ function ProductCard({
         <p>{name}</p>
         <strong>{price}</strong>
       </div>
-      <button type="button" className="whatsapp-button" aria-label={buyLabel + " — " + name}>
+      <span className="whatsapp-button" aria-hidden="true">
         <span className="wa-dot">WA</span>
         {buyLabel}
-      </button>
+      </span>
     </article>
   );
 }
@@ -413,6 +413,9 @@ export default function App() {
 
   return (
     <div className="site-shell">
+      <a className="skip-link" href="#top">
+        {language === "fr" ? "Aller au contenu" : "Skip to content"}
+      </a>
       <header className="site-header">
         <a className="brand" href="#top" aria-label={language === "fr" ? "Accueil Commerce Factory" : "Commerce Factory home"}>
           <img
@@ -455,7 +458,7 @@ export default function App() {
         </div>
       </header>
 
-      <main id="top">
+      <main id="top" tabIndex={-1}>
         <section className="hero-section section">
           <div className="hero-aura hero-aura-one" />
           <div className="hero-aura hero-aura-two" />
@@ -486,7 +489,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="hero-visual" aria-label={t.storefrontExample}>
+          <div className="hero-visual" role="group" aria-label={t.storefrontExample}>
             <div className="browser-card">
               <div className="browser-bar">
                 <span className="browser-dots"><i /><i /><i /></span>
@@ -518,9 +521,9 @@ export default function App() {
               <span className="phone-product-name">Smart Watch Ultra</span>
               <strong>65,000 FCFA</strong>
               <span className="phone-status">{t.readyWhatsApp}</span>
-              <button type="button" className="whatsapp-button phone-button">
+              <span className="whatsapp-button phone-button" aria-hidden="true">
                 <span className="wa-dot">WA</span> {t.buyWhatsApp}
-              </button>
+              </span>
             </div>
           </div>
         </section>
@@ -580,7 +583,7 @@ export default function App() {
             </ol>
           </div>
 
-          <div className="chat-card" aria-label={t.whatsappExample}>
+          <div className="chat-card" role="group" aria-label={t.whatsappExample}>
             <div className="chat-header">
               <span className="chat-avatar">TP</span>
               <span><strong>TechPulse</strong><small>WhatsApp Business</small></span>
