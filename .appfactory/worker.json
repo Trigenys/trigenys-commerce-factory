@@ -1,0 +1,8 @@
+{
+  "repository": "Trigenys/trigenys-commerce-factory",
+  "runtime": "typescript-wrangler",
+  "pagesProject": "trigenys-commerce-factory",
+  "runtimeSecrets": {
+    "TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN": "__WEB_URL__"
+  }
+}
