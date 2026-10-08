@@ -113,7 +113,8 @@ const plansByLanguage = {
       price: "Free",
       description: "Validate your catalog and WhatsApp sales flow.",
       features: ["Up to 25 products", "Commerce Factory store URL", "WhatsApp order handoff", "Basic storefront analytics"],
-      cta: "Join beta"
+      cta: "Join beta",
+      featured: false
     },
     {
       tier: "pro",
@@ -132,7 +133,8 @@ const plansByLanguage = {
       price: "Talk to us",
       description: "For teams and higher-volume commerce operations.",
       features: ["Team access", "Multiple stores", "Integration controls", "Meta automation roadmap"],
-      cta: "Explore Business"
+      cta: "Explore Business",
+      featured: false
     }
   ],
   fr: [
@@ -143,7 +145,8 @@ const plansByLanguage = {
       price: "Gratuit",
       description: "Validez votre catalogue et votre parcours de vente sur WhatsApp.",
       features: ["Jusqu’à 25 produits", "URL de boutique Commerce Factory", "Passage de commande vers WhatsApp", "Analytique de base de la boutique"],
-      cta: "Rejoindre la bêta"
+      cta: "Rejoindre la bêta",
+      featured: false
     },
     {
       tier: "pro",
@@ -162,7 +165,8 @@ const plansByLanguage = {
       price: "Parlons-en",
       description: "Pour les équipes et les activités avec un volume plus important.",
       features: ["Accès équipe", "Plusieurs boutiques", "Contrôles d’intégration", "Roadmap d’automatisation Meta"],
-      cta: "Découvrir Business"
+      cta: "Découvrir Business",
+      featured: false
     }
   ]
 } as const;
@@ -696,7 +700,7 @@ export default function App() {
 
       <footer className="site-footer">
         <div>
-          <a className="brand footer-brand" href="#top" aria-label="Commerce Factory home">
+          <a className="brand footer-brand" href="#top" aria-label={language === "fr" ? "Accueil Commerce Factory" : "Commerce Factory home"}>
             <img
               className="brand-logo"
               src="/commerce-factory-logo-v3.png?v=3"
@@ -706,10 +710,10 @@ export default function App() {
           <p>{t.footerBody}</p>
         </div>
         <div className="footer-links">
-          <a href="#how">How it works</a>
-          <a href="#showcase">Showcase</a>
-          <a href="#dashboard">Dashboard</a>
-          <a href="#pricing">Pricing</a>
+          <a href="#how">{t.navHow}</a>
+          <a href="#showcase">{t.navShowcase}</a>
+          <a href="#dashboard">{t.navDashboard}</a>
+          <a href="#pricing">{t.navPricing}</a>
         </div>
         <small>{t.footerStatus}</small>
       </footer>
