@@ -116,7 +116,7 @@ export default function App() {
         <a className="brand" href="#top" aria-label="Commerce Factory home">
           <img
             className="brand-logo"
-            src="/commerce-factory-logo.png"
+            src="/commerce-factory-logo-v3.png?v=3"
             alt="Commerce Factory by Trigenys"
           />
         </a>
@@ -399,7 +399,7 @@ export default function App() {
           <a className="brand footer-brand" href="#top" aria-label="Commerce Factory home">
             <img
               className="brand-logo"
-              src="/commerce-factory-logo.png"
+              src="/commerce-factory-logo-v3.png?v=3"
               alt="Commerce Factory by Trigenys"
             />
           </a>
