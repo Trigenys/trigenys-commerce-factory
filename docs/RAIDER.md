@@ -1,6 +1,6 @@
 # RAIDER — Commerce Factory MVP
 
-Last reviewed: 2026-10-07
+Last reviewed: 2026-10-08
 
 RAIDER means **Risks, Assumptions, Issues, Dependencies, Evidence, Results**.
 
@@ -8,7 +8,7 @@ RAIDER means **Risks, Assumptions, Issues, Dependencies, Evidence, Results**.
 
 - Scope expands into payments, logistics, ERP or advertising before the core storefront is validated.
 - A WhatsApp click may be mistaken for a completed sale.
-- Incorrect RLS/authorization could expose data across merchants.
+- Incorrect API authorization or a missing `store_members` filter could expose data across merchants.
 - Image uploads can become an abuse and cost vector.
 - Meta review/permissions can delay social integrations independently of engineering.
 - Custom domains can introduce operational complexity too early.
@@ -35,7 +35,7 @@ RAIDER means **Risks, Assumptions, Issues, Dependencies, Evidence, Results**.
 
 - AppFactory-generated React/Vite baseline.
 - AppFactory Project Automation.
-- Neon PostgreSQL for relational data; Neon Auth is the preferred integrated auth direction once the dedicated project is provisioned.
+- Neon PostgreSQL for relational data and branch-scoped Managed Better Auth for merchant identity.
 - Cloudflare Pages + Worker/Hono for web delivery and the trusted API boundary.
 - WhatsApp deep-link behavior.
 - Meta platform APIs only for later integrations.
@@ -46,6 +46,9 @@ RAIDER means **Risks, Assumptions, Issues, Dependencies, Evidence, Results**.
 - The product can deliver value without a payment gateway by improving product discovery and WhatsApp handoff.
 - Architecture explicitly avoids one deployment per merchant.
 - MVP backlog has verifiable Proof of Done on each issue.
+- Tenant-owned API queries bind the verified auth subject to `store_members` server-side; client-supplied store IDs never grant access.
+- Cross-tenant read/write negative tests and the public-storefront response-surface test are committed under `backend/test/`.
+- Database and Auth runtime values are provisioned through AppFactory into the Worker; the browser never receives the PostgreSQL credential.
 
 ## Results to measure
 

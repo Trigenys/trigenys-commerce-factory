@@ -1,0 +1,23 @@
+{
+  "name": "@trigenys/commerce-factory-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "dev": "wrangler dev --config wrangler.production.jsonc",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --experimental-strip-types test/*.test.ts",
+    "check": "npm run typecheck && npm test"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "1.2.0",
+    "hono": "4.13.13",
+    "jose": "6.2.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "5.8.3",
+    "wrangler": "4.44.0"
+  }
+}
