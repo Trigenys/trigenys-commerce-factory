@@ -42,4 +42,5 @@ Blueprint version: `1`
 - [MVP architecture](docs/architecture/ADR-001-mvp-platform.md)
 - [RAIDER](docs/RAIDER.md)
 - [MVP delivery order](docs/ROADMAP.md)
+- [Meta integration boundary](docs/integrations/meta-boundary.md)
 - [GitHub epic #1](https://github.com/Trigenys/trigenys-commerce-factory/issues/1)
