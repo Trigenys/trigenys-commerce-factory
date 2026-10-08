@@ -25,3 +25,9 @@ jobs:
       - run: npm install --ignore-scripts
       - run: npm run typecheck
       - run: npm run build
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm install --ignore-scripts
+      - name: Validate backend
+        working-directory: backend
+        run: npm run check
