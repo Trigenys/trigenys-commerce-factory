@@ -111,6 +111,46 @@ img { max-width: 100%; }
 
 .desktop-nav a:hover { color: var(--primary); }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.language-switch {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border: 1px solid rgba(109, 122, 114, .16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .72);
+}
+
+.language-switch button {
+  min-width: 36px;
+  height: 30px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.language-switch button.active {
+  background: var(--burgundy);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(157, 11, 67, .16);
+}
+
+.language-switch button:focus-visible {
+  outline: 2px solid var(--burgundy);
+  outline-offset: 2px;
+}
+
 .button {
   min-height: 44px;
   padding: 0 18px;
@@ -572,7 +612,9 @@ img { max-width: 100%; }
 @media (max-width: 760px) {
   .site-header { height: 66px; padding-inline: 14px; }
   .brand-logo { width: 152px; height: auto; }
-  .button-compact { min-height: 38px; padding-inline: 12px; font-size: 11px; }
+  .header-actions .button-compact { display: none; }
+  .language-switch { padding: 2px; }
+  .language-switch button { min-width: 34px; height: 28px; padding-inline: 8px; }
 
   .section { padding: 52px 16px; }
   .hero-section { padding-top: 30px; gap: 34px; }
