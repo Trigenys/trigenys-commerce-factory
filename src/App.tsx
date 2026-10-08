@@ -101,7 +101,7 @@ function ProductCard({
         <p>{name}</p>
         <strong>{price}</strong>
       </div>
-      <button type="button" className="whatsapp-button" aria-label={\`Buy \${name} on WhatsApp\`}>
+      <button type="button" className="whatsapp-button" aria-label={"Buy " + name + " on WhatsApp"}>
         <span className="wa-dot">WA</span>
         Buy on WhatsApp
       </button>
