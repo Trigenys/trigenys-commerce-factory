@@ -201,18 +201,52 @@ img { max-width: 100%; }
   grid-template-columns: minmax(0, 1fr) minmax(500px, .95fr);
   align-items: center;
   gap: clamp(42px, 5vw, 78px);
+  isolation: isolate;
+}
+
+.hero-section::before {
+  content: "";
+  position: absolute;
+  inset: -18% -10%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 72% 24%, rgba(0, 105, 72, .14), transparent 34%),
+    radial-gradient(circle at 24% 72%, rgba(157, 11, 67, .09), transparent 31%);
+  filter: blur(54px);
+  opacity: .72;
+  transform-origin: center;
+  animation: hero-haze-drift 28s ease-in-out infinite alternate;
 }
 
 .hero-aura {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
+  filter: blur(140px);
   pointer-events: none;
-  opacity: .5;
+  opacity: .16;
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0) scale(1);
+  z-index: 0;
 }
 
-.hero-aura-one { width: 470px; height: 470px; right: -130px; top: -110px; background: rgba(133, 248, 196, .38); }
-.hero-aura-two { width: 380px; height: 380px; left: -140px; bottom: -130px; background: rgba(157, 11, 67, .12); }
+.hero-aura-one {
+  width: 560px;
+  height: 560px;
+  right: -150px;
+  top: -120px;
+  background: rgba(0, 105, 72, .34);
+  animation: hero-aura-one-drift 24s ease-in-out infinite alternate;
+}
+
+.hero-aura-two {
+  width: 470px;
+  height: 470px;
+  left: -170px;
+  bottom: -150px;
+  background: rgba(157, 11, 67, .24);
+  animation: hero-aura-two-drift 30s ease-in-out infinite alternate;
+}
 
 .hero-copy, .hero-visual { position: relative; z-index: 1; }
 
@@ -564,6 +598,9 @@ img { max-width: 100%; }
 .price-card .button { margin-top: auto; }
 
 .launch-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   max-width: 980px;
   margin: 0 auto;
   padding: clamp(38px, 6vw, 74px);
@@ -574,9 +611,29 @@ img { max-width: 100%; }
   border-radius: 30px;
   color: #fff;
   background:
-    radial-gradient(circle at 85% 15%, rgba(157,11,67,.30), transparent 30%),
+    radial-gradient(circle at 85% 15%, rgba(157,11,67,.20), transparent 30%),
     linear-gradient(135deg, #242d42, #18383a);
   box-shadow: 0 30px 70px rgba(28,43,66,.18);
+}
+
+.launch-card::before {
+  content: "";
+  position: absolute;
+  inset: -48%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 32% 42%, rgba(0, 133, 93, .28), transparent 27%),
+    radial-gradient(circle at 68% 58%, rgba(157, 11, 67, .22), transparent 25%);
+  filter: blur(70px);
+  opacity: .72;
+  transform: translate3d(0, 0, 0) scale(1);
+  animation: launch-haze-drift 26s ease-in-out infinite alternate;
+}
+
+.launch-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .launch-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; background: var(--burgundy); font-size: 22px; font-weight: 800; }
@@ -585,6 +642,38 @@ img { max-width: 100%; }
 .launch-card p { max-width: 650px; margin: 16px 0 0; color: #d8e2df; line-height: 1.7; font-size: 14px; }
 .launch-button { margin-top: 26px; }
 .launch-card small { margin-top: 14px; color: #aebbb8; font-size: 9px; }
+
+@keyframes hero-haze-drift {
+  0% { transform: translate3d(-1.5%, -1%, 0) scale(1); opacity: .62; }
+  50% { transform: translate3d(1.5%, 1%, 0) scale(1.035); opacity: .76; }
+  100% { transform: translate3d(2.5%, -1.5%, 0) scale(1.02); opacity: .68; }
+}
+
+@keyframes hero-aura-one-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: .13; }
+  50% { transform: translate3d(-28px, 22px, 0) scale(1.08); opacity: .18; }
+  100% { transform: translate3d(18px, 42px, 0) scale(.98); opacity: .14; }
+}
+
+@keyframes hero-aura-two-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: .11; }
+  50% { transform: translate3d(34px, -26px, 0) scale(1.07); opacity: .16; }
+  100% { transform: translate3d(12px, -40px, 0) scale(1.02); opacity: .12; }
+}
+
+@keyframes launch-haze-drift {
+  0% { transform: translate3d(-3%, -2%, 0) scale(1); opacity: .62; }
+  50% { transform: translate3d(2%, 2%, 0) scale(1.08); opacity: .78; }
+  100% { transform: translate3d(4%, -1%, 0) scale(1.03); opacity: .68; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-section::before,
+  .hero-aura,
+  .launch-card::before {
+    animation: none !important;
+  }
+}
 
 .site-footer {
   padding-block: 42px;
