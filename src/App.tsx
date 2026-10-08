@@ -114,11 +114,11 @@ export default function App() {
     <div className="site-shell">
       <header className="site-header">
         <a className="brand" href="#top" aria-label="Commerce Factory home">
-          <span className="brand-mark">C</span>
-          <span>
-            <strong>Commerce Factory</strong>
-            <small>by Trigenys</small>
-          </span>
+          <img
+            className="brand-logo"
+            src="/commerce-factory-logo.png"
+            alt="Commerce Factory by Trigenys"
+          />
         </a>
 
         <nav className="desktop-nav" aria-label="Primary">
@@ -396,9 +396,12 @@ export default function App() {
 
       <footer className="site-footer">
         <div>
-          <a className="brand footer-brand" href="#top">
-            <span className="brand-mark">C</span>
-            <span><strong>Commerce Factory</strong><small>by Trigenys</small></span>
+          <a className="brand footer-brand" href="#top" aria-label="Commerce Factory home">
+            <img
+              className="brand-logo"
+              src="/commerce-factory-logo.png"
+              alt="Commerce Factory by Trigenys"
+            />
           </a>
           <p>Lightweight storefront infrastructure for WhatsApp-first commerce.</p>
         </div>
