@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "provider": "cloudflare-pages",
+  "repository": "Trigenys/trigenys-commerce-factory",
+  "projectName": "trigenys-commerce-factory",
+  "productionBranch": "main",
+  "rootDirectory": "/",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist"
+}
