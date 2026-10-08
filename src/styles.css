@@ -67,6 +67,13 @@ img { max-width: 100%; }
   min-width: max-content;
 }
 
+.brand-logo {
+  display: block;
+  width: auto;
+  height: 46px;
+  object-fit: contain;
+}
+
 .brand-mark {
   width: 34px;
   height: 34px;
@@ -548,9 +555,7 @@ img { max-width: 100%; }
 
 @media (max-width: 760px) {
   .site-header { height: 66px; padding-inline: 14px; }
-  .brand strong { font-size: 13px; }
-  .brand small { font-size: 9px; }
-  .brand-mark { width: 31px; height: 31px; }
+  .brand-logo { height: 40px; }
   .button-compact { min-height: 38px; padding-inline: 12px; font-size: 11px; }
 
   .section { padding: 52px 16px; }
@@ -596,7 +601,7 @@ img { max-width: 100%; }
 }
 
 @media (max-width: 420px) {
-  .site-header .brand small { display: none; }
+  .brand-logo { height: 36px; }
   .button-compact { padding-inline: 10px; }
   .product-grid { grid-template-columns: 1fr 1fr; }
   .product-image-wrap { height: 96px; }
