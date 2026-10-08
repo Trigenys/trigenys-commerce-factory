@@ -24,16 +24,17 @@ It should not optimize for hypothetical enterprise scale before we have merchant
 ### Recommended for MVP
 
 - **Web application:** React 19 + TypeScript + Vite.
-- **Hosting:** Cloudflare Pages for the web app.
-- **Primary data platform:** Supabase Postgres.
-- **Authentication:** Supabase Auth.
-- **Product/store media:** Supabase Storage initially.
-- **Sensitive server-side operations:** a thin server API boundary introduced only where browser-direct access is inappropriate. Cloudflare Workers/Hono is the preferred first server runtime when needed.
-- **Analytics:** first-party event table in Postgres for MVP product metrics; PostHog can be added for product analytics, but it is not the source of truth for merchant-facing numbers.
+- **Hosting:** Cloudflare Pages.
+- **API boundary:** Cloudflare Worker + Hono.
+- **Primary database:** Neon PostgreSQL.
+- **Database access:** server-side only from the Worker; no privileged database credentials in the browser.
+- **Authentication:** Neon Auth is the preferred integrated option once the Commerce Factory Neon project is provisioned; the domain model stores the external auth subject rather than coupling core tables to provider-owned user tables.
+- **Product/store media:** Cloudflare R2 for product images.
+- **Analytics:** first-party event tables in Neon for merchant-facing metrics; PostHog may be added for product analytics but is not the merchant reporting source of truth.
 - **Storefront model:** one multi-tenant application, not one deployment per merchant.
 - **Public URLs:** `/shop/:storeSlug` and `/shop/:storeSlug/p/:productSlug` for MVP. Custom domains are deferred.
 
-This uses managed services deliberately to reduce MVP operations, not as a default architecture rule.
+This keeps Postgres portable while using Cloudflare for the application edge and Neon for relational state.
 
 ## Options considered
 
@@ -50,25 +51,25 @@ React/Vite + Cloudflare Pages + Worker/Hono + D1 + R2.
 
 ### Option B — portable Postgres service
 
-React/Vite + API service (FastAPI or TypeScript) + Neon/Postgres + R2/object storage.
+React/Vite + Cloudflare Worker/Hono + Neon PostgreSQL + R2.
 
 **Possible:** yes.  
-**Common:** very common.  
-**Strengths:** strong portability, mature relational semantics, explicit API boundary, good fit for future integrations and background jobs.  
-**Weaknesses:** more deployment and auth plumbing before the first merchant can use the product; at least three operational components from day one.
+**Common:** common for modern serverless SaaS.  
+**Strengths:** standard Postgres semantics, clean API trust boundary, strong portability, excellent fit for integrations/background jobs, no browser database credential.  
+**Weaknesses:** adds an API runtime from day one and requires explicit authentication/authorization wiring.
 
-**Verdict:** strongest long-term portability option, but heavier than necessary before product validation.
+**Verdict:** **recommended for this MVP** because the user chose Neon and the architecture remains portable and operationally small.
 
 ### Option C — integrated BaaS
 
-React/Vite + Supabase Postgres/Auth/Storage, with a thin server boundary for privileged operations.
+React/Vite + Supabase Postgres/Auth/Storage.
 
 **Possible:** yes.  
 **Common:** common for MVP SaaS products.  
-**Strengths:** Postgres from day one, integrated auth/storage, row-level security, low operational burden, fast delivery.  
-**Weaknesses:** managed-platform coupling, RLS policies become security-critical, some future integrations will still require server-side code.
+**Strengths:** tightly integrated auth/database/storage.  
+**Weaknesses:** not selected; it would duplicate platform capabilities once Neon is the database choice.
 
-**Verdict:** **recommended for MVP** because it minimizes moving parts without sacrificing Postgres or a clean migration path.
+**Verdict:** rejected for Commerce Factory after the database decision moved to Neon.
 
 ## Key architectural rule: do not deploy one app per merchant
 
@@ -111,16 +112,20 @@ Routes:
 
 Only published/active data can be returned.
 
-### Server-only boundary
-Introduce server-side endpoints for operations such as:
-- Meta OAuth/token exchange;
-- webhook verification;
-- signed upload policies if required;
-- custom-domain automation;
-- abuse-sensitive analytics ingestion;
-- background synchronization.
+### API / server boundary
 
-Do not create a general backend endpoint merely because “apps need backends.”
+The Cloudflare Worker/Hono API owns all privileged data access.
+
+Responsibilities:
+- validate authentication;
+- resolve the authenticated subject;
+- enforce store membership before every tenant-scoped read/write;
+- execute Neon queries with server-only credentials;
+- ingest abuse-sensitive analytics events;
+- handle Meta OAuth/token exchange and webhooks;
+- sign or proxy object-storage operations where required.
+
+The browser receives only the public API URL. It never receives the Neon connection string.
 
 ## Domain model
 
@@ -247,12 +252,11 @@ Suggested media key:
 
 ## Authentication
 
-MVP:
-- email magic link or OTP;
-- owner role only is acceptable initially;
-- the schema keeps `STORE_MEMBER.role` so staff roles can be introduced without redesigning ownership.
+Preferred direction: Neon Auth once the dedicated Commerce Factory Neon project exists.
 
-Do not build a complex RBAC matrix before there is a real requirement.
+Core tenant tables remain auth-provider-neutral by storing an `auth_subject` string in `store_members`. This avoids foreign keys into provider-owned auth schemas and keeps the domain portable.
+
+MVP can start with owner role only. Do not build a complex RBAC matrix before there is a real requirement.
 
 ## Storefront data strategy
 
@@ -291,16 +295,16 @@ No phone number, message body or other unnecessary PII should be stored in event
 
 ## Media
 
-Supabase Storage is recommended for MVP because it is already adjacent to Auth/Postgres and reduces infrastructure count.
+Cloudflare R2 is recommended for product/store media.
 
 Constraints:
 - validate MIME and file size;
 - optimize images before serving them on storefronts;
-- store generated object keys, not arbitrary external URLs as the canonical source;
-- namespace all objects by store;
+- store generated object keys, not arbitrary external URLs as canonical media;
+- namespace objects by store;
 - document deletion/orphan cleanup.
 
-If media volume becomes material, moving public product media to R2 is a credible later optimization.
+Suggested key: `stores/{storeId}/products/{productId}/{imageId}.webp`.
 
 ## Meta integration
 
@@ -325,12 +329,12 @@ Cloudflare for SaaS or an equivalent managed custom-hostname product can be eval
 
 ## Migration strategy
 
-1. Keep SQL migrations committed in the repository.
+1. Keep SQL migrations committed under `db/migrations`.
 2. Never make production schema changes manually without a migration.
-3. Treat RLS policies as versioned schema.
-4. Use additive migrations where possible.
-5. Keep domain repositories/adapters independent of Supabase-specific UI code.
-6. If leaving Supabase, migrate Postgres first; Auth and Storage are separate migration concerns.
+3. Use additive migrations where possible.
+4. Keep product/domain code independent of Neon-specific control-plane APIs.
+5. Test schema changes on a Neon branch before applying them to the production branch.
+6. Treat authentication and object storage as separate migration concerns from relational data.
 
 ## Cost posture
 
