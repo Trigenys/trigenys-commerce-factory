@@ -141,7 +141,6 @@ jobs:
           }
 
   neon:
-    if: github.event_name == 'workflow_dispatch'
     needs: worker
     runs-on: ubuntu-latest
     steps:
