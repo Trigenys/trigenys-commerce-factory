@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - ".appfactory/pages.json"
+      - ".appfactory/worker.json"
+      - "backend/**"
       - ".github/workflows/appfactory-infrastructure.yml"
 
 permissions:
@@ -13,7 +15,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: appfactory-infrastructure-pages
+  group: appfactory-infrastructure-commerce-factory
   cancel-in-progress: false
 
 jobs:
@@ -40,7 +42,6 @@ jobs:
           echo "token=$token" >> "$GITHUB_OUTPUT"
 
       - name: Provision Cloudflare Pages through AppFactory
-        id: provision
         shell: bash
         env:
           OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
@@ -66,30 +67,127 @@ jobs:
               https://appfactory-api.lawrynnjennifer.workers.dev/infrastructure/pages
           )"
 
-          cat "$response_file" | jq .
-
-          if [[ "$http_code" != "200" ]]; then
-            echo "::error::AppFactory returned HTTP $http_code."
+          jq . "$response_file"
+          [[ "$http_code" == "200" ]] || {
+            echo "::error::AppFactory Pages returned HTTP $http_code."
             exit 1
-          fi
+          }
 
           status="$(jq -r '.status // empty' "$response_file")"
-          if [[ "$status" != "PROVISIONED" ]]; then
-            echo "::error::AppFactory did not report PROVISIONED."
+          [[ "$status" == "PROVISIONED" ]] || {
+            echo "::error::AppFactory Pages did not report PROVISIONED."
+            exit 1
+          }
+
+  worker:
+    needs: pages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Request GitHub OIDC token
+        id: oidc
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --silent --show-error --fail \
+            --header "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=appfactory-api")"
+          token="$(jq -r '.value // empty' <<<"$response")"
+          if [[ -z "$token" ]]; then
+            echo "::error::GitHub did not return an OIDC token."
             exit 1
           fi
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
 
-          {
-            echo "## AppFactory Pages"
-            echo
-            jq -r '
-              .infrastructure as $i |
-              "- Project: `\($i.pages.project)`",
-              "- Pages URL: \($i.pages.url // "pending")",
-              "- Deployment: `\($i.pages.deploymentId)`",
-              "- Deployment reused: `\($i.pages.reusedDeployment)`",
-              "- Custom domain: \($i.customDomain.name // "not configured")",
-              "- Domain status: \($i.customDomain.status // "n/a")",
-              "- DNS target: \($i.dns.target // "n/a")"
-            ' "$response_file"
-          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Provision TypeScript Worker through AppFactory
+        shell: bash
+        env:
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+        run: |
+          set -euo pipefail
+
+          jq -e '
+            type == "object" and
+            (.repository == "Trigenys/trigenys-commerce-factory") and
+            (.runtime == "typescript-wrangler") and
+            (.pagesProject == "trigenys-commerce-factory")
+          ' .appfactory/worker.json >/dev/null
+
+          response_file="$(mktemp)"
+          http_code="$(
+            curl --silent --show-error \
+              --output "$response_file" \
+              --write-out "%{http_code}" \
+              --request POST \
+              --header "Authorization: Bearer $OIDC_TOKEN" \
+              --header "Content-Type: application/json" \
+              --data-binary @.appfactory/worker.json \
+              https://appfactory-api.lawrynnjennifer.workers.dev/infrastructure/worker
+          )"
+
+          jq . "$response_file"
+          [[ "$http_code" == "200" ]] || {
+            echo "::error::AppFactory Worker returned HTTP $http_code."
+            exit 1
+          }
+
+          status="$(jq -r '.status // empty' "$response_file")"
+          [[ "$status" == "PROVISIONED" ]] || {
+            echo "::error::AppFactory Worker did not report PROVISIONED."
+            exit 1
+          }
+
+  neon:
+    if: github.event_name == 'workflow_dispatch'
+    needs: worker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request GitHub OIDC token
+        id: oidc
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --silent --show-error --fail \
+            --header "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=appfactory-api")"
+          token="$(jq -r '.value // empty' <<<"$response")"
+          if [[ -z "$token" ]]; then
+            echo "::error::GitHub did not return an OIDC token."
+            exit 1
+          fi
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Provision Neon database and Managed Better Auth through AppFactory
+        shell: bash
+        env:
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+        run: |
+          set -euo pipefail
+
+          response_file="$(mktemp)"
+          http_code="$(
+            curl --silent --show-error \
+              --output "$response_file" \
+              --write-out "%{http_code}" \
+              --request POST \
+              --header "Authorization: Bearer $OIDC_TOKEN" \
+              --header "Content-Type: application/json" \
+              --data '{"repository":"Trigenys/trigenys-commerce-factory"}' \
+              https://appfactory-api.lawrynnjennifer.workers.dev/infrastructure/neon
+          )"
+
+          jq . "$response_file"
+          [[ "$http_code" == "200" ]] || {
+            echo "::error::AppFactory Neon returned HTTP $http_code."
+            exit 1
+          }
+
+          status="$(jq -r '.status // empty' "$response_file")"
+          if [[ "$status" != "PROVISIONED" && "$status" != "ALREADY_CONFIGURED" ]]; then
+            echo "::error::AppFactory Neon returned unexpected status $status."
+            exit 1
+          fi
