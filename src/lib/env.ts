@@ -1,26 +1,16 @@
 export type PublicEnv = {
-  supabaseUrl: string;
-  supabaseAnonKey: string;
+  apiBaseUrl: string;
 };
 
 export function getPublicEnv(): PublicEnv {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    const missing = [
-      !supabaseUrl ? "VITE_SUPABASE_URL" : null,
-      !supabaseAnonKey ? "VITE_SUPABASE_ANON_KEY" : null
-    ].filter((value): value is string => Boolean(value));
-
+  if (!apiBaseUrl) {
     throw new Error(
-      `Missing public environment configuration: ${missing.join(", ")}. ` +
+      "Missing public environment configuration: VITE_API_BASE_URL. " +
         "Use .env.example as the local template."
     );
   }
 
-  return {
-    supabaseUrl,
-    supabaseAnonKey
-  };
+  return { apiBaseUrl };
 }
