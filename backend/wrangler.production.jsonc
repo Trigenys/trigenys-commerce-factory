@@ -4,5 +4,11 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-08",
   "compatibility_flags": ["nodejs_compat"],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "trigenys-commerce-factory-media"
+    }
+  ],
   "keep_vars": true
 }
