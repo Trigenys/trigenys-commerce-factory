@@ -144,6 +144,10 @@ class ProductRepository implements CommerceRepository {
     return copy;
   }
 
+  async publishOwnedStore(_subject: string, _storeId: string) {
+    return { kind: "not_found" as const };
+  }
+
   async getPublicStorefront(slug: string): Promise<PublicStorefront | null> {
     if (slug !== store.slug || store.status !== "published") return null;
     return {
