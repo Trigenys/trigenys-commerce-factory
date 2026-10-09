@@ -102,4 +102,67 @@ export interface CommerceRepository {
     patch: StorePatch
   ): Promise<StoreUpdateResult>;
   getPublicStorefront(slug: string): Promise<PublicStorefront | null>;
+  listOwnedProducts(
+    authSubject: string,
+    storeId: string
+  ): Promise<ProductSummary[]>;
+  createOwnedProduct(
+    authSubject: string,
+    storeId: string,
+    input: ProductInput
+  ): Promise<ProductCreateResult>;
+  updateOwnedProduct(
+    authSubject: string,
+    storeId: string,
+    productId: string,
+    input: ProductInput
+  ): Promise<ProductUpdateResult>;
+  archiveOwnedProduct(
+    authSubject: string,
+    storeId: string,
+    productId: string
+  ): Promise<boolean>;
+  duplicateOwnedProduct(
+    authSubject: string,
+    storeId: string,
+    productId: string
+  ): Promise<ProductSummary | null>;
 }
+
+
+export type ProductStatus = "draft" | "active" | "archived";
+
+export type ProductVariant = {
+  name: string;
+  value: string;
+};
+
+export type ProductInput = {
+  name: string;
+  slug: string;
+  description: string | null;
+  price: string;
+  currencyCode: string;
+  category: string | null;
+  stockLabel: string | null;
+  status: Exclude<ProductStatus, "archived">;
+  sortOrder: number;
+  imageUrls: string[];
+  variants: ProductVariant[];
+};
+
+export type ProductSummary = ProductInput & {
+  id: string;
+  storeId: string;
+  status: ProductStatus;
+};
+
+export type ProductCreateResult =
+  | { kind: "created"; product: ProductSummary }
+  | { kind: "slug_taken" }
+  | { kind: "store_not_found" };
+
+export type ProductUpdateResult =
+  | { kind: "updated"; product: ProductSummary }
+  | { kind: "not_found" }
+  | { kind: "slug_taken" };
