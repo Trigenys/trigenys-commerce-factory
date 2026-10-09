@@ -4,6 +4,8 @@ import type {
   ProductInput,
   ProductSummary,
   ProductVariant,
+  PublicEventMetadata,
+  PublicEventName,
   PublicStorefront,
   StoreCreateInput,
   StorePatch,
@@ -699,6 +701,53 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           variants
       ` as ProductRow[];
       return rows[0] ? mapProduct(rows[0]) : null;
+    },
+
+    async recordPublicEvent(
+      eventId: string,
+      eventName: PublicEventName,
+      storeSlug: string,
+      productSlug: string | null,
+      metadata: PublicEventMetadata
+    ) {
+      const metadataJson = JSON.stringify(metadata);
+      const rows = await sql`
+        WITH target AS (
+          SELECT
+            s.id AS store_id,
+            p.id AS product_id
+          FROM stores s
+          LEFT JOIN products p
+            ON p.store_id = s.id
+           AND p.slug = ${productSlug}
+           AND p.status = 'active'
+          WHERE s.slug = ${storeSlug}
+            AND s.status = 'published'
+            AND (${productSlug}::text IS NULL OR p.id IS NOT NULL)
+          LIMIT 1
+        ),
+        inserted AS (
+          INSERT INTO commerce_events (
+            id,
+            event_name,
+            store_id,
+            product_id,
+            metadata
+          )
+          SELECT
+            ${eventId}::uuid,
+            ${eventName},
+            target.store_id,
+            target.product_id,
+            ${metadataJson}::jsonb
+          FROM target
+          ON CONFLICT (id) DO NOTHING
+          RETURNING id
+        )
+        SELECT EXISTS (SELECT 1 FROM target) AS target_exists
+      ` as Array<{ target_exists: boolean }>;
+
+      return Boolean(rows[0]?.target_exists);
     }
   };
 }
