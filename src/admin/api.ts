@@ -51,7 +51,9 @@ async function merchantRequest<T>(
     headers: {
       Accept: "application/json",
       Authorization: "Bearer " + token,
-      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(init.body && !(init.body instanceof FormData)
+        ? { "Content-Type": "application/json" }
+        : {}),
       ...(init.headers || {})
     }
   });
@@ -259,4 +261,57 @@ export async function getStoreAnalytics(
       encodeURIComponent(String(days))
   );
   return body.analytics;
+}
+
+
+export type MediaObject = {
+  id: string;
+  publicId: string;
+  storeId: string;
+  productId: string | null;
+  kind: "logo" | "product";
+  objectKey: string;
+  contentType: "image/webp";
+  byteSize: number;
+  publicUrl: string;
+};
+
+export async function uploadMedia(
+  client: CommerceAuthClient,
+  storeId: string,
+  file: Blob,
+  kind: "logo" | "product",
+  productId?: string
+): Promise<MediaObject> {
+  const form = new FormData();
+  form.set("kind", kind);
+  if (kind === "product" && productId) {
+    form.set("productId", productId);
+  }
+  form.set("file", file, "image.webp");
+
+  const body = await merchantRequest<{ media: MediaObject }>(
+    client,
+    "/v1/admin/stores/" + encodeURIComponent(storeId) + "/media",
+    {
+      method: "POST",
+      body: form
+    }
+  );
+  return body.media;
+}
+
+export async function deleteMedia(
+  client: CommerceAuthClient,
+  storeId: string,
+  mediaId: string
+): Promise<void> {
+  await merchantRequest<void>(
+    client,
+    "/v1/admin/stores/" +
+      encodeURIComponent(storeId) +
+      "/media/" +
+      encodeURIComponent(mediaId),
+    { method: "DELETE" }
+  );
 }
