@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { CommerceAuthClient } from "./auth";
-import { getAuthClient } from "./auth";
+import { getAuthClient, getSessionSnapshot } from "./auth";
 import {
   ApiError,
   createStore,
@@ -329,8 +329,8 @@ function AuthScreen({
         return;
       }
 
-      const session = await client.getSession();
-      if (!session.data?.session || !session.data?.user) {
+      const session = await getSessionSnapshot(client);
+      if (!session.authenticated) {
         setMode("signin");
         setMessage(t.accountCreated);
         return;
@@ -877,12 +877,10 @@ export default function AdminApp() {
   }, [language]);
 
   async function hydrate(nextClient: CommerceAuthClient) {
-    const session = await nextClient.getSession();
-    const user = session.data?.user;
-    const isAuthenticated = Boolean(session.data?.session && user);
-    setAuthenticated(isAuthenticated);
-    setSessionEmail(typeof user?.email === "string" ? user.email : "");
-    if (!isAuthenticated) {
+    const session = await getSessionSnapshot(nextClient);
+    setAuthenticated(session.authenticated);
+    setSessionEmail(session.email);
+    if (!session.authenticated) {
       setStore(null);
       return;
     }
