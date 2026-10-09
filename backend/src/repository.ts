@@ -322,6 +322,68 @@ export function createNeonRepository(connectionString: string): CommerceReposito
       }
     },
 
+    async publishOwnedStore(authSubject, storeId) {
+      const owned = await sql`
+        SELECT
+          s.id,
+          s.name,
+          s.slug,
+          s.status,
+          s.whatsapp_number,
+          s.country_code,
+          s.currency_code,
+          s.description,
+          s.business_location,
+          s.contact_email,
+          s.theme,
+          s.logo_url
+        FROM stores s
+        INNER JOIN store_members sm ON sm.store_id = s.id
+        WHERE s.id = ${storeId}
+          AND sm.auth_subject = ${authSubject}
+          AND sm.role = 'owner'
+        LIMIT 1
+      ` as StoreRow[];
+
+      if (!owned[0]) return { kind: "not_found" as const };
+
+      const active = await sql`
+        SELECT EXISTS (
+          SELECT 1
+          FROM products
+          WHERE store_id = ${storeId}
+            AND status = 'active'
+        ) AS exists
+      ` as Array<{ exists: boolean }>;
+
+      if (!active[0]?.exists) {
+        return { kind: "active_product_required" as const };
+      }
+
+      const rows = await sql`
+        UPDATE stores
+        SET status = 'published', updated_at = now()
+        WHERE id = ${storeId}
+        RETURNING
+          id,
+          name,
+          slug,
+          status,
+          whatsapp_number,
+          country_code,
+          currency_code,
+          description,
+          business_location,
+          contact_email,
+          theme,
+          logo_url
+      ` as StoreRow[];
+
+      return rows[0]
+        ? { kind: "published" as const, store: mapStore(rows[0]) }
+        : { kind: "not_found" as const };
+    },
+
     async getPublicStorefront(slug): Promise<PublicStorefront | null> {
       const stores = await sql`
         SELECT
