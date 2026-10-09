@@ -1,13 +1,94 @@
 import { useEffect, useState } from "react";
 
 const images = {
-  earbuds: "https://lh3.googleusercontent.com/aida-public/AB6AXuBu7-QWSsNqFHO5asDYkHHmwSfKiQpa7Fk0DdS-Q4nP0Min3mU-7tgbDc6x9woPb6eKBBEzkQ_szaBBBXatEfse3LBJ40gGhCyB620ox8IGhh24u5ydDZUTkCtp4LuF7vhpLfKUTPV7UFQV0Zr3H4GQ6TpGE9lHni9gWpFQygnkIvG0ir8rTKgTJq8HusdHB44OdIiZspBg0u1bkacaSmMCtV2usevYd89_Fsxzhlw",
-  headphones: "https://lh3.googleusercontent.com/aida-public/AB6AXuCT94l6x9rOVfDpQG0nqKso-lvpFScITJ3j5MlGr-2dDTFDJRU8LPTnMn6Mza9Hwlmtwk3YjctHE_fu_Nbs75nHlk-S7lqPfumxjOGjDOJNm3fC4W8EAyUIOsRpVxrjgSpy3WG0ieeEO9N7jug0BjFRfqgpndc6JOEEJmkS0dxTyKb_3KsYr1alJXN3M3uoMx3X4mIoPNiUUVzE8K-vN42bs5NK2De_yDM0o5fSxOQ",
-  watch: "https://lh3.googleusercontent.com/aida-public/AB6AXuA4-UTk1Lmh4-CEb81vxmXpjlmZgdQruDUUR3ocKzcmHbasgibfns1GMD_Fr71x2QhYg2Atom7zozhoduJQiLnvLl9KdMAWh9jHMs3Dr5M0UxbmTFyx4_QJyLu1igi9eMJv-9f-oiaoB8ixzvbkydhWkP0t-4t3M8e7L-iB94Xb-1BoUQnaHRdhgf56ctO1y5Fhym1ZCO1f-zJwhzGMoAgxnVkYM3blM0EGNv7R9Fo",
-  electronics: "https://lh3.googleusercontent.com/aida-public/AB6AXuCwFr-baUT38F9yzf8ulS1MF6s7b85xwatO7Rx43Q-lyCIIe_JWLl7ZLcICiSCE_IeKomFKP3_H4gZFnGi5jQJJHUSL1wOHyz0kEyLP34mO7aF1Lk9EUmlLpiIk8axzmtZaH6s3tAUv_99UkqWj7AjNk0w1QYut9EavtZlNjxkxDZRCZb1T4V39uZ2OgkBYQyyiam4w5NCuSZa1rHbvFjOftZpdJZZo0mjCYlX6eSY",
-  fashion: "https://lh3.googleusercontent.com/aida-public/AB6AXuDdvnkKRxXT1QyyYVzCvduUEP9Ek07riekejlf9AoMxUI_nfogHLIQcz4y_YU-NI5qt5INh5H1na61pikVuvSDzoTy_06VatBqOKJDaDEfWVSwhqEAdD1DfHdL4dYraoTpYcVpl17CySZs9qfSUfDIP-_mpu3rqX5e1IY8qCOU7BvzzlPdiWsEcI0qzezN869C3ByG-ZpuViBwjYDd2Ox7ZwgFFOqkT93gSaRb3iN8",
-  beauty: "https://lh3.googleusercontent.com/aida-public/AB6AXuABL1fs5cZNR1sm9Jwu8G8eoyEqJQEbUSFqrZw3knfi48ro4PiuWQ3e2OB9ICZhE-f9r12ixWTGIROTlNoaCAtyx3C7sfIgcJXJ8W4zejVHjDBUclWtJUO-boER2AyfMHInf9-jRBBSNeQM2PNKDaiiHmmZV5CWm5YgQLJG_3voGa99LEKHoJZo97TBHH_Hy12FAYmF09caaWCWY8Our7D62QV5jfPp6Ule1swSh2k"
-};
+  earbuds: {
+    avif480: "/landing/earbuds-480.avif",
+    avif960: "/landing/earbuds-960.avif",
+    webp480: "/landing/earbuds-480.webp",
+    webp960: "/landing/earbuds-960.webp",
+    width: 512,
+    height: 279
+  },
+  headphones: {
+    avif480: "/landing/headphones-480.avif",
+    avif960: "/landing/headphones-960.avif",
+    webp480: "/landing/headphones-480.webp",
+    webp960: "/landing/headphones-960.webp",
+    width: 512,
+    height: 279
+  },
+  watch: {
+    avif480: "/landing/watch-480.avif",
+    avif960: "/landing/watch-960.avif",
+    webp480: "/landing/watch-480.webp",
+    webp960: "/landing/watch-960.webp",
+    width: 512,
+    height: 279
+  },
+  electronics: {
+    avif480: "/landing/electronics-480.avif",
+    avif960: "/landing/electronics-960.avif",
+    webp480: "/landing/electronics-480.webp",
+    webp960: "/landing/electronics-960.webp",
+    width: 512,
+    height: 279
+  },
+  fashion: {
+    avif480: "/landing/fashion-480.avif",
+    avif960: "/landing/fashion-960.avif",
+    webp480: "/landing/fashion-480.webp",
+    webp960: "/landing/fashion-960.webp",
+    width: 512,
+    height: 286
+  },
+  beauty: {
+    avif480: "/landing/beauty-480.avif",
+    avif960: "/landing/beauty-960.avif",
+    webp480: "/landing/beauty-480.webp",
+    webp960: "/landing/beauty-960.webp",
+    width: 512,
+    height: 279
+  }
+} as const;
+
+type LandingImageAsset = (typeof images)[keyof typeof images];
+
+function ResponsiveLandingImage({
+  image,
+  alt,
+  className,
+  pictureClassName,
+  sizes,
+  loading = "lazy"
+}: {
+  image: LandingImageAsset;
+  alt: string;
+  className: string;
+  pictureClassName: string;
+  sizes: string;
+  loading?: "eager" | "lazy";
+}) {
+  return (
+    <picture className={pictureClassName}>
+      <source
+        type="image/avif"
+        srcSet={`${image.avif480} 480w, ${image.avif960} ${image.width}w`}
+        sizes={sizes}
+      />
+      <img
+        src={image.webp960}
+        srcSet={`${image.webp480} 480w, ${image.webp960} ${image.width}w`}
+        sizes={sizes}
+        width={image.width}
+        height={image.height}
+        alt={alt}
+        className={className}
+        loading={loading}
+        decoding="async"
+      />
+    </picture>
+  );
+}
 
 type Language = "en" | "fr";
 
@@ -365,7 +446,7 @@ function ProductCard({
   badge,
   buyLabel
 }: {
-  image: string;
+  image: LandingImageAsset;
   name: string;
   price: string;
   badge?: string;
@@ -374,7 +455,14 @@ function ProductCard({
   return (
     <article className="product-card">
       <div className="product-image-wrap">
-        <img src={image} alt="" className="product-image" />
+        <ResponsiveLandingImage
+          image={image}
+          alt=""
+          className="product-image"
+          pictureClassName="product-image-picture"
+          sizes="(max-width: 420px) 45vw, (max-width: 780px) 42vw, 240px"
+          loading="eager"
+        />
         {badge ? <span className="product-badge">{badge}</span> : null}
       </div>
       <div className="product-copy">
@@ -517,7 +605,14 @@ export default function App() {
             <div className="phone-card">
               <div className="phone-notch" />
               <span className="phone-store-name">TechPulse Mobile</span>
-              <img src={images.watch} alt="" className="phone-product-image" />
+              <ResponsiveLandingImage
+                image={images.watch}
+                alt=""
+                className="phone-product-image"
+                pictureClassName="phone-product-picture"
+                sizes="180px"
+                loading="eager"
+              />
               <span className="phone-product-name">Smart Watch Ultra</span>
               <strong>65,000 FCFA</strong>
               <span className="phone-status">{t.readyWhatsApp}</span>
@@ -555,7 +650,13 @@ export default function App() {
           <div className="showcase-grid">
             {categories.map((item) => (
               <article className="showcase-card" key={item.title}>
-                <img src={item.image} alt="" />
+                <ResponsiveLandingImage
+                  image={item.image}
+                  alt=""
+                  className="showcase-image"
+                  pictureClassName="showcase-image-picture"
+                  sizes="(max-width: 780px) 120px, 25vw"
+                />
                 <div className="showcase-body">
                   <span className="mini-tag">{t.demoCategory}</span>
                   <h3>{item.title}</h3>
