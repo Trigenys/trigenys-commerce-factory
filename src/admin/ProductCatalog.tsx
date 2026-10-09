@@ -1,0 +1,718 @@
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import type { CommerceAuthClient } from "./auth";
+import {
+  ApiError,
+  archiveProduct,
+  createProduct,
+  duplicateProduct,
+  listProducts,
+  updateProduct,
+  type Product,
+  type ProductInput,
+  type ProductVariant,
+  type Store
+} from "./api";
+import "./catalog.css";
+
+type Language = "fr" | "en";
+
+const copy = {
+  fr: {
+    eyebrow: "Catalogue",
+    title: "Vos produits",
+    body: "Ajoutez les produits que vos clients verront dans votre boutique et classez-les dans l’ordre voulu.",
+    add: "Ajouter un produit",
+    loading: "Chargement du catalogue…",
+    loadError: "Impossible de charger le catalogue.",
+    emptyTitle: "Votre catalogue est vide.",
+    emptyBody: "Créez votre premier produit avec un prix, une image et les informations utiles au client.",
+    name: "Nom du produit",
+    slug: "Adresse produit",
+    price: "Prix",
+    category: "Catégorie",
+    stock: "Indication de stock",
+    description: "Description",
+    status: "Visibilité",
+    draft: "Brouillon",
+    active: "Actif",
+    archived: "Archivé",
+    images: "Images",
+    imagesHint: "URLs HTTPS, une par ligne. Maximum 8.",
+    variants: "Variantes",
+    variantsHint: "Une par ligne au format Nom: Valeur. Ex. Couleur: Noir",
+    save: "Enregistrer",
+    create: "Créer le produit",
+    cancel: "Annuler",
+    edit: "Modifier",
+    duplicate: "Dupliquer",
+    archive: "Archiver",
+    archiveConfirm: "Archiver ce produit ? Il disparaîtra de la boutique publique.",
+    moveUp: "Monter",
+    moveDown: "Descendre",
+    invalid: "Vérifiez le nom, le prix, les images et les variantes.",
+    slugTaken: "Cette adresse produit existe déjà dans votre boutique.",
+    genericError: "Une erreur est survenue. Réessayez.",
+    imagePending: "Aucune image",
+    variantsLabel: "variantes",
+    stockDefault: "Stock non précisé",
+    archivedHint: "Ce produit reste dans l’historique mais n’est plus modifiable.",
+    saved: "Produit enregistré."
+  },
+  en: {
+    eyebrow: "Catalog",
+    title: "Your products",
+    body: "Add the products customers will see in your store and control their display order.",
+    add: "Add product",
+    loading: "Loading catalog…",
+    loadError: "Unable to load the catalog.",
+    emptyTitle: "Your catalog is empty.",
+    emptyBody: "Create your first product with a price, image and useful customer details.",
+    name: "Product name",
+    slug: "Product address",
+    price: "Price",
+    category: "Category",
+    stock: "Stock label",
+    description: "Description",
+    status: "Visibility",
+    draft: "Draft",
+    active: "Active",
+    archived: "Archived",
+    images: "Images",
+    imagesHint: "HTTPS URLs, one per line. Maximum 8.",
+    variants: "Variants",
+    variantsHint: "One per line as Name: Value. Example Color: Black",
+    save: "Save",
+    create: "Create product",
+    cancel: "Cancel",
+    edit: "Edit",
+    duplicate: "Duplicate",
+    archive: "Archive",
+    archiveConfirm: "Archive this product? It will disappear from the public storefront.",
+    moveUp: "Move up",
+    moveDown: "Move down",
+    invalid: "Check the name, price, images and variants.",
+    slugTaken: "That product address is already used in this store.",
+    genericError: "Something went wrong. Try again.",
+    imagePending: "No image",
+    variantsLabel: "variants",
+    stockDefault: "Stock not specified",
+    archivedHint: "This product stays in history but can no longer be edited.",
+    saved: "Product saved."
+  }
+} as const;
+
+type EditorState = {
+  id: string | null;
+  name: string;
+  slug: string;
+  description: string;
+  price: string;
+  currencyCode: string;
+  category: string;
+  stockLabel: string;
+  status: "draft" | "active";
+  imageText: string;
+  variantText: string;
+  sortOrder: number;
+};
+
+function slugify(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-")
+    .slice(0, 63);
+}
+
+function editorFromProduct(product: Product): EditorState {
+  return {
+    id: product.id,
+    name: product.name,
+    slug: product.slug,
+    description: product.description || "",
+    price: product.price.replace(/\.00$/, ""),
+    currencyCode: product.currencyCode,
+    category: product.category || "",
+    stockLabel: product.stockLabel || "",
+    status: product.status === "active" ? "active" : "draft",
+    imageText: product.imageUrls.join("\n"),
+    variantText: product.variants
+      .map((variant) => variant.name + ": " + variant.value)
+      .join("\n"),
+    sortOrder: product.sortOrder
+  };
+}
+
+function blankEditor(store: Store, sortOrder: number): EditorState {
+  return {
+    id: null,
+    name: "",
+    slug: "",
+    description: "",
+    price: "",
+    currencyCode: store.currencyCode,
+    category: "",
+    stockLabel: "",
+    status: "draft",
+    imageText: "",
+    variantText: "",
+    sortOrder
+  };
+}
+
+function parseImages(value: string): string[] | null {
+  const lines = value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length > 8 || new Set(lines).size !== lines.length) return null;
+
+  for (const line of lines) {
+    try {
+      const url = new URL(line);
+      if (
+        url.protocol !== "https:" ||
+        url.username ||
+        url.password ||
+        url.hash
+      ) return null;
+    } catch {
+      return null;
+    }
+  }
+  return lines;
+}
+
+function parseVariants(value: string): ProductVariant[] | null {
+  const lines = value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length > 24) return null;
+
+  const variants: ProductVariant[] = [];
+  for (const line of lines) {
+    const separator = line.indexOf(":");
+    if (separator <= 0) return null;
+    const name = line.slice(0, separator).trim();
+    const variantValue = line.slice(separator + 1).trim();
+    if (
+      name.length < 1 ||
+      name.length > 60 ||
+      variantValue.length < 1 ||
+      variantValue.length > 80
+    ) return null;
+    variants.push({ name, value: variantValue });
+  }
+  return variants;
+}
+
+function toInput(editor: EditorState): ProductInput | null {
+  const images = parseImages(editor.imageText);
+  const variants = parseVariants(editor.variantText);
+  const price = editor.price.trim();
+  if (
+    editor.name.trim().length < 1 ||
+    editor.name.trim().length > 180 ||
+    editor.slug.trim().length < 2 ||
+    !/^\d{1,12}(?:\.\d{1,2})?$/.test(price) ||
+    !images ||
+    !variants
+  ) {
+    return null;
+  }
+
+  return {
+    name: editor.name.trim(),
+    slug: slugify(editor.slug),
+    description: editor.description.trim() || null,
+    price,
+    currencyCode: editor.currencyCode,
+    category: editor.category.trim() || null,
+    stockLabel: editor.stockLabel.trim() || null,
+    status: editor.status,
+    sortOrder: editor.sortOrder,
+    imageUrls: images,
+    variants
+  };
+}
+
+function productToInput(product: Product, sortOrder = product.sortOrder): ProductInput {
+  return {
+    name: product.name,
+    slug: product.slug,
+    description: product.description,
+    price: product.price,
+    currencyCode: product.currencyCode,
+    category: product.category,
+    stockLabel: product.stockLabel,
+    status: product.status === "active" ? "active" : "draft",
+    sortOrder,
+    imageUrls: product.imageUrls,
+    variants: product.variants
+  };
+}
+
+function formatMoney(value: string, currencyCode: string, language: Language) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return value + " " + currencyCode;
+  const noDecimals = currencyCode === "XAF" || currencyCode === "XOF";
+  return new Intl.NumberFormat(language === "fr" ? "fr-FR" : "en-US", {
+    style: "currency",
+    currency: currencyCode,
+    minimumFractionDigits: noDecimals ? 0 : 2,
+    maximumFractionDigits: noDecimals ? 0 : 2
+  }).format(amount);
+}
+
+export default function ProductCatalog({
+  client,
+  store,
+  language
+}: {
+  client: CommerceAuthClient;
+  store: Store;
+  language: Language;
+}) {
+  const t = copy[language];
+  const [products, setProducts] = useState<Product[]>([]);
+  const [editor, setEditor] = useState<EditorState | null>(null);
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const ordered = useMemo(
+    () => [...products].sort((a, b) => {
+      if (a.status === "archived" && b.status !== "archived") return 1;
+      if (a.status !== "archived" && b.status === "archived") return -1;
+      return a.sortOrder - b.sortOrder;
+    }),
+    [products]
+  );
+
+  async function reload() {
+    const next = await listProducts(client, store.id);
+    setProducts(next);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const next = await listProducts(client, store.id);
+        if (!cancelled) setProducts(next);
+      } catch {
+        if (!cancelled) setError(t.loadError);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [client, store.id, language]);
+
+  function startCreate() {
+    const maxOrder = products.reduce(
+      (max, product) => Math.max(max, product.sortOrder),
+      0
+    );
+    setEditor(blankEditor(store, maxOrder + 10));
+    setSlugTouched(false);
+    setError(null);
+    setMessage(null);
+  }
+
+  function startEdit(product: Product) {
+    if (product.status === "archived") return;
+    setEditor(editorFromProduct(product));
+    setSlugTouched(true);
+    setError(null);
+    setMessage(null);
+  }
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    if (!editor) return;
+    const input = toInput(editor);
+    if (!input) {
+      setError(t.invalid);
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      if (editor.id) {
+        await updateProduct(client, store.id, editor.id, input);
+      } else {
+        await createProduct(client, store.id, input);
+      }
+      await reload();
+      setEditor(null);
+      setMessage(t.saved);
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.code === "PRODUCT_SLUG_TAKEN") {
+        setError(t.slugTaken);
+      } else {
+        setError(t.genericError);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function duplicate(product: Product) {
+    setBusy(true);
+    setError(null);
+    try {
+      await duplicateProduct(client, store.id, product.id);
+      await reload();
+    } catch {
+      setError(t.genericError);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function archive(product: Product) {
+    if (!window.confirm(t.archiveConfirm)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await archiveProduct(client, store.id, product.id);
+      await reload();
+      if (editor?.id === product.id) setEditor(null);
+    } catch {
+      setError(t.genericError);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function move(product: Product, direction: -1 | 1) {
+    const movable = ordered.filter((item) => item.status !== "archived");
+    const current = movable.findIndex((item) => item.id === product.id);
+    const target = current + direction;
+    if (current < 0 || target < 0 || target >= movable.length) return;
+
+    const reordered = [...movable];
+    const [selected] = reordered.splice(current, 1);
+    reordered.splice(target, 0, selected);
+
+    setBusy(true);
+    setError(null);
+    try {
+      for (let index = 0; index < reordered.length; index += 1) {
+        const item = reordered[index];
+        const sortOrder = (index + 1) * 10;
+        if (item.sortOrder !== sortOrder) {
+          await updateProduct(
+            client,
+            store.id,
+            item.id,
+            productToInput(item, sortOrder)
+          );
+        }
+      }
+      await reload();
+    } catch {
+      setError(t.genericError);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="catalog-panel" aria-labelledby="catalog-title">
+      <div className="catalog-heading">
+        <div>
+          <span className="admin-eyebrow">{t.eyebrow}</span>
+          <h2 id="catalog-title">{t.title}</h2>
+          <p>{t.body}</p>
+        </div>
+        <button
+          type="button"
+          className="admin-primary"
+          onClick={startCreate}
+          disabled={busy}
+        >
+          + {t.add}
+        </button>
+      </div>
+
+      {message ? <p className="form-message success">{message}</p> : null}
+      {error ? <p className="form-message error" role="alert">{error}</p> : null}
+
+      {editor ? (
+        <form className="catalog-editor" onSubmit={save}>
+          <div className="admin-form admin-form-grid">
+            <label className="span-2">
+              <span>{t.name}</span>
+              <input
+                value={editor.name}
+                maxLength={180}
+                onChange={(event) => {
+                  const name = event.target.value;
+                  setEditor({
+                    ...editor,
+                    name,
+                    slug: slugTouched ? editor.slug : slugify(name)
+                  });
+                }}
+                required
+              />
+            </label>
+
+            <label className="span-2">
+              <span>{t.slug}</span>
+              <div className="slug-field">
+                <small>{store.slug}/</small>
+                <input
+                  value={editor.slug}
+                  onChange={(event) => {
+                    setSlugTouched(true);
+                    setEditor({
+                      ...editor,
+                      slug: slugify(event.target.value)
+                    });
+                  }}
+                  required
+                />
+              </div>
+            </label>
+
+            <label>
+              <span>{t.price}</span>
+              <div className="catalog-price-field">
+                <input
+                  inputMode="decimal"
+                  value={editor.price}
+                  onChange={(event) =>
+                    setEditor({ ...editor, price: event.target.value })
+                  }
+                  placeholder="15000"
+                  required
+                />
+                <b>{editor.currencyCode}</b>
+              </div>
+            </label>
+
+            <label>
+              <span>{t.status}</span>
+              <select
+                value={editor.status}
+                onChange={(event) =>
+                  setEditor({
+                    ...editor,
+                    status: event.target.value as "draft" | "active"
+                  })
+                }
+              >
+                <option value="draft">{t.draft}</option>
+                <option value="active">{t.active}</option>
+              </select>
+            </label>
+
+            <label>
+              <span>{t.category}</span>
+              <input
+                value={editor.category}
+                maxLength={80}
+                onChange={(event) =>
+                  setEditor({ ...editor, category: event.target.value })
+                }
+                placeholder="Audio"
+              />
+            </label>
+
+            <label>
+              <span>{t.stock}</span>
+              <input
+                value={editor.stockLabel}
+                maxLength={80}
+                onChange={(event) =>
+                  setEditor({ ...editor, stockLabel: event.target.value })
+                }
+                placeholder={language === "fr" ? "En stock" : "In stock"}
+              />
+            </label>
+
+            <label className="span-2">
+              <span>{t.description}</span>
+              <textarea
+                rows={4}
+                maxLength={2000}
+                value={editor.description}
+                onChange={(event) =>
+                  setEditor({ ...editor, description: event.target.value })
+                }
+              />
+            </label>
+
+            <label className="span-2">
+              <span>{t.images}</span>
+              <textarea
+                rows={3}
+                value={editor.imageText}
+                onChange={(event) =>
+                  setEditor({ ...editor, imageText: event.target.value })
+                }
+                placeholder="https://…/product.jpg"
+              />
+              <small>{t.imagesHint}</small>
+            </label>
+
+            <label className="span-2">
+              <span>{t.variants}</span>
+              <textarea
+                rows={3}
+                value={editor.variantText}
+                onChange={(event) =>
+                  setEditor({ ...editor, variantText: event.target.value })
+                }
+                placeholder={language === "fr" ? "Couleur: Noir\nTaille: M" : "Color: Black\nSize: M"}
+              />
+              <small>{t.variantsHint}</small>
+            </label>
+          </div>
+
+          <div className="catalog-editor-actions">
+            <button
+              type="button"
+              className="admin-secondary"
+              onClick={() => setEditor(null)}
+              disabled={busy}
+            >
+              {t.cancel}
+            </button>
+            <button className="admin-primary" type="submit" disabled={busy}>
+              {editor.id ? t.save : t.create}
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      {loading ? (
+        <div className="catalog-state">
+          <span className="admin-loader" />
+          <p>{t.loading}</p>
+        </div>
+      ) : ordered.length === 0 ? (
+        <div className="catalog-state">
+          <strong>{t.emptyTitle}</strong>
+          <p>{t.emptyBody}</p>
+          <button type="button" className="admin-primary" onClick={startCreate}>
+            {t.add}
+          </button>
+        </div>
+      ) : (
+        <div className="catalog-list">
+          {ordered.map((product, index) => {
+            const activeIndex = ordered
+              .filter((item) => item.status !== "archived")
+              .findIndex((item) => item.id === product.id);
+            const activeCount = ordered.filter(
+              (item) => item.status !== "archived"
+            ).length;
+            return (
+              <article
+                key={product.id}
+                className={
+                  "catalog-card" +
+                  (product.status === "archived" ? " archived" : "")
+                }
+              >
+                <div className="catalog-thumb">
+                  {product.imageUrls[0] ? (
+                    <img src={product.imageUrls[0]} alt="" loading="lazy" />
+                  ) : (
+                    <span>{t.imagePending}</span>
+                  )}
+                </div>
+
+                <div className="catalog-card-copy">
+                  <div className="catalog-card-title">
+                    <div>
+                      <strong>{product.name}</strong>
+                      <small>/{product.slug}</small>
+                    </div>
+                    <span className={"catalog-status " + product.status}>
+                      {product.status === "active"
+                        ? t.active
+                        : product.status === "archived"
+                          ? t.archived
+                          : t.draft}
+                    </span>
+                  </div>
+
+                  <b className="catalog-price">
+                    {formatMoney(product.price, product.currencyCode, language)}
+                  </b>
+                  <p>
+                    {product.category || "—"} · {product.stockLabel || t.stockDefault}
+                    {product.variants.length
+                      ? " · " + product.variants.length + " " + t.variantsLabel
+                      : ""}
+                  </p>
+                  {product.status === "archived" ? (
+                    <small className="catalog-archived-note">{t.archivedHint}</small>
+                  ) : null}
+                </div>
+
+                <div className="catalog-actions">
+                  <div className="catalog-order-actions">
+                    <button
+                      type="button"
+                      aria-label={t.moveUp}
+                      onClick={() => move(product, -1)}
+                      disabled={busy || product.status === "archived" || activeIndex <= 0}
+                    >↑</button>
+                    <button
+                      type="button"
+                      aria-label={t.moveDown}
+                      onClick={() => move(product, 1)}
+                      disabled={
+                        busy ||
+                        product.status === "archived" ||
+                        activeIndex < 0 ||
+                        activeIndex >= activeCount - 1
+                      }
+                    >↓</button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => startEdit(product)}
+                    disabled={busy || product.status === "archived"}
+                  >
+                    {t.edit}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => duplicate(product)}
+                    disabled={busy || product.status === "archived"}
+                  >
+                    {t.duplicate}
+                  </button>
+                  <button
+                    type="button"
+                    className="catalog-danger"
+                    onClick={() => archive(product)}
+                    disabled={busy || product.status === "archived"}
+                  >
+                    {t.archive}
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
