@@ -7,7 +7,7 @@ type DemoProduct = {
   priceLabel: string;
   detail: string;
   accent: string;
-  emoji: string;
+  mark: string;
 };
 
 type DemoMerchant = {
@@ -46,7 +46,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "699 900 FCFA",
         detail: "Core i7 13e gen • 32 Go RAM • SSD 512 Go • RTX A1000",
         accent: "workstation",
-        emoji: "💻"
+        mark: "P1"
       },
       {
         name: "MacBook Pro 16” — 2019",
@@ -54,7 +54,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "499 900 FCFA",
         detail: "Core i7 • 16 Go RAM • SSD 512 Go • Touch Bar",
         accent: "apple",
-        emoji: "⌘"
+        mark: "MB"
       },
       {
         name: "Laptops étudiants",
@@ -62,7 +62,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Dès 89 900 FCFA",
         detail: "SSD rapide • format mobile • garantie annoncée",
         accent: "student",
-        emoji: "🎓"
+        mark: "EDU"
       },
       {
         name: "Dell Precision",
@@ -70,7 +70,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Voir le catalogue",
         detail: "Pensé pour AutoCAD, SolidWorks, CATIA et Revit",
         accent: "engineering",
-        emoji: "⚙️"
+        mark: "DP"
       },
       {
         name: "HP EliteBook",
@@ -78,7 +78,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Voir le catalogue",
         detail: "PC professionnel pour cadres et entreprises",
         accent: "business",
-        emoji: "🏢"
+        mark: "HP"
       },
       {
         name: "MacBook Pro M1 / M3",
@@ -86,7 +86,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Voir le catalogue",
         detail: "Création, vidéo, design et développement Apple",
         accent: "creator",
-        emoji: "🎬"
+        mark: "M3"
       }
     ]
   },
@@ -112,7 +112,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Prix sur WhatsApp",
         detail: "Pour dégradés, motifs précis et créations détaillées",
         accent: "nails",
-        emoji: "💅"
+        mark: "AIR"
       },
       {
         name: "Blooming Gel",
@@ -120,7 +120,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Prix sur WhatsApp",
         detail: "Pour des effets fluides et artistiques",
         accent: "bloom",
-        emoji: "🌸"
+        mark: "BLM"
       },
       {
         name: "Gel 3D",
@@ -128,7 +128,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Prix sur WhatsApp",
         detail: "Décorations en relief et designs créatifs",
         accent: "gel",
-        emoji: "✨"
+        mark: "3D"
       },
       {
         name: "Poudre néon & vernis fluorescent",
@@ -136,7 +136,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Prix sur WhatsApp",
         detail: "Teintes audacieuses pour manucures fluorescentes",
         accent: "neon",
-        emoji: "🌈"
+        mark: "NEO"
       },
       {
         name: "Beauty blenders & éponges",
@@ -144,7 +144,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Prix sur WhatsApp",
         detail: "Accessoires pour application et finition maquillage",
         accent: "makeup",
-        emoji: "💄"
+        mark: "BB"
       },
       {
         name: "Hair wax & accessoires baby hair",
@@ -152,7 +152,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Prix sur WhatsApp",
         detail: "Wax, peigne baby hair, peigne à queue et brillantine",
         accent: "hair",
-        emoji: "🪮"
+        mark: "HAIR"
       }
     ]
   },
@@ -178,7 +178,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Prix dans le catalogue",
         detail: "Sélection rentrée scolaire",
         accent: "school",
-        emoji: "🎒"
+        mark: "BAG"
       },
       {
         name: "Gourdes enfants",
@@ -186,7 +186,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Prix dans le catalogue",
         detail: "Accessoires pratiques pour l'école",
         accent: "bottle",
-        emoji: "🥤"
+        mark: "H2O"
       },
       {
         name: "Gamelles & sacs gamelles",
@@ -194,7 +194,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Prix dans le catalogue",
         detail: "Repas et goûters pour l'école",
         accent: "lunch",
-        emoji: "🍱"
+        mark: "LUNCH"
       },
       {
         name: "Montre solaire waterproof",
@@ -202,7 +202,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Prix dans le catalogue",
         detail: "Accessoire enfant annoncé dans la campagne rentrée",
         accent: "watch",
-        emoji: "⌚"
+        mark: "WATCH"
       },
       {
         name: "Vêtements enfants",
@@ -210,7 +210,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Voir le catalogue",
         detail: "Filles et garçons • 0 à 15 ans",
         accent: "clothes",
-        emoji: "👕"
+        mark: "KIDS"
       },
       {
         name: "Chaussures enfants",
@@ -218,7 +218,7 @@ const merchants: Record<string, DemoMerchant> = {
         priceLabel: "Voir le catalogue",
         detail: "Modèles confortables et habillés",
         accent: "shoes",
-        emoji: "👟"
+        mark: "SHOE"
       }
     ]
   }
@@ -246,7 +246,7 @@ function DemoProductCard({
   return (
     <article className="demo-product-card">
       <div className={`demo-product-art demo-product-art--${product.accent}`}>
-        <span aria-hidden="true">{product.emoji}</span>
+        <span aria-hidden="true">{product.mark}</span>
         <small>APERÇU PRODUIT</small>
       </div>
       <div className="demo-product-copy">
@@ -358,7 +358,7 @@ export default function DemoStorefrontApp() {
                 </div>
               </div>
               <div className="demo-phone-feature">
-                <span aria-hidden="true">{merchant.products[0]?.emoji}</span>
+                <span aria-hidden="true">{merchant.products[0]?.mark}</span>
                 <small>{merchant.products[0]?.category}</small>
                 <strong>{merchant.products[0]?.name}</strong>
                 <p>{merchant.products[0]?.priceLabel}</p>
