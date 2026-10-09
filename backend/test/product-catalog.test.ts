@@ -155,6 +155,8 @@ class ProductRepository implements CommerceRepository {
     return { kind: "published" as const, store };
   }
 
+  async recordPublicEvent() { return false; }
+
   async getPublicStorefront(slug: string): Promise<PublicStorefront | null> {
     if (slug !== store.slug || store.status !== "published") return null;
     return {
