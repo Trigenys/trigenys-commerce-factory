@@ -110,62 +110,72 @@ const stepsByLanguage = {
 const categoriesByLanguage = {
   en: [
     {
+      brand: "TechPulse",
+      initials: "TP",
+      theme: "tech",
+      storeUrl: "commercefactory.shop/techpulse",
       title: "Electronics & gadgets",
-      copy: "Clean specs, variants, warranty notes and high-ticket product presentation.",
+      copy: "Specs, price and the product image do the filtering before the WhatsApp chat starts.",
       sample: "Sony WH-1000XM5",
       price: "230,000 FCFA",
       image: images.electronics
     },
     {
+      brand: "Maison Noya",
+      initials: "MN",
+      theme: "fashion",
+      storeUrl: "commercefactory.shop/maison-noya",
       title: "Fashion & apparel",
-      copy: "Visual catalogs built around sizes, colors and quick browsing on mobile.",
+      copy: "A visual storefront for new arrivals, sizes and colors without turning WhatsApp into a product search engine.",
       sample: "Linen two-piece",
       price: "35,000 FCFA",
       image: images.fashion
     },
     {
+      brand: "Glow Room",
+      initials: "GR",
+      theme: "beauty",
+      storeUrl: "commercefactory.shop/glow-room",
       title: "Beauty & personal care",
-      copy: "Simple product bundles, routines and product education without a heavy checkout.",
+      copy: "Products, routines and prices stay easy to scan before the customer asks for availability in WhatsApp.",
       sample: "Hydration glow kit",
       price: "22,500 FCFA",
       image: images.beauty
-    },
-    {
-      title: "General retail",
-      copy: "A flexible storefront for merchants who sell across several everyday categories.",
-      sample: "Daily essentials",
-      price: "From 5,000 FCFA",
-      image: images.earbuds
     }
   ],
   fr: [
     {
+      brand: "TechPulse",
+      initials: "TP",
+      theme: "tech",
+      storeUrl: "commercefactory.shop/techpulse",
       title: "Électronique & gadgets",
-      copy: "Des caractéristiques claires, des variantes, les garanties et une présentation adaptée aux produits à forte valeur.",
+      copy: "Les caractéristiques, le prix et le visuel produit font déjà le tri avant le début de la conversation WhatsApp.",
       sample: "Sony WH-1000XM5",
       price: "230 000 FCFA",
       image: images.electronics
     },
     {
+      brand: "Maison Noya",
+      initials: "MN",
+      theme: "fashion",
+      storeUrl: "commercefactory.shop/maison-noya",
       title: "Mode & habillement",
-      copy: "Des catalogues visuels pensés autour des tailles, des couleurs et d’une navigation rapide sur mobile.",
+      copy: "Une vitrine visuelle pour les nouveautés, tailles et couleurs sans transformer WhatsApp en moteur de recherche produit.",
       sample: "Ensemble deux pièces en lin",
       price: "35 000 FCFA",
       image: images.fashion
     },
     {
+      brand: "Glow Room",
+      initials: "GR",
+      theme: "beauty",
+      storeUrl: "commercefactory.shop/glow-room",
       title: "Beauté & soins",
-      copy: "Des lots, routines et conseils produit simples, sans imposer un tunnel de paiement lourd.",
+      copy: "Produits, routines et prix restent faciles à parcourir avant que le client demande la disponibilité sur WhatsApp.",
       sample: "Kit éclat hydratant",
       price: "22 500 FCFA",
       image: images.beauty
-    },
-    {
-      title: "Commerce général",
-      copy: "Une boutique flexible pour les commerçants qui vendent plusieurs catégories de produits du quotidien.",
-      sample: "Essentiels du quotidien",
-      price: "À partir de 5 000 FCFA",
-      image: images.earbuds
     }
   ]
 } as const;
@@ -287,10 +297,11 @@ const copyByLanguage = {
     howTitle: "From social seller to published store in four clear steps.",
     howBody: "No developer dashboard maze. The setup follows the way a merchant thinks about the business.",
     quickSetup: "Quick setup",
-    showcaseOverline: "Storefront showcase",
-    showcaseTitle: "One strong storefront system, adapted to what you sell.",
-    showcaseBody: "The MVP starts with one excellent visual system. Category differences come from product data, variants and presentation—not four separate page builders.",
-    demoCategory: "Demo category",
+    showcaseOverline: "Storefront examples",
+    showcaseTitle: "See what your business could look like before we ever touch your WhatsApp.",
+    showcaseBody: "Three fictional storefront concepts show the level of polish Commerce Factory can bring to different merchant categories.",
+    demoCategory: "Demo concept",
+    demoDisclaimer: "Fictional demo storefronts — not real clients, endorsements or merchant results.",
     whatsappHandoff: "WhatsApp handoff",
     whatsappTitle: "Your customers already use WhatsApp. Sell where they already are.",
     whatsappBody: "Commerce Factory does not pretend a WhatsApp click is a completed sale. The MVP tracks customer intent, preserves product context and hands the conversation to the merchant.",
@@ -381,9 +392,10 @@ const copyByLanguage = {
     howBody: "Pas de labyrinthe de tableaux de bord techniques. La configuration suit simplement la façon dont un commerçant pense son activité.",
     quickSetup: "Configuration rapide",
     showcaseOverline: "Exemples de boutiques",
-    showcaseTitle: "Un système de boutique solide, adapté à ce que vous vendez.",
-    showcaseBody: "Le MVP démarre avec un excellent système visuel. Les différences entre catégories viennent des données produit, des variantes et de la présentation — pas de quatre page builders différents.",
-    demoCategory: "Catégorie démo",
+    showcaseTitle: "Voyez à quoi votre activité pourrait ressembler avant même de toucher à votre WhatsApp.",
+    showcaseBody: "Trois concepts de boutiques fictives montrent le niveau de finition que Commerce Factory peut apporter à différents types de commerces.",
+    demoCategory: "Concept démo",
+    demoDisclaimer: "Boutiques fictives de démonstration — pas de vrais clients, partenariats ou résultats commerçants.",
     whatsappHandoff: "Passage vers WhatsApp",
     whatsappTitle: "Vos clients utilisent déjà WhatsApp. Vendez là où ils sont déjà.",
     whatsappBody: "Commerce Factory ne prétend pas qu’un clic WhatsApp est une vente conclue. Le MVP mesure l’intention, conserve le contexte du produit et transmet la conversation au commerçant.",
@@ -653,28 +665,60 @@ export default function App() {
             <h2>{t.showcaseTitle}</h2>
             <p>{t.showcaseBody}</p>
           </div>
-          <div className="showcase-grid">
+
+          <div className="merchant-showcase-grid">
             {categories.map((item) => (
-              <article className="showcase-card" key={item.title}>
-                <ResponsiveLandingImage
-                  image={item.image}
-                  alt=""
-                  className="showcase-image"
-                  pictureClassName="showcase-image-picture"
-                  sizes="(max-width: 780px) 120px, 25vw"
-                />
-                <div className="showcase-body">
-                  <span className="mini-tag">{t.demoCategory}</span>
-                  <h3>{item.title}</h3>
-                  <p>{item.copy}</p>
-                  <div className="sample-row">
-                    <span>{item.sample}</span>
-                    <strong>{item.price}</strong>
+              <article className={`merchant-showcase-card merchant-showcase-card--${item.theme}`} key={item.brand}>
+                <div className="merchant-showcase-browser">
+                  <div className="merchant-showcase-bar">
+                    <span className="merchant-showcase-dots"><i /><i /><i /></span>
+                    <span>{item.storeUrl}</span>
+                    <b>↗</b>
                   </div>
+
+                  <div className="merchant-showcase-store">
+                    <div className="merchant-showcase-brand">
+                      <span>{item.initials}</span>
+                      <div>
+                        <strong>{item.brand}</strong>
+                        <small>{t.demoCategory}</small>
+                      </div>
+                    </div>
+
+                    <div className="merchant-showcase-media">
+                      <ResponsiveLandingImage
+                        image={item.image}
+                        alt=""
+                        className="merchant-showcase-image"
+                        pictureClassName="merchant-showcase-picture"
+                        sizes="(max-width: 760px) 92vw, 31vw"
+                      />
+                      <span className="merchant-showcase-category">{item.title}</span>
+                    </div>
+
+                    <div className="merchant-showcase-product">
+                      <div>
+                        <strong>{item.sample}</strong>
+                        <span>{item.price}</span>
+                      </div>
+                      <span className="merchant-showcase-whatsapp">
+                        <span className="wa-dot">WA</span>
+                        {t.buyWhatsApp}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="merchant-showcase-copy">
+                  <span className="mini-tag">{t.demoCategory}</span>
+                  <h3>{item.brand}</h3>
+                  <p>{item.copy}</p>
                 </div>
               </article>
             ))}
           </div>
+
+          <p className="showcase-disclaimer">{t.demoDisclaimer}</p>
         </section>
 
         <section className="section section-tint whatsapp-section" id="whatsapp">
