@@ -673,6 +673,23 @@ export function createApp(dependencies: AppDependencies = {}) {
     return c.json({ store: result.store });
   });
 
+  app.get("/v1/admin/stores/:storeId/analytics", async (c) => {
+    const rawDays = c.req.query("days");
+    const days = rawDays === undefined ? 30 : Number(rawDays);
+    if (![7, 30, 90].includes(days)) {
+      return c.json({ error: "INVALID_ANALYTICS_WINDOW" }, 400);
+    }
+
+    const repository = repositoryFactory(c.env);
+    const analytics = await repository.getOwnedStoreAnalytics(
+      c.get("identity").subject,
+      c.req.param("storeId"),
+      days
+    );
+    if (!analytics) return c.json({ error: "STORE_NOT_FOUND" }, 404);
+    return c.json({ analytics });
+  });
+
   app.get("/v1/admin/stores/:storeId/products", async (c) => {
     const repository = repositoryFactory(c.env);
     const products = await repository.listOwnedProducts(
@@ -759,6 +776,71 @@ export function createApp(dependencies: AppDependencies = {}) {
       return c.json({ product }, 201);
     }
   );
+
+  app.post("/v1/public/events", async (c) => {
+    let payload: unknown;
+    try {
+      payload = await c.req.json();
+    } catch {
+      return c.json({ error: "INVALID_JSON" }, 400);
+    }
+
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return c.json({ error: "INVALID_PUBLIC_EVENT" }, 400);
+    }
+    const body = payload as Record<string, unknown>;
+    if (
+      Object.keys(body).some(
+        (key) => !["eventId", "eventName", "storeSlug", "productSlug"].includes(key)
+      ) ||
+      !validEventId(body.eventId) ||
+      (body.eventName !== "store_view" && body.eventName !== "product_view") ||
+      typeof body.storeSlug !== "string" ||
+      body.storeSlug.length < 1 ||
+      body.storeSlug.length > 63
+    ) {
+      return c.json({ error: "INVALID_PUBLIC_EVENT" }, 400);
+    }
+
+    const productSlug =
+      body.productSlug === null || body.productSlug === undefined
+        ? null
+        : typeof body.productSlug === "string"
+          ? body.productSlug
+          : undefined;
+    if (
+      productSlug === undefined ||
+      (body.eventName === "store_view" && productSlug !== null) ||
+      (body.eventName === "product_view" && !productSlug)
+    ) {
+      return c.json({ error: "INVALID_PUBLIC_EVENT" }, 400);
+    }
+
+    const repository = repositoryFactory(c.env);
+    const storefront = await repository.getPublicStorefront(body.storeSlug);
+    if (!storefront) {
+      return c.json({ error: "STOREFRONT_NOT_FOUND" }, 404);
+    }
+    if (
+      body.eventName === "product_view" &&
+      !storefront.products.some((product) => product.slug === productSlug)
+    ) {
+      return c.json({ error: "PRODUCT_NOT_FOUND" }, 404);
+    }
+
+    const recorded = await repository.recordPublicEvent(
+      body.eventId,
+      body.eventName,
+      body.storeSlug,
+      productSlug,
+      { source: "storefront" }
+    );
+    if (!recorded) {
+      return c.json({ error: "EVENT_TARGET_NOT_FOUND" }, 404);
+    }
+
+    return c.body(null, 204);
+  });
 
   app.post(
     "/v1/public/stores/:storeSlug/products/:productSlug/whatsapp",

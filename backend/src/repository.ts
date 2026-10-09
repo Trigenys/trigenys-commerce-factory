@@ -4,9 +4,11 @@ import type {
   ProductInput,
   ProductSummary,
   ProductVariant,
+  ProductAnalytics,
   PublicEventMetadata,
   PublicEventName,
   PublicStorefront,
+  StoreAnalytics,
   StoreCreateInput,
   StorePatch,
   StoreSummary,
@@ -748,6 +750,99 @@ export function createNeonRepository(connectionString: string): CommerceReposito
       ` as Array<{ target_exists: boolean }>;
 
       return Boolean(rows[0]?.target_exists);
+    },
+
+    async getOwnedStoreAnalytics(
+      authSubject: string,
+      storeId: string,
+      days: number
+    ): Promise<StoreAnalytics | null> {
+      const ownership = await sql`
+        SELECT 1 AS owned
+        FROM store_members
+        WHERE store_id = ${storeId}
+          AND auth_subject = ${authSubject}
+          AND role = 'owner'
+        LIMIT 1
+      ` as Array<{ owned: number }>;
+      if (!ownership[0]) return null;
+
+      const summaryRows = await sql`
+        SELECT
+          count(*) FILTER (WHERE event_name = 'store_view')::text AS store_views,
+          count(*) FILTER (WHERE event_name = 'product_view')::text AS product_views,
+          count(*) FILTER (WHERE event_name = 'whatsapp_order_click')::text AS whatsapp_clicks
+        FROM commerce_events
+        WHERE store_id = ${storeId}
+          AND created_at >= now() - (${days}::text || ' days')::interval
+      ` as Array<{
+        store_views: string;
+        product_views: string;
+        whatsapp_clicks: string;
+      }>;
+
+      const topRows = await sql`
+        SELECT
+          p.id AS product_id,
+          p.name,
+          count(e.id) FILTER (
+            WHERE e.event_name = 'product_view'
+          )::text AS views,
+          count(e.id) FILTER (
+            WHERE e.event_name = 'whatsapp_order_click'
+          )::text AS whatsapp_clicks
+        FROM products p
+        LEFT JOIN commerce_events e
+          ON e.product_id = p.id
+         AND e.created_at >= now() - (${days}::text || ' days')::interval
+        WHERE p.store_id = ${storeId}
+        GROUP BY p.id, p.name
+        ORDER BY
+          count(e.id) FILTER (
+            WHERE e.event_name = 'whatsapp_order_click'
+          ) DESC,
+          count(e.id) FILTER (
+            WHERE e.event_name = 'product_view'
+          ) DESC,
+          p.name ASC
+        LIMIT 5
+      ` as Array<{
+        product_id: string;
+        name: string;
+        views: string;
+        whatsapp_clicks: string;
+      }>;
+
+      const summary = summaryRows[0] || {
+        store_views: "0",
+        product_views: "0",
+        whatsapp_clicks: "0"
+      };
+      const storeViews = Number(summary.store_views) || 0;
+      const productViews = Number(summary.product_views) || 0;
+      const whatsappClicks = Number(summary.whatsapp_clicks) || 0;
+
+      const topProducts: ProductAnalytics[] = topRows.map((row) => {
+        const views = Number(row.views) || 0;
+        const clicks = Number(row.whatsapp_clicks) || 0;
+        return {
+          productId: row.product_id,
+          name: row.name,
+          views,
+          whatsappClicks: clicks,
+          clickThroughRate: views > 0 ? clicks / views : 0
+        };
+      });
+
+      return {
+        days,
+        storeViews,
+        productViews,
+        whatsappClicks,
+        clickThroughRate:
+          productViews > 0 ? whatsappClicks / productViews : 0,
+        topProducts
+      };
     }
   };
 }

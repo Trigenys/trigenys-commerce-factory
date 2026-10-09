@@ -71,6 +71,8 @@ class HandoffRepository implements CommerceRepository {
   async archiveOwnedProduct() { return false; }
   async duplicateOwnedProduct() { return null; }
 
+  async getOwnedStoreAnalytics() { return null; }
+
   async getPublicStorefront(slug: string) {
     return slug === storeSlug ? this.publicStorefront : null;
   }
