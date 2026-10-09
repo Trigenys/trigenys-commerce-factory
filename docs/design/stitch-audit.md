@@ -75,6 +75,17 @@ It uses:
 - no fake performance/revenue claims;
 - one responsive implementation rather than separate desktop/mobile pages.
 
-## Remaining pre-production item
+## Landing media production strategy
 
-The current prototype references Stitch-generated remote product imagery. Before public launch, self-host approved assets in project-controlled object storage and add optimized responsive formats.
+The approved Stitch demo images are now self-hosted as build assets under `public/landing/` and delivered by the Cloudflare Pages CDN. The landing no longer depends on Stitch/AIDA/Google image URLs at runtime.
+
+Each approved image has:
+- a 480 px WebP derivative;
+- a 480 px AVIF derivative;
+- a high-density derivative capped at the source width (512 px) in both WebP and AVIF;
+- explicit intrinsic width/height metadata in the React markup;
+- responsive `srcset` and `sizes` hints.
+
+The R2 bucket remains reserved for tenant-owned product/store media. ADR-001 selects R2 for merchant media; static marketing artwork belongs to the Pages build boundary and does not need tenant metadata, authenticated upload routes or database records.
+
+All six landing images are treated as decorative/redundant because the adjacent product/category text carries the same semantic information. They intentionally use empty alt text rather than repeating visible labels.

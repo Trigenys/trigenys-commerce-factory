@@ -447,7 +447,8 @@ img { max-width: 100%; }
 }
 
 .product-image-wrap { position: relative; height: 134px; overflow: hidden; border-radius: 10px; background: var(--surface-mid); }
-.product-image { width: 100%; height: 100%; object-fit: cover; }
+.product-image-picture { display: block; width: 100%; height: 100%; }
+.product-image { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 .product-badge {
   position: absolute;
@@ -503,7 +504,8 @@ img { max-width: 100%; }
 
 .phone-notch { width: 64px; height: 9px; margin: -10px auto 9px; border-radius: 0 0 8px 8px; background: var(--slate); }
 .phone-store-name { display: block; font-size: 9px; font-weight: 800; padding-bottom: 7px; border-bottom: 1px solid var(--surface-mid); }
-.phone-product-image { width: 100%; height: 105px; margin-top: 8px; object-fit: cover; border-radius: 9px; }
+.phone-product-picture { display: block; width: 100%; height: 105px; margin-top: 8px; overflow: hidden; border-radius: 9px; }
+.phone-product-image { display: block; width: 100%; height: 100%; object-fit: cover; }
 .phone-product-name { display: block; margin-top: 8px; font-size: 10px; font-weight: 700; }
 .phone-card > strong { display: block; margin-top: 3px; color: var(--primary); font-size: 13px; font-family: "Space Grotesk"; }
 .phone-status { display: block; margin: 8px 0; padding: 6px; border-radius: 8px; background: var(--surface-low); color: var(--muted); font-size: 8px; }
@@ -533,7 +535,8 @@ img { max-width: 100%; }
 
 .showcase-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
 .showcase-card { overflow: hidden; border-radius: var(--radius); background: #fff; box-shadow: 0 10px 28px rgba(40, 48, 68, .05); border: 1px solid rgba(109, 122, 114, .08); }
-.showcase-card > img { width: 100%; height: 190px; object-fit: cover; }
+.showcase-image-picture { display: block; height: 190px; overflow: hidden; }
+.showcase-image { display: block; width: 100%; height: 100%; object-fit: cover; }
 .showcase-body { padding: 17px; }
 .mini-tag { color: var(--burgundy); font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .showcase-card h3 { margin: 7px 0 0; font-family: "Space Grotesk"; font-size: 18px; }
@@ -764,7 +767,7 @@ img { max-width: 100%; }
   .steps-grid, .showcase-grid, .roadmap-grid, .pricing-grid { grid-template-columns: 1fr; }
   .step-card { min-height: auto; }
   .showcase-card { display: grid; grid-template-columns: 120px 1fr; }
-  .showcase-card > img { height: 100%; min-height: 190px; }
+  .showcase-image-picture { height: 100%; min-height: 190px; }
   .showcase-card p { min-height: auto; }
   .sample-row { flex-direction: column; }
 

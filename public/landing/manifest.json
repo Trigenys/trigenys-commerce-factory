@@ -1,0 +1,230 @@
+{
+  "earbuds": {
+    "sourceWidth": 512,
+    "sourceHeight": 279,
+    "variants": [
+      {
+        "format": "webp",
+        "requestedWidth": 480,
+        "width": 480,
+        "height": 262,
+        "bytes": 6956,
+        "src": "/landing/earbuds-480.webp"
+      },
+      {
+        "format": "avif",
+        "requestedWidth": 480,
+        "width": 480,
+        "height": 262,
+        "bytes": 4339,
+        "src": "/landing/earbuds-480.avif"
+      },
+      {
+        "format": "webp",
+        "requestedWidth": 960,
+        "width": 512,
+        "height": 279,
+        "bytes": 8078,
+        "src": "/landing/earbuds-960.webp"
+      },
+      {
+        "format": "avif",
+        "requestedWidth": 960,
+        "width": 512,
+        "height": 279,
+        "bytes": 4554,
+        "src": "/landing/earbuds-960.avif"
+      }
+    ]
+  },
+  "headphones": {
+    "sourceWidth": 512,
+    "sourceHeight": 279,
+    "variants": [
+      {
+        "format": "webp",
+        "requestedWidth": 480,
+        "width": 480,
+        "height": 262,
+        "bytes": 12440,
+        "src": "/landing/headphones-480.webp"
+      },
+      {
+        "format": "avif",
+        "requestedWidth": 480,
+        "width": 480,
+        "height": 262,
+        "bytes": 7993,
+        "src": "/landing/headphones-480.avif"
+      },
+      {
+        "format": "webp",
+        "requestedWidth": 960,
+        "width": 512,
+        "height": 279,
+        "bytes": 14114,
+        "src": "/landing/headphones-960.webp"
+      },
+      {
+        "format": "avif",
+        "requestedWidth": 960,
+        "width": 512,
+        "height": 279,
+        "bytes": 9048,
+        "src": "/landing/headphones-960.avif"
+      }
+    ]
+  },
+  "watch": {
+    "sourceWidth": 512,
+    "sourceHeight": 279,
+    "variants": [
+      {
+        "format": "webp",
+        "requestedWidth": 480,
+        "width": 480,
+        "height": 262,
+        "bytes": 10414,
+        "src": "/landing/watch-480.webp"
+      },
+      {
+        "format": "avif",
+        "requestedWidth": 480,
+        "width": 480,
+        "height": 262,
+        "bytes": 6702,
+        "src": "/landing/watch-480.avif"
+      },
+      {
+        "format": "webp",
+        "requestedWidth": 960,
+        "width": 512,
+        "height": 279,
+        "bytes": 12196,
+        "src": "/landing/watch-960.webp"
+      },
+      {
+        "format": "avif",
+        "requestedWidth": 960,
+        "width": 512,
+        "height": 279,
+        "bytes": 7745,
+        "src": "/landing/watch-960.avif"
+      }
+    ]
+  },
+  "electronics": {
+    "sourceWidth": 512,
+    "sourceHeight": 279,
+    "variants": [
+      {
+        "format": "webp",
+        "requestedWidth": 480,
+        "width": 480,
+        "height": 262,
+        "bytes": 11938,
+        "src": "/landing/electronics-480.webp"
+      },
+      {
+        "format": "avif",
+        "requestedWidth": 480,
+        "width": 480,
+        "height": 262,
+        "bytes": 7726,
+        "src": "/landing/electronics-480.avif"
+      },
+      {
+        "format": "webp",
+        "requestedWidth": 960,
+        "width": 512,
+        "height": 279,
+        "bytes": 13592,
+        "src": "/landing/electronics-960.webp"
+      },
+      {
+        "format": "avif",
+        "requestedWidth": 960,
+        "width": 512,
+        "height": 279,
+        "bytes": 8954,
+        "src": "/landing/electronics-960.avif"
+      }
+    ]
+  },
+  "fashion": {
+    "sourceWidth": 512,
+    "sourceHeight": 286,
+    "variants": [
+      {
+        "format": "webp",
+        "requestedWidth": 480,
+        "width": 480,
+        "height": 268,
+        "bytes": 10608,
+        "src": "/landing/fashion-480.webp"
+      },
+      {
+        "format": "avif",
+        "requestedWidth": 480,
+        "width": 480,
+        "height": 268,
+        "bytes": 7121,
+        "src": "/landing/fashion-480.avif"
+      },
+      {
+        "format": "webp",
+        "requestedWidth": 960,
+        "width": 512,
+        "height": 286,
+        "bytes": 12016,
+        "src": "/landing/fashion-960.webp"
+      },
+      {
+        "format": "avif",
+        "requestedWidth": 960,
+        "width": 512,
+        "height": 286,
+        "bytes": 8002,
+        "src": "/landing/fashion-960.avif"
+      }
+    ]
+  },
+  "beauty": {
+    "sourceWidth": 512,
+    "sourceHeight": 279,
+    "variants": [
+      {
+        "format": "webp",
+        "requestedWidth": 480,
+        "width": 480,
+        "height": 262,
+        "bytes": 17850,
+        "src": "/landing/beauty-480.webp"
+      },
+      {
+        "format": "avif",
+        "requestedWidth": 480,
+        "width": 480,
+        "height": 262,
+        "bytes": 13015,
+        "src": "/landing/beauty-480.avif"
+      },
+      {
+        "format": "webp",
+        "requestedWidth": 960,
+        "width": 512,
+        "height": 279,
+        "bytes": 20556,
+        "src": "/landing/beauty-960.webp"
+      },
+      {
+        "format": "avif",
+        "requestedWidth": 960,
+        "width": 512,
+        "height": 279,
+        "bytes": 14900,
+        "src": "/landing/beauty-960.avif"
+      }
+    ]
+  }
+}
