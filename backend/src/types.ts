@@ -69,6 +69,10 @@ export type PublicProduct = {
   description: string | null;
   price: string;
   currencyCode: string;
+  category: string | null;
+  stockLabel: string | null;
+  imageUrls: string[];
+  variants: ProductVariant[];
 };
 
 export type PublicStorefront = {
