@@ -295,16 +295,24 @@ No phone number, message body or other unnecessary PII should be stored in event
 
 ## Media
 
-Cloudflare R2 is recommended for product/store media.
+Cloudflare R2 is the selected provider for product/store media.
+
+The bucket stays private and is bound to the Worker as `MEDIA_BUCKET`. Public delivery is proxied through opaque Worker URLs; `r2.dev` is not used.
 
 Constraints:
-- validate MIME and file size;
-- optimize images before serving them on storefronts;
-- store generated object keys, not arbitrary external URLs as canonical media;
-- namespace objects by store;
-- document deletion/orphan cleanup.
+- browser accepts JPEG/PNG/WebP source images and re-encodes the canonical derivative as WebP;
+- source files are capped at 12 MiB and stored derivatives at 2 MiB;
+- storefront images are resized before upload, so original giant files are not retained by default;
+- generated object keys are namespaced by store and never supplied by the client;
+- media metadata is tenant-owned in Neon;
+- public delivery requires currently attached published/active content;
+- deletion is owner-scoped and orphan cleanup is documented.
 
-Suggested key: `stores/{storeId}/products/{productId}/{imageId}.webp`.
+Product key: `stores/{storeId}/products/{productId}/{imageId}.webp`.
+
+Logo key: `stores/{storeId}/logo/{imageId}.webp`.
+
+See `docs/media/storage-and-image-pipeline.md` for the operational contract.
 
 ## Meta integration
 

@@ -1,6 +1,9 @@
 import { neon } from "@neondatabase/serverless";
 import type {
   CommerceRepository,
+  MediaCreateInput,
+  MediaObject,
+  PublicMediaObject,
   ProductInput,
   ProductSummary,
   ProductVariant,
@@ -29,6 +32,31 @@ type StoreRow = {
   theme: StoreTheme;
   logo_url: string | null;
 };
+
+type MediaRow = {
+  id: string;
+  public_id: string;
+  store_id: string;
+  product_id: string | null;
+  kind: "logo" | "product";
+  object_key: string;
+  content_type: "image/webp";
+  byte_size: number;
+};
+
+function mapMedia(row: MediaRow): MediaObject {
+  return {
+    id: row.id,
+    publicId: row.public_id,
+    storeId: row.store_id,
+    productId: row.product_id,
+    kind: row.kind,
+    objectKey: row.object_key,
+    contentType: row.content_type,
+    byteSize: Number(row.byte_size),
+    publicUrl: null
+  };
+}
 
 type ProductRow = {
   id: string;
@@ -843,6 +871,176 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           productViews > 0 ? whatsappClicks / productViews : 0,
         topProducts
       };
+    },
+
+    async createOwnedMediaObject(
+      authSubject: string,
+      input: MediaCreateInput
+    ): Promise<MediaObject | null> {
+      const rows = await sql`
+        INSERT INTO media_objects (
+          id,
+          public_id,
+          store_id,
+          product_id,
+          kind,
+          object_key,
+          content_type,
+          byte_size
+        )
+        SELECT
+          ${input.id}::uuid,
+          ${input.publicId}::uuid,
+          s.id,
+          ${input.productId}::uuid,
+          ${input.kind},
+          ${input.objectKey},
+          ${input.contentType},
+          ${input.byteSize}
+        FROM stores s
+        INNER JOIN store_members sm ON sm.store_id = s.id
+        LEFT JOIN products p
+          ON p.id = ${input.productId}::uuid
+         AND p.store_id = s.id
+        WHERE s.id = ${input.storeId}
+          AND sm.auth_subject = ${authSubject}
+          AND sm.role = 'owner'
+          AND (
+            (${input.kind} = 'logo' AND ${input.productId}::uuid IS NULL)
+            OR
+            (${input.kind} = 'product' AND p.id IS NOT NULL)
+          )
+        RETURNING
+          id,
+          public_id,
+          store_id,
+          product_id,
+          kind,
+          object_key,
+          content_type,
+          byte_size
+      ` as MediaRow[];
+
+      return rows[0] ? mapMedia(rows[0]) : null;
+    },
+
+    async getOwnedMediaObject(authSubject, storeId, mediaId) {
+      const rows = await sql`
+        SELECT
+          m.id,
+          m.public_id,
+          m.store_id,
+          m.product_id,
+          m.kind,
+          m.object_key,
+          m.content_type,
+          m.byte_size
+        FROM media_objects m
+        INNER JOIN store_members sm ON sm.store_id = m.store_id
+        WHERE m.id = ${mediaId}
+          AND m.store_id = ${storeId}
+          AND sm.auth_subject = ${authSubject}
+          AND sm.role = 'owner'
+        LIMIT 1
+      ` as MediaRow[];
+
+      return rows[0] ? mapMedia(rows[0]) : null;
+    },
+
+    async getOwnedMediaObjectByPublicId(authSubject, storeId, publicId) {
+      const rows = await sql`
+        SELECT
+          m.id,
+          m.public_id,
+          m.store_id,
+          m.product_id,
+          m.kind,
+          m.object_key,
+          m.content_type,
+          m.byte_size
+        FROM media_objects m
+        INNER JOIN store_members sm ON sm.store_id = m.store_id
+        WHERE m.public_id = ${publicId}::uuid
+          AND m.store_id = ${storeId}
+          AND sm.auth_subject = ${authSubject}
+          AND sm.role = 'owner'
+        LIMIT 1
+      ` as MediaRow[];
+
+      return rows[0] ? mapMedia(rows[0]) : null;
+    },
+
+    async deleteOwnedMediaObject(authSubject, storeId, mediaId) {
+      const rows = await sql`
+        DELETE FROM media_objects m
+        USING store_members sm
+        WHERE m.id = ${mediaId}
+          AND m.store_id = ${storeId}
+          AND sm.store_id = m.store_id
+          AND sm.auth_subject = ${authSubject}
+          AND sm.role = 'owner'
+        RETURNING m.id
+      ` as Array<{ id: string }>;
+
+      return Boolean(rows[0]);
+    },
+
+    async deleteOwnedMediaObjectByPublicId(authSubject, storeId, publicId) {
+      const rows = await sql`
+        DELETE FROM media_objects m
+        USING store_members sm
+        WHERE m.public_id = ${publicId}::uuid
+          AND m.store_id = ${storeId}
+          AND sm.store_id = m.store_id
+          AND sm.auth_subject = ${authSubject}
+          AND sm.role = 'owner'
+        RETURNING m.id
+      ` as Array<{ id: string }>;
+
+      return Boolean(rows[0]);
+    },
+
+    async getPublicMediaObject(publicId): Promise<PublicMediaObject | null> {
+      const rows = await sql`
+        SELECT
+          m.object_key,
+          m.content_type,
+          m.byte_size
+        FROM media_objects m
+        INNER JOIN stores s ON s.id = m.store_id
+        LEFT JOIN products p ON p.id = m.product_id
+        WHERE m.public_id = ${publicId}::uuid
+          AND s.status = 'published'
+          AND (
+            (
+              m.kind = 'logo'
+              AND m.product_id IS NULL
+              AND s.logo_url LIKE '%/v1/media/' || m.public_id::text
+            )
+            OR
+            (
+              m.kind = 'product'
+              AND p.status = 'active'
+              AND EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements_text(p.image_urls) AS image_url
+                WHERE image_url LIKE '%/v1/media/' || m.public_id::text
+              )
+            )
+          )
+        LIMIT 1
+      ` as Array<{
+        object_key: string;
+        content_type: "image/webp";
+        byte_size: number;
+      }>;
+
+      const row = rows[0];
+      return row ? {
+        objectKey: row.object_key,
+        contentType: row.content_type,
+        byteSize: Number(row.byte_size)
+      } : null;
     }
   };
 }

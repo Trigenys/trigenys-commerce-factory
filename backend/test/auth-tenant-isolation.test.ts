@@ -84,6 +84,13 @@ class FakeRepository implements CommerceRepository {
 
   async getOwnedStoreAnalytics() { return null; }
 
+  async createOwnedMediaObject() { return null; }
+  async getOwnedMediaObject() { return null; }
+  async getOwnedMediaObjectByPublicId() { return null; }
+  async deleteOwnedMediaObject() { return false; }
+  async deleteOwnedMediaObjectByPublicId() { return false; }
+  async getPublicMediaObject() { return null; }
+
   async getPublicStorefront(slug: string): Promise<PublicStorefront | null> {
     const store = stores.find(
       (candidate) => candidate.slug === slug && candidate.status === "published"
