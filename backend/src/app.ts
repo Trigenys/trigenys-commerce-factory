@@ -430,6 +430,99 @@ function safeProductInput(value: unknown): ProductInput | null {
   };
 }
 
+type HandoffLanguage = "fr" | "en";
+
+function validEventId(value: unknown): value is string {
+  return typeof value === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function safeHandoffVariants(value: unknown): ProductVariant[] | null {
+  if (value === undefined) return [];
+  return safeVariants(value);
+}
+
+function publicWebOrigin(env: WorkerBindings): string | null {
+  const configured = env.TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN?.trim();
+  if (!configured) return null;
+  try {
+    const url = new URL(configured);
+    if (
+      (url.protocol !== "https:" &&
+        url.hostname !== "localhost" &&
+        url.hostname !== "127.0.0.1") ||
+      url.username ||
+      url.password ||
+      url.hash
+    ) {
+      return null;
+    }
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+function formatHandoffPrice(
+  price: string,
+  currency: string,
+  language: HandoffLanguage
+): string {
+  const amount = Number(price);
+  if (!Number.isFinite(amount)) return price + " " + currency;
+  const noDecimals = currency === "XAF" || currency === "XOF";
+  return new Intl.NumberFormat(language === "fr" ? "fr-FR" : "en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: noDecimals ? 0 : 2,
+    maximumFractionDigits: noDecimals ? 0 : 2
+  }).format(amount);
+}
+
+function whatsappHandoffUrl(
+  env: WorkerBindings,
+  storefront: Awaited<ReturnType<CommerceRepository["getPublicStorefront"]>> & {},
+  product: NonNullable<Awaited<ReturnType<CommerceRepository["getPublicStorefront"]>>>["products"][number],
+  variants: ProductVariant[],
+  language: HandoffLanguage
+): string | null {
+  if (!storefront) return null;
+  const phone = storefront.store.whatsappNumber;
+  if (!/^\+[1-9]\d{7,14}$/.test(phone)) return null;
+
+  const origin = publicWebOrigin(env);
+  if (!origin) return null;
+  const productUrl =
+    origin +
+    "/store/" + encodeURIComponent(storefront.store.slug) +
+    "/p/" + encodeURIComponent(product.slug);
+  const variantLabel = variants.length
+    ? variants.map((item) => item.name + ": " + item.value).join(", ")
+    : "";
+  const price = formatHandoffPrice(product.price, product.currencyCode, language);
+
+  const message = language === "fr"
+    ? [
+        "Bonjour, je souhaite commander " + product.name,
+        variantLabel || null,
+        price,
+        "chez " + storefront.store.name + ".",
+        "Référence : " + productUrl
+      ].filter(Boolean).join(" — ")
+    : [
+        "Hello, I would like to order " + product.name,
+        variantLabel || null,
+        price,
+        "from " + storefront.store.name + ".",
+        "Reference: " + productUrl
+      ].filter(Boolean).join(" — ");
+
+  return "https://wa.me/" +
+    phone.replace(/\D/g, "") +
+    "?text=" +
+    encodeURIComponent(message);
+}
+
 export function createApp(dependencies: AppDependencies = {}) {
   const app = new Hono<AppEnv>();
   const verifyIdentity = dependencies.verifyIdentity || verifyNeonIdentity;
@@ -661,6 +754,97 @@ export function createApp(dependencies: AppDependencies = {}) {
       );
       if (!product) return c.json({ error: "PRODUCT_NOT_FOUND" }, 404);
       return c.json({ product }, 201);
+    }
+  );
+
+  app.post(
+    "/v1/public/stores/:storeSlug/products/:productSlug/whatsapp",
+    async (c) => {
+      let payload: unknown;
+      try {
+        payload = await c.req.json();
+      } catch {
+        return c.json({ error: "INVALID_JSON" }, 400);
+      }
+
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+        return c.json({ error: "INVALID_WHATSAPP_HANDOFF" }, 400);
+      }
+      const body = payload as Record<string, unknown>;
+      if (
+        Object.keys(body).some(
+          (key) => !["eventId", "language", "variants"].includes(key)
+        ) ||
+        !validEventId(body.eventId)
+      ) {
+        return c.json({ error: "INVALID_WHATSAPP_HANDOFF" }, 400);
+      }
+
+      const language: HandoffLanguage =
+        body.language === "en" ? "en" : body.language === "fr" ? "fr" : "fr";
+      const variants = safeHandoffVariants(body.variants);
+      if (!variants) {
+        return c.json({ error: "INVALID_WHATSAPP_HANDOFF" }, 400);
+      }
+
+      const repository = repositoryFactory(c.env);
+      const storeSlug = c.req.param("storeSlug");
+      const productSlug = c.req.param("productSlug");
+      const storefront = await repository.getPublicStorefront(storeSlug);
+      if (!storefront) {
+        return c.json({ error: "STOREFRONT_NOT_FOUND" }, 404);
+      }
+
+      const product = storefront.products.find(
+        (candidate) => candidate.slug === productSlug
+      );
+      if (!product) {
+        return c.json({ error: "PRODUCT_NOT_FOUND" }, 404);
+      }
+
+      const allowedVariants = new Set(
+        product.variants.map((item) => item.name + "\u0000" + item.value)
+      );
+      if (
+        variants.some(
+          (item) => !allowedVariants.has(item.name + "\u0000" + item.value)
+        )
+      ) {
+        return c.json({ error: "INVALID_PRODUCT_VARIANT" }, 400);
+      }
+
+      const href = whatsappHandoffUrl(
+        c.env,
+        storefront,
+        product,
+        variants,
+        language
+      );
+      if (!href) {
+        return c.json({ error: "WHATSAPP_PHONE_INVALID" }, 422);
+      }
+
+      const recorded = await repository.recordPublicEvent(
+        body.eventId,
+        "whatsapp_order_click",
+        storeSlug,
+        productSlug,
+        {
+          language,
+          variant: variants.length
+            ? variants.map((item) => item.name + ": " + item.value).join(", ")
+            : null,
+          channel: "whatsapp"
+        }
+      );
+      if (!recorded) {
+        return c.json({ error: "PRODUCT_NOT_FOUND" }, 404);
+      }
+
+      return c.json({
+        href,
+        eventName: "whatsapp_order_click"
+      });
     }
   );
 
