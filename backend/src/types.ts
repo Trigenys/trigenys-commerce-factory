@@ -1,7 +1,33 @@
+export interface MediaBucketObject {
+  body: ReadableStream<Uint8Array> | null;
+  httpMetadata?: {
+    contentType?: string;
+    cacheControl?: string;
+  };
+  customMetadata?: Record<string, string>;
+}
+
+export interface MediaBucket {
+  put(
+    key: string,
+    value: ArrayBuffer | ArrayBufferView | Blob | ReadableStream | string,
+    options?: {
+      httpMetadata?: {
+        contentType?: string;
+        cacheControl?: string;
+      };
+      customMetadata?: Record<string, string>;
+    }
+  ): Promise<unknown>;
+  get(key: string): Promise<MediaBucketObject | null>;
+  delete(key: string): Promise<void>;
+}
+
 export type WorkerBindings = {
   TRIGENYS_COMMERCE_FACTORY_DATABASE_URL?: string;
   TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL?: string;
   TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN?: string;
+  MEDIA_BUCKET?: MediaBucket;
 };
 
 export type Identity = { subject: string; email?: string };
@@ -152,6 +178,23 @@ export interface CommerceRepository {
     storeId: string,
     days: number
   ): Promise<StoreAnalytics | null>;
+  createOwnedMediaObject(
+    authSubject: string,
+    input: MediaCreateInput
+  ): Promise<MediaObject | null>;
+  getOwnedMediaObject(
+    authSubject: string,
+    storeId: string,
+    mediaId: string
+  ): Promise<MediaObject | null>;
+  deleteOwnedMediaObject(
+    authSubject: string,
+    storeId: string,
+    mediaId: string
+  ): Promise<boolean>;
+  getPublicMediaObject(
+    publicId: string
+  ): Promise<PublicMediaObject | null>;
 }
 
 
@@ -219,4 +262,36 @@ export type StoreAnalytics = {
   whatsappClicks: number;
   clickThroughRate: number;
   topProducts: ProductAnalytics[];
+};
+
+
+export type MediaKind = "logo" | "product";
+
+export type MediaObject = {
+  id: string;
+  publicId: string;
+  storeId: string;
+  productId: string | null;
+  kind: MediaKind;
+  objectKey: string;
+  contentType: "image/webp";
+  byteSize: number;
+  publicUrl: string | null;
+};
+
+export type MediaCreateInput = {
+  id: string;
+  publicId: string;
+  storeId: string;
+  productId: string | null;
+  kind: MediaKind;
+  objectKey: string;
+  contentType: "image/webp";
+  byteSize: number;
+};
+
+export type PublicMediaObject = {
+  objectKey: string;
+  contentType: "image/webp";
+  byteSize: number;
 };
