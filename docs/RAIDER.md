@@ -2,7 +2,7 @@
 
 Last reviewed: 2026-10-09
 
-RAIDER means **Risks, Assumptions, Issues, Dependencies, Evidence, Results**.
+This is the product register: **Risks, Assumptions, Issues, Dependencies, Evidence, Results**. The engineering standard RAIDER (Reusable, Agnostic, Idempotent, Durable / Non-regressive, Engineering-grade, Retroactive) is defined in [raider/RAIDER.md](raider/RAIDER.md).
 
 ## Risks
 
