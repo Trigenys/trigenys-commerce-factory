@@ -62,6 +62,11 @@ export type StoreUpdateResult =
   | { kind: "not_found" }
   | { kind: "slug_taken" };
 
+export type StorePublishResult =
+  | { kind: "published"; store: StoreSummary }
+  | { kind: "not_found" }
+  | { kind: "active_product_required" };
+
 export type PublicProduct = {
   id: string;
   name: string;
@@ -105,6 +110,10 @@ export interface CommerceRepository {
     storeId: string,
     patch: StorePatch
   ): Promise<StoreUpdateResult>;
+  publishOwnedStore(
+    authSubject: string,
+    storeId: string
+  ): Promise<StorePublishResult>;
   getPublicStorefront(slug: string): Promise<PublicStorefront | null>;
   listOwnedProducts(
     authSubject: string,
