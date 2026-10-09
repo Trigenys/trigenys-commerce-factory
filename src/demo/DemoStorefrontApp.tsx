@@ -1,4 +1,5 @@
-import { CSSProperties, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import type { CSSProperties } from "react";
 import "./demo-storefront.css";
 
 type DemoProduct = {
