@@ -157,6 +157,8 @@ class ProductRepository implements CommerceRepository {
 
   async recordPublicEvent() { return false; }
 
+  async getOwnedStoreAnalytics() { return null; }
+
   async getPublicStorefront(slug: string): Promise<PublicStorefront | null> {
     if (slug !== store.slug || store.status !== "published") return null;
     return {
