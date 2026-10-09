@@ -227,3 +227,36 @@ export async function publishStore(
   );
   return body.store;
 }
+
+
+export type ProductAnalytics = {
+  productId: string;
+  name: string;
+  views: number;
+  whatsappClicks: number;
+  clickThroughRate: number;
+};
+
+export type StoreAnalytics = {
+  days: number;
+  storeViews: number;
+  productViews: number;
+  whatsappClicks: number;
+  clickThroughRate: number;
+  topProducts: ProductAnalytics[];
+};
+
+export async function getStoreAnalytics(
+  client: CommerceAuthClient,
+  storeId: string,
+  days = 30
+): Promise<StoreAnalytics> {
+  const body = await merchantRequest<{ analytics: StoreAnalytics }>(
+    client,
+    "/v1/admin/stores/" +
+      encodeURIComponent(storeId) +
+      "/analytics?days=" +
+      encodeURIComponent(String(days))
+  );
+  return body.analytics;
+}
