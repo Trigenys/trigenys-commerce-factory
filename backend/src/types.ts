@@ -155,7 +155,7 @@ export type ProductInput = {
   variants: ProductVariant[];
 };
 
-export type ProductSummary = ProductInput & {
+export type ProductSummary = Omit<ProductInput, "status"> & {
   id: string;
   storeId: string;
   status: ProductStatus;
