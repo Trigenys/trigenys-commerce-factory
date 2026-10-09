@@ -895,3 +895,46 @@
     animation: none;
   }
 }
+
+
+.store-status-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.draft-pill.published {
+  background: #e8f8f0;
+  color: #08714f;
+}
+
+.publish-button,
+.storefront-link {
+  min-height: 36px;
+  padding-inline: 12px;
+  font-size: 10px;
+}
+
+.storefront-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+@media (max-width: 620px) {
+  .settings-title-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .store-status-actions {
+    width: 100%;
+  }
+
+  .publish-button,
+  .storefront-link {
+    flex: 1 1 auto;
+  }
+}

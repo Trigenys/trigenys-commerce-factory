@@ -5,6 +5,7 @@ import {
   ApiError,
   createStore,
   listStores,
+  publishStore,
   updateStore,
   type Store,
   type StoreInput
@@ -84,7 +85,12 @@ const copy = {
     saving: "Enregistrement…",
     saved: "Modifications enregistrées.",
     draft: "Brouillon",
-    publicUrl: "Future URL publique",
+    published: "Publiée",
+    publish: "Publier la boutique",
+    publishing: "Publication…",
+    publishNeedsProduct: "Activez au moins un produit avant de publier la boutique.",
+    openStore: "Ouvrir la boutique",
+    publicUrl: "URL publique",
     nextProduct: "Étape suivante : premier produit",
     nextProductBody: "La boutique existe. La prochaine issue branche la création du catalogue, puis le bouton Publier.",
     comingNext: "Bientôt avec #5",
@@ -156,7 +162,12 @@ const copy = {
     saving: "Saving…",
     saved: "Changes saved.",
     draft: "Draft",
-    publicUrl: "Future public URL",
+    published: "Published",
+    publish: "Publish store",
+    publishing: "Publishing…",
+    publishNeedsProduct: "Activate at least one product before publishing the store.",
+    openStore: "Open storefront",
+    publicUrl: "Public URL",
     nextProduct: "Next step: first product",
     nextProductBody: "Your store exists. The next issue wires catalog creation, then the Publish action.",
     comingNext: "Coming with #5",
@@ -761,6 +772,29 @@ function StoreSettings({
   const [message, setMessage] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [publishBusy, setPublishBusy] = useState(false);
+
+  async function publishCurrentStore() {
+    setPublishBusy(true);
+    setMessage(null);
+    setServerError(null);
+    try {
+      const published = await publishStore(client, store.id);
+      onUpdated(published);
+      setMessage(t.published);
+    } catch (error) {
+      if (
+        error instanceof ApiError &&
+        error.code === "ACTIVE_PRODUCT_REQUIRED"
+      ) {
+        setServerError(t.publishNeedsProduct);
+      } else {
+        setServerError(t.genericError);
+      }
+    } finally {
+      setPublishBusy(false);
+    }
+  }
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -798,7 +832,30 @@ function StoreSettings({
             <h1>{t.settingsTitle}</h1>
             <p>{t.settingsBody}</p>
           </div>
-          <span className="draft-pill">{t.draft}</span>
+          <div className="store-status-actions">
+            <span className={"draft-pill " + store.status}>
+              {store.status === "published" ? t.published : t.draft}
+            </span>
+            {store.status === "published" ? (
+              <a
+                className="admin-secondary storefront-link"
+                href={"/store/" + encodeURIComponent(store.slug)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {t.openStore}
+              </a>
+            ) : (
+              <button
+                type="button"
+                className="admin-primary publish-button"
+                onClick={publishCurrentStore}
+                disabled={publishBusy}
+              >
+                {publishBusy ? t.publishing : t.publish}
+              </button>
+            )}
+          </div>
         </div>
 
         <form className="merchant-form-card settings-card" onSubmit={save}>
@@ -837,7 +894,7 @@ function StoreSettings({
           <div className="settings-actions">
             <span>
               <small>{t.publicUrl}</small>
-              <strong>commercefactory.shop/{input.slug}</strong>
+              <strong>/store/{input.slug}</strong>
             </span>
             <button className="admin-primary" type="submit" disabled={busy}>
               {busy ? t.saving : t.save}

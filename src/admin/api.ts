@@ -214,3 +214,16 @@ export async function duplicateProduct(
   );
   return body.product;
 }
+
+
+export async function publishStore(
+  client: CommerceAuthClient,
+  storeId: string
+): Promise<Store> {
+  const body = await merchantRequest<{ store: Store }>(
+    client,
+    "/v1/admin/stores/" + encodeURIComponent(storeId) + "/publish",
+    { method: "POST" }
+  );
+  return body.store;
+}
