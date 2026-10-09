@@ -7,6 +7,8 @@ import type {
   Identity,
   ProductInput,
   ProductVariant,
+  PublicProduct,
+  PublicStorefront,
   StoreCreateInput,
   StorePatch,
   StoreTheme,
@@ -481,8 +483,8 @@ function formatHandoffPrice(
 
 function whatsappHandoffUrl(
   env: WorkerBindings,
-  storefront: Awaited<ReturnType<CommerceRepository["getPublicStorefront"]>> & {},
-  product: NonNullable<Awaited<ReturnType<CommerceRepository["getPublicStorefront"]>>>["products"][number],
+  storefront: PublicStorefront,
+  product: PublicProduct,
   variants: ProductVariant[],
   language: HandoffLanguage
 ): string | null {
