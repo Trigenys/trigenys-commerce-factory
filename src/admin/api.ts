@@ -315,3 +315,45 @@ export async function deleteMedia(
     { method: "DELETE" }
   );
 }
+
+
+export function managedMediaPublicId(urlValue: string): string | null {
+  try {
+    const url = new URL(urlValue, window.location.origin);
+    const match = /\/v1\/media\/([0-9a-f-]{36})$/i.exec(url.pathname);
+    return match?.[1] || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteMediaByPublicId(
+  client: CommerceAuthClient,
+  storeId: string,
+  publicId: string
+): Promise<void> {
+  await merchantRequest<void>(
+    client,
+    "/v1/admin/stores/" +
+      encodeURIComponent(storeId) +
+      "/media/public/" +
+      encodeURIComponent(publicId),
+    { method: "DELETE" }
+  );
+}
+
+export async function updateStoreLogo(
+  client: CommerceAuthClient,
+  storeId: string,
+  logoUrl: string | null
+): Promise<Store> {
+  const body = await merchantRequest<{ store: Store }>(
+    client,
+    "/v1/admin/stores/" + encodeURIComponent(storeId),
+    {
+      method: "PATCH",
+      body: JSON.stringify({ logoUrl })
+    }
+  );
+  return body.store;
+}
