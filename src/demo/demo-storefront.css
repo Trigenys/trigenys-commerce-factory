@@ -267,9 +267,22 @@
 }
 
 .demo-phone-feature > span {
+  min-width: 76px;
+  height: 76px;
   margin-bottom: auto;
-  font-size: 64px;
-  filter: drop-shadow(0 15px 20px rgba(23,35,29,.1));
+  padding: 0 12px;
+  align-self: flex-start;
+  display: grid;
+  place-items: center;
+  border-radius: 22px;
+  background: rgba(255,255,255,.74);
+  border: 1px solid rgba(0,105,72,.12);
+  color: var(--demo-green);
+  box-shadow: 0 14px 28px rgba(23,35,29,.08);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -.04em;
 }
 
 .demo-phone-feature small {
@@ -374,10 +387,22 @@
 }
 
 .demo-product-art > span {
+  min-width: 92px;
+  height: 92px;
+  margin-top: 14px;
+  padding: 0 14px;
   align-self: center;
-  margin-top: 16px;
-  font-size: 72px;
-  filter: drop-shadow(0 16px 20px rgba(23,35,29,.09));
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(23,35,29,.08);
+  border-radius: 26px;
+  background: rgba(255,255,255,.7);
+  color: var(--demo-ink);
+  box-shadow: 0 18px 34px rgba(23,35,29,.075);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -.05em;
 }
 
 .demo-product-art small {
