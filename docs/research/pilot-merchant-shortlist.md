@@ -10,28 +10,28 @@ Select three public, WhatsApp-first merchants for personalized Commerce Factory 
 
 These are **unofficial private demos**. Public merchant information may be used to illustrate the product, but Commerce Factory must not imply endorsement, partnership or ownership of the merchant brand. Demos stay non-indexed until the merchant opts in.
 
-## M01 — mobile / electronics
+## M01 — computers / electronics
 
-**Business:** Clinik du mobile mboa  
-**Location:** Yaoundé, Marché Central  
-**Public WhatsApp:** +237 676 742 331  
-**Public source:** https://www.fashyas.com/CM/Yaound%C3%A9/234737669715732/Clinik-du-mobile-mboa
+**Business:** Faya Computer Technologic  
+**Location:** Yaoundé (Mfoundi Mall) + Douala (Bonamoussadi)  
+**Public WhatsApp/catalog:** +237 699 176 612  
+**Public source:** https://www.findglocal.com/CM/Yaound%C3%A9/108704200876704/Faya-Computer-Technologic
 
 Observed public offer:
-- phone repair;
-- phone sales;
-- phone parts;
-- accessories and gadgets.
+- laptops and professional workstations;
+- Lenovo ThinkPad, Dell Precision/Latitude, HP EliteBook/ZBook and MacBook;
+- public product specifications and price points;
+- complete WhatsApp catalog and promotion group.
 
 Why it fits:
-- strong WhatsApp-first contact path;
-- electronics make price/spec/catalog clarity easy to test;
-- variants/models are a natural Commerce Factory use case.
+- unusually strong public catalog evidence, including real product specs and prices;
+- already WhatsApp-first despite selling high-ticket products;
+- good test for filters, specifications, warranty/trust and high-intent handoff.
 
 Demo target:
-- 6–10 representative phones/accessories/gadgets;
-- categories for phones, accessories and repair-related products where applicable;
-- WhatsApp handoff with product/model context.
+- 6–10 representative laptop/workstation offers using only publicly evidenced information;
+- categories for student, professional and high-performance machines;
+- WhatsApp catalog + product-context handoff.
 
 ## M02 — beauty / accessories
 
