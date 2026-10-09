@@ -28,6 +28,7 @@ A merchant should be able to complete the full value loop at the end of this pha
 - #8 Merchant analytics.
 - #13 Deployment/environments.
 - #42 Marketing landing conversion refresh.
+- #50 Premium anonymized storefront examples on the public landing.
 - #43 Three personalized merchant demo storefronts.
 - #44 Personalized outbound validation and two beta pilots.
 - #2 Close merchant validation only after real evidence is captured.
