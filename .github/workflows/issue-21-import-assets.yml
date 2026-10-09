@@ -1,0 +1,117 @@
+name: Issue 21 asset import
+
+on:
+  push:
+    branches:
+      - feat/21-self-host-landing-media
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/21-self-host-landing-media
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Generate self-hosted responsive variants
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts=false sharp@0.34.4
+          node <<'NODE'
+          import fs from "node:fs/promises";
+          import path from "node:path";
+          import sharp from "sharp";
+
+          const assets = {
+            earbuds: "https://lh3.googleusercontent.com/aida-public/AB6AXuBu7-QWSsNqFHO5asDYkHHmwSfKiQpa7Fk0DdS-Q4nP0Min3mU-7tgbDc6x9woPb6eKBBEzkQ_szaBBBXatEfse3LBJ40gGhCyB620ox8IGhh24u5ydDZUTkCtp4LuF7vhpLfKUTPV7UFQV0Zr3H4GQ6TpGE9lHni9gWpFQygnkIvG0ir8rTKgTJq8HusdHB44OdIiZspBg0u1bkacaSmMCtV2usevYd89_Fsxzhlw",
+            headphones: "https://lh3.googleusercontent.com/aida-public/AB6AXuCT94l6x9rOVfDpQG0nqKso-lvpFScITJ3j5MlGr-2dDTFDJRU8LPTnMn6Mza9Hwlmtwk3YjctHE_fu_Nbs75nHlk-S7lqPfumxjOGjDOJNm3fC4W8EAyUIOsRpVxrjgSpy3WG0ieeEO9N7jug0BjFRfqgpndc6JOEEJmkS0dxTyKb_3KsYr1alJXN3M3uoMx3X4mIoPNiUUVzE8K-vN42bs5NK2De_yDM0o5fSxOQ",
+            watch: "https://lh3.googleusercontent.com/aida-public/AB6AXuA4-UTk1Lmh4-CEb81vxmXpjlmZgdQruDUUR3ocKzcmHbasgibfns1GMD_Fr71x2QhYg2Atom7zozhoduJQiLnvLl9KdMAWh9jHMs3Dr5M0UxbmTFyx4_QJyLu1igi9eMJv-9f-oiaoB8ixzvbkydhWkP0t-4t3M8e7L-iB94Xb-1BoUQnaHRdhgf56ctO1y5Fhym1ZCO1f-zJwhzGMoAgxnVkYM3blM0EGNv7R9Fo",
+            electronics: "https://lh3.googleusercontent.com/aida-public/AB6AXuCwFr-baUT38F9yzf8ulS1MF6s7b85xwatO7Rx43Q-lyCIIe_JWLl7ZLcICiSCE_IeKomFKP3_H4gZFnGi5jQJJHUSL1wOHyz0kEyLP34mO7aF1Lk9EUmlLpiIk8axzmtZaH6s3tAUv_99UkqWj7AjNk0w1QYut9EavtZlNjxkxDZRCZb1T4V39uZ2OgkBYQyyiam4w5NCuSZa1rHbvFjOftZpdJZZo0mjCYlX6eSY",
+            fashion: "https://lh3.googleusercontent.com/aida-public/AB6AXuDdvnkKRxXT1QyyYVzCvduUEP9Ek07riekejlf9AoMxUI_nfogHLIQcz4y_YU-NI5qt5INh5H1na61pikVuvSDzoTy_06VatBqOKJDaDEfWVSwhqEAdD1DfHdL4dYraoTpYcVpl17CySZs9qfSUfDIP-_mpu3rqX5e1IY8qCOU7BvzzlPdiWsEcI0qzezN869C3ByG-ZpuViBwjYDd2Ox7ZwgFFOqkT93gSaRb3iN8",
+            beauty: "https://lh3.googleusercontent.com/aida-public/AB6AXuABL1fs5cZNR1sm9Jwu8G8eoyEqJQEbUSFqrZw3knfi48ro4PiuWQ3e2OB9ICZhE-f9r12ixWTGIROTlNoaCAtyx3C7sfIgcJXJ8W4zejVHjDBUclWtJUO-boER2AyfMHInf9-jRBBSNeQM2PNKDaiiHmmZV5CWm5YgQLJG_3voGa99LEKHoJZo97TBHH_Hy12FAYmF09caaWCWY8Our7D62QV5jfPp6Ule1swSh2k"
+          };
+
+          const target = path.join("public", "landing");
+          await fs.mkdir(target, { recursive: true });
+          const manifest = {};
+
+          for (const [name, url] of Object.entries(assets)) {
+            const response = await fetch(url, {
+              headers: {
+                "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/154.0.0.0 Safari/537.36",
+                "referer": "https://stitch.withgoogle.com/",
+                "accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8"
+              }
+            });
+            if (!response.ok) {
+              throw new Error(`${name}: source fetch failed with HTTP ${response.status}`);
+            }
+
+            const source = Buffer.from(await response.arrayBuffer());
+            const base = sharp(source, { failOn: "error" }).rotate();
+            const sourceMeta = await base.metadata();
+            if (!sourceMeta.width || !sourceMeta.height) {
+              throw new Error(`${name}: image dimensions unavailable`);
+            }
+
+            const variants = [];
+            for (const requestedWidth of [480, 960]) {
+              for (const format of ["webp", "avif"]) {
+                const pipeline = sharp(source, { failOn: "error" })
+                  .rotate()
+                  .resize({ width: requestedWidth, withoutEnlargement: true });
+
+                const encoded = format === "webp"
+                  ? pipeline.webp({ quality: 80, effort: 5 })
+                  : pipeline.avif({ quality: 52, effort: 5 });
+
+                const { data, info } = await encoded.toBuffer({ resolveWithObject: true });
+                const file = `${name}-${requestedWidth}.${format}`;
+                await fs.writeFile(path.join(target, file), data);
+                variants.push({
+                  format,
+                  requestedWidth,
+                  width: info.width,
+                  height: info.height,
+                  bytes: info.size,
+                  src: `/landing/${file}`
+                });
+              }
+            }
+
+            manifest[name] = {
+              sourceWidth: sourceMeta.width,
+              sourceHeight: sourceMeta.height,
+              variants
+            };
+          }
+
+          await fs.writeFile(
+            path.join(target, "manifest.json"),
+            JSON.stringify(manifest, null, 2) + "\n"
+          );
+          NODE
+
+      - name: Commit generated assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/landing
+          if git diff --cached --quiet; then
+            echo "No asset changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(media): import Stitch landing assets [skip ci]"
+          git push origin HEAD:feat/21-self-host-landing-media
