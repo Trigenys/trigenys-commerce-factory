@@ -876,6 +876,47 @@ export function createApp(dependencies: AppDependencies = {}) {
     return c.body(null, 204);
   });
 
+  app.delete(
+    "/v1/admin/stores/:storeId/media/public/:publicId",
+    async (c) => {
+      const storeId = c.req.param("storeId");
+      const publicId = c.req.param("publicId");
+      if (!validUuid(storeId) || !validUuid(publicId)) {
+        return c.json({ error: "MEDIA_NOT_FOUND" }, 404);
+      }
+
+      const repository = repositoryFactory(c.env);
+      const media = await repository.getOwnedMediaObjectByPublicId(
+        c.get("identity").subject,
+        storeId,
+        publicId
+      );
+      if (!media) return c.json({ error: "MEDIA_NOT_FOUND" }, 404);
+
+      let bucket;
+      try {
+        bucket = requiredMediaBucket(c.env);
+      } catch {
+        return c.json({ error: "MEDIA_STORAGE_NOT_CONFIGURED" }, 503);
+      }
+
+      try {
+        await bucket.delete(media.objectKey);
+      } catch {
+        return c.json({ error: "MEDIA_DELETE_FAILED" }, 502);
+      }
+
+      const deleted = await repository.deleteOwnedMediaObjectByPublicId(
+        c.get("identity").subject,
+        storeId,
+        publicId
+      );
+      if (!deleted) return c.json({ error: "MEDIA_NOT_FOUND" }, 404);
+
+      return c.body(null, 204);
+    }
+  );
+
   app.get("/v1/admin/stores/:storeId/products", async (c) => {
     const repository = repositoryFactory(c.env);
     const products = await repository.listOwnedProducts(
