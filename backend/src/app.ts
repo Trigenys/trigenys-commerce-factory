@@ -30,6 +30,37 @@ type AppDependencies = {
 };
 
 const STORE_THEMES = new Set<StoreTheme>(["clean"]);
+const MAX_MEDIA_BYTES = 2 * 1024 * 1024;
+
+function validUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function isWebp(bytes: Uint8Array): boolean {
+  if (bytes.byteLength < 12) return false;
+  return (
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  );
+}
+
+function requiredMediaBucket(env: WorkerBindings) {
+  if (!env.MEDIA_BUCKET) {
+    throw new Error("MEDIA_BUCKET is not configured.");
+  }
+  return env.MEDIA_BUCKET;
+}
+
+function mediaPublicUrl(requestUrl: string, publicId: string): string {
+  const origin = new URL(requestUrl).origin;
+  return origin + "/v1/media/" + encodeURIComponent(publicId);
+}
 
 function requiredBinding(
   env: WorkerBindings,
@@ -690,6 +721,161 @@ export function createApp(dependencies: AppDependencies = {}) {
     return c.json({ analytics });
   });
 
+  app.post("/v1/admin/stores/:storeId/media", async (c) => {
+    const storeId = c.req.param("storeId");
+    if (!validUuid(storeId)) {
+      return c.json({ error: "STORE_NOT_FOUND" }, 404);
+    }
+
+    let form: FormData;
+    try {
+      form = await c.req.raw.formData();
+    } catch {
+      return c.json({ error: "INVALID_MEDIA_FORM" }, 400);
+    }
+
+    const kindValue = form.get("kind");
+    const productIdValue = form.get("productId");
+    const fileValue = form.get("file");
+
+    if (kindValue !== "logo" && kindValue !== "product") {
+      return c.json({ error: "INVALID_MEDIA_KIND" }, 400);
+    }
+
+    const productId =
+      kindValue === "product" && typeof productIdValue === "string"
+        ? productIdValue
+        : null;
+
+    if (
+      (kindValue === "product" && (!productId || !validUuid(productId))) ||
+      (kindValue === "logo" && productIdValue !== null)
+    ) {
+      return c.json({ error: "INVALID_MEDIA_TARGET" }, 400);
+    }
+
+    if (!(fileValue instanceof File)) {
+      return c.json({ error: "MEDIA_FILE_REQUIRED" }, 400);
+    }
+    if (fileValue.type !== "image/webp") {
+      return c.json({ error: "UNSUPPORTED_MEDIA_TYPE" }, 415);
+    }
+    if (fileValue.size <= 0 || fileValue.size > MAX_MEDIA_BYTES) {
+      return c.json({ error: "MEDIA_TOO_LARGE" }, 413);
+    }
+
+    const bytes = new Uint8Array(await fileValue.arrayBuffer());
+    if (!isWebp(bytes)) {
+      return c.json({ error: "INVALID_MEDIA_BYTES" }, 415);
+    }
+
+    let bucket;
+    try {
+      bucket = requiredMediaBucket(c.env);
+    } catch {
+      return c.json({ error: "MEDIA_STORAGE_NOT_CONFIGURED" }, 503);
+    }
+
+    const repository = repositoryFactory(c.env);
+    const mediaId = crypto.randomUUID();
+    const publicId = crypto.randomUUID();
+    const objectKey =
+      "stores/" +
+      storeId +
+      "/" +
+      (kindValue === "product"
+        ? "products/" + productId
+        : "logo") +
+      "/" +
+      crypto.randomUUID() +
+      ".webp";
+
+    try {
+      await bucket.put(objectKey, bytes, {
+        httpMetadata: {
+          contentType: "image/webp",
+          cacheControl: "public, max-age=31536000, immutable"
+        },
+        customMetadata: {
+          storeId,
+          kind: kindValue,
+          ...(productId ? { productId } : {})
+        }
+      });
+
+      const media = await repository.createOwnedMediaObject(
+        c.get("identity").subject,
+        {
+          id: mediaId,
+          publicId,
+          storeId,
+          productId,
+          kind: kindValue,
+          objectKey,
+          contentType: "image/webp",
+          byteSize: bytes.byteLength
+        }
+      );
+
+      if (!media) {
+        await bucket.delete(objectKey);
+        return c.json({ error: "MEDIA_TARGET_NOT_FOUND" }, 404);
+      }
+
+      return c.json({
+        media: {
+          ...media,
+          publicUrl: mediaPublicUrl(c.req.url, publicId)
+        }
+      }, 201);
+    } catch {
+      try {
+        await bucket.delete(objectKey);
+      } catch {
+        // Best-effort rollback; orphan cleanup is documented separately.
+      }
+      return c.json({ error: "MEDIA_UPLOAD_FAILED" }, 502);
+    }
+  });
+
+  app.delete("/v1/admin/stores/:storeId/media/:mediaId", async (c) => {
+    const storeId = c.req.param("storeId");
+    const mediaId = c.req.param("mediaId");
+    if (!validUuid(storeId) || !validUuid(mediaId)) {
+      return c.json({ error: "MEDIA_NOT_FOUND" }, 404);
+    }
+
+    const repository = repositoryFactory(c.env);
+    const media = await repository.getOwnedMediaObject(
+      c.get("identity").subject,
+      storeId,
+      mediaId
+    );
+    if (!media) return c.json({ error: "MEDIA_NOT_FOUND" }, 404);
+
+    let bucket;
+    try {
+      bucket = requiredMediaBucket(c.env);
+    } catch {
+      return c.json({ error: "MEDIA_STORAGE_NOT_CONFIGURED" }, 503);
+    }
+
+    try {
+      await bucket.delete(media.objectKey);
+    } catch {
+      return c.json({ error: "MEDIA_DELETE_FAILED" }, 502);
+    }
+
+    const deleted = await repository.deleteOwnedMediaObject(
+      c.get("identity").subject,
+      storeId,
+      mediaId
+    );
+    if (!deleted) return c.json({ error: "MEDIA_NOT_FOUND" }, 404);
+
+    return c.body(null, 204);
+  });
+
   app.get("/v1/admin/stores/:storeId/products", async (c) => {
     const repository = repositoryFactory(c.env);
     const products = await repository.listOwnedProducts(
@@ -943,6 +1129,35 @@ export function createApp(dependencies: AppDependencies = {}) {
       });
     }
   );
+
+  app.get("/v1/media/:publicId", async (c) => {
+    const publicId = c.req.param("publicId");
+    if (!validUuid(publicId)) return c.json({ error: "MEDIA_NOT_FOUND" }, 404);
+
+    const repository = repositoryFactory(c.env);
+    const media = await repository.getPublicMediaObject(publicId);
+    if (!media) return c.json({ error: "MEDIA_NOT_FOUND" }, 404);
+
+    let bucket;
+    try {
+      bucket = requiredMediaBucket(c.env);
+    } catch {
+      return c.json({ error: "MEDIA_STORAGE_NOT_CONFIGURED" }, 503);
+    }
+
+    const object = await bucket.get(media.objectKey);
+    if (!object?.body) return c.json({ error: "MEDIA_NOT_FOUND" }, 404);
+
+    return new Response(object.body, {
+      status: 200,
+      headers: {
+        "Content-Type": media.contentType,
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Content-Length": String(media.byteSize),
+        "X-Content-Type-Options": "nosniff"
+      }
+    });
+  });
 
   app.get("/v1/public/stores/:slug", async (c) => {
     const repository = repositoryFactory(c.env);
