@@ -260,20 +260,21 @@ const copyByLanguage = {
     navShowcase: "Showcase",
     navDashboard: "Dashboard",
     navPricing: "Pricing",
+    login: "Log in",
     createStore: "Create my store",
     languageLabel: "Language",
     heroEyebrow: "Commerce infrastructure for modern businesses",
     heroTitleOne: "Your store.",
     heroTitleTwo: "Online in minutes.",
-    heroLead: "Turn your products into a clean online catalog and send high-intent customers directly into WhatsApp with the product context already filled in.",
+    heroLead: "Publish products, prices and variants in a storefront customers can browse, then send ready-to-buy shoppers into WhatsApp with the product already identified.",
     demoStore: "See a demo store",
     principlesLabel: "Product principles",
     noCode: "No code",
     fcfaReady: "FCFA-ready",
     mobileFirst: "Mobile-first",
     whatsappNative: "WhatsApp-native",
-    proofTitle: "Built around the sales flow merchants already use",
-    proofBody: "Catalog → product interest → WhatsApp conversation. No fake payment layer in the MVP.",
+    proofTitle: "A real storefront for the way you already sell",
+    proofBody: "Customers browse. They choose a product. WhatsApp opens with the context. You close the sale in the flow you already know.",
     storefrontExample: "Example Commerce Factory storefront",
     demoStorefront: "Demo storefront",
     phones: "Phones",
@@ -352,20 +353,21 @@ const copyByLanguage = {
     navShowcase: "Exemples",
     navDashboard: "Tableau de bord",
     navPricing: "Tarifs",
+    login: "Connexion",
     createStore: "Créer ma boutique",
     languageLabel: "Langue",
     heroEyebrow: "Infrastructure e-commerce pour les entreprises modernes",
     heroTitleOne: "Votre boutique.",
     heroTitleTwo: "En ligne en quelques minutes.",
-    heroLead: "Transformez vos produits en un catalogue en ligne clair et dirigez les clients à forte intention directement vers WhatsApp, avec le contexte du produit déjà renseigné.",
+    heroLead: "Publiez vos produits, prix et variantes dans une boutique claire, puis envoyez les clients prêts à acheter vers WhatsApp avec le produit déjà identifié.",
     demoStore: "Voir une boutique démo",
     principlesLabel: "Principes du produit",
     noCode: "Sans code",
     fcfaReady: "Prêt pour le FCFA",
     mobileFirst: "Pensé mobile",
     whatsappNative: "Natif WhatsApp",
-    proofTitle: "Conçu autour du parcours de vente que les commerçants utilisent déjà",
-    proofBody: "Catalogue → intérêt produit → conversation WhatsApp. Pas de faux système de paiement dans le MVP.",
+    proofTitle: "Une vraie boutique pour vendre comme vous vendez déjà",
+    proofBody: "Le client parcourt, choisit un produit, puis WhatsApp s’ouvre avec le contexte. Vous concluez la vente dans votre parcours habituel.",
     storefrontExample: "Exemple de boutique Commerce Factory",
     demoStorefront: "Boutique démo",
     phones: "Téléphones",
@@ -522,6 +524,7 @@ export default function App() {
         </nav>
 
         <div className="header-actions">
+          <a className="header-login" href="/app">{t.login}</a>
           <div className="language-switch" role="group" aria-label={t.languageLabel}>
             <button
               type="button"
@@ -578,6 +581,9 @@ export default function App() {
           </div>
 
           <div className="hero-visual" role="group" aria-label={t.storefrontExample}>
+            <span className="visual-kicker">
+              {language === "fr" ? "Boutique démo • WhatsApp-first" : "Demo storefront • WhatsApp-first"}
+            </span>
             <div className="browser-card">
               <div className="browser-bar">
                 <span className="browser-dots"><i /><i /><i /></span>
