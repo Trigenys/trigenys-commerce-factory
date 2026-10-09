@@ -1,6 +1,9 @@
 import { neon } from "@neondatabase/serverless";
 import type {
   CommerceRepository,
+  ProductInput,
+  ProductSummary,
+  ProductVariant,
   PublicStorefront,
   StoreCreateInput,
   StorePatch,
@@ -23,6 +26,22 @@ type StoreRow = {
   logo_url: string | null;
 };
 
+type ProductRow = {
+  id: string;
+  store_id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  price: string;
+  currency_code: string;
+  category: string | null;
+  stock_label: string | null;
+  status: "draft" | "active" | "archived";
+  sort_order: number;
+  image_urls: unknown;
+  variants: unknown;
+};
+
 function mapStore(row: StoreRow): StoreSummary {
   return {
     id: row.id,
@@ -40,6 +59,41 @@ function mapStore(row: StoreRow): StoreSummary {
   };
 }
 
+function productImages(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function productVariants(value: unknown): ProductVariant[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const record = item as Record<string, unknown>;
+    return typeof record.name === "string" && typeof record.value === "string"
+      ? [{ name: record.name, value: record.value }]
+      : [];
+  });
+}
+
+function mapProduct(row: ProductRow): ProductSummary {
+  return {
+    id: row.id,
+    storeId: row.store_id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description,
+    price: row.price,
+    currencyCode: row.currency_code,
+    category: row.category,
+    stockLabel: row.stock_label,
+    status: row.status,
+    sortOrder: row.sort_order,
+    imageUrls: productImages(row.image_urls),
+    variants: productVariants(row.variants)
+  };
+}
+
 function databaseConstraint(error: unknown): string | null {
   if (!error || typeof error !== "object") return null;
   const constraint = (error as { constraint?: unknown }).constraint;
@@ -49,6 +103,13 @@ function databaseConstraint(error: unknown): string | null {
 function uniqueConflict(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   return (error as { code?: unknown }).code === "23505";
+}
+
+function productJson(input: ProductInput) {
+  return {
+    imageUrls: JSON.stringify(input.imageUrls),
+    variants: JSON.stringify(input.variants)
+  };
 }
 
 export function createNeonRepository(connectionString: string): CommerceRepository {
@@ -299,7 +360,11 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           p.slug,
           p.description,
           p.price::text AS price,
-          p.currency_code
+          p.currency_code,
+          p.category,
+          p.stock_label,
+          p.image_urls,
+          p.variants
         FROM products p
         INNER JOIN stores s ON s.id = p.store_id
         WHERE s.slug = ${slug}
@@ -313,6 +378,10 @@ export function createNeonRepository(connectionString: string): CommerceReposito
         description: string | null;
         price: string;
         currency_code: string;
+        category: string | null;
+        stock_label: string | null;
+        image_urls: unknown;
+        variants: unknown;
       }>;
 
       return {
@@ -333,9 +402,241 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           slug: product.slug,
           description: product.description,
           price: product.price,
-          currencyCode: product.currency_code
+          currencyCode: product.currency_code,
+          category: product.category,
+          stockLabel: product.stock_label,
+          imageUrls: productImages(product.image_urls),
+          variants: productVariants(product.variants)
         }))
       };
+    },
+
+    async listOwnedProducts(authSubject, storeId) {
+      const rows = await sql`
+        SELECT
+          p.id,
+          p.store_id,
+          p.name,
+          p.slug,
+          p.description,
+          p.price::text AS price,
+          p.currency_code,
+          p.category,
+          p.stock_label,
+          p.status,
+          p.sort_order,
+          p.image_urls,
+          p.variants
+        FROM products p
+        INNER JOIN store_members sm ON sm.store_id = p.store_id
+        WHERE p.store_id = ${storeId}
+          AND sm.auth_subject = ${authSubject}
+          AND sm.role = 'owner'
+        ORDER BY
+          CASE WHEN p.status = 'archived' THEN 1 ELSE 0 END,
+          p.sort_order ASC,
+          p.created_at ASC
+      ` as ProductRow[];
+      return rows.map(mapProduct);
+    },
+
+    async createOwnedProduct(authSubject, storeId, input: ProductInput) {
+      const productId = crypto.randomUUID();
+      const json = productJson(input);
+
+      try {
+        const rows = await sql`
+          INSERT INTO products (
+            id,
+            store_id,
+            name,
+            slug,
+            description,
+            price,
+            currency_code,
+            category,
+            stock_label,
+            status,
+            sort_order,
+            image_urls,
+            variants
+          )
+          SELECT
+            ${productId},
+            s.id,
+            ${input.name},
+            ${input.slug},
+            ${input.description},
+            ${input.price},
+            ${input.currencyCode},
+            ${input.category},
+            ${input.stockLabel},
+            ${input.status},
+            ${input.sortOrder},
+            ${json.imageUrls}::jsonb,
+            ${json.variants}::jsonb
+          FROM stores s
+          INNER JOIN store_members sm ON sm.store_id = s.id
+          WHERE s.id = ${storeId}
+            AND sm.auth_subject = ${authSubject}
+            AND sm.role = 'owner'
+          RETURNING
+            id,
+            store_id,
+            name,
+            slug,
+            description,
+            price::text AS price,
+            currency_code,
+            category,
+            stock_label,
+            status,
+            sort_order,
+            image_urls,
+            variants
+        ` as ProductRow[];
+
+        return rows[0]
+          ? { kind: "created" as const, product: mapProduct(rows[0]) }
+          : { kind: "store_not_found" as const };
+      } catch (error) {
+        if (
+          uniqueConflict(error) &&
+          databaseConstraint(error) === "products_store_id_slug_key"
+        ) {
+          return { kind: "slug_taken" as const };
+        }
+        throw error;
+      }
+    },
+
+    async updateOwnedProduct(authSubject, storeId, productId, input: ProductInput) {
+      const json = productJson(input);
+      try {
+        const rows = await sql`
+          UPDATE products p
+          SET
+            name = ${input.name},
+            slug = ${input.slug},
+            description = ${input.description},
+            price = ${input.price},
+            currency_code = ${input.currencyCode},
+            category = ${input.category},
+            stock_label = ${input.stockLabel},
+            status = ${input.status},
+            sort_order = ${input.sortOrder},
+            image_urls = ${json.imageUrls}::jsonb,
+            variants = ${json.variants}::jsonb,
+            updated_at = now()
+          FROM store_members sm
+          WHERE p.id = ${productId}
+            AND p.store_id = ${storeId}
+            AND sm.store_id = p.store_id
+            AND sm.auth_subject = ${authSubject}
+            AND sm.role = 'owner'
+            AND p.status <> 'archived'
+          RETURNING
+            p.id,
+            p.store_id,
+            p.name,
+            p.slug,
+            p.description,
+            p.price::text AS price,
+            p.currency_code,
+            p.category,
+            p.stock_label,
+            p.status,
+            p.sort_order,
+            p.image_urls,
+            p.variants
+        ` as ProductRow[];
+        return rows[0]
+          ? { kind: "updated" as const, product: mapProduct(rows[0]) }
+          : { kind: "not_found" as const };
+      } catch (error) {
+        if (
+          uniqueConflict(error) &&
+          databaseConstraint(error) === "products_store_id_slug_key"
+        ) {
+          return { kind: "slug_taken" as const };
+        }
+        throw error;
+      }
+    },
+
+    async archiveOwnedProduct(authSubject, storeId, productId) {
+      const rows = await sql`
+        UPDATE products p
+        SET status = 'archived', updated_at = now()
+        FROM store_members sm
+        WHERE p.id = ${productId}
+          AND p.store_id = ${storeId}
+          AND sm.store_id = p.store_id
+          AND sm.auth_subject = ${authSubject}
+          AND sm.role = 'owner'
+        RETURNING p.id
+      ` as Array<{ id: string }>;
+      return Boolean(rows[0]);
+    },
+
+    async duplicateOwnedProduct(authSubject, storeId, productId) {
+      const rows = await sql`
+        INSERT INTO products (
+          id,
+          store_id,
+          name,
+          slug,
+          description,
+          price,
+          currency_code,
+          category,
+          stock_label,
+          status,
+          sort_order,
+          image_urls,
+          variants
+        )
+        SELECT
+          gen_random_uuid(),
+          p.store_id,
+          left(p.name || ' copy', 180),
+          left(
+            p.slug || '-copy-' ||
+            left(replace(gen_random_uuid()::text, '-', ''), 6),
+            63
+          ),
+          p.description,
+          p.price,
+          p.currency_code,
+          p.category,
+          p.stock_label,
+          'draft',
+          p.sort_order + 1,
+          p.image_urls,
+          p.variants
+        FROM products p
+        INNER JOIN store_members sm ON sm.store_id = p.store_id
+        WHERE p.id = ${productId}
+          AND p.store_id = ${storeId}
+          AND sm.auth_subject = ${authSubject}
+          AND sm.role = 'owner'
+          AND p.status <> 'archived'
+        RETURNING
+          id,
+          store_id,
+          name,
+          slug,
+          description,
+          price::text AS price,
+          currency_code,
+          category,
+          stock_label,
+          status,
+          sort_order,
+          image_urls,
+          variants
+      ` as ProductRow[];
+      return rows[0] ? mapProduct(rows[0]) : null;
     }
   };
 }

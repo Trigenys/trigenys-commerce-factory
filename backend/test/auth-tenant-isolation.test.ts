@@ -70,6 +70,12 @@ class FakeRepository implements CommerceRepository {
     return { kind: "updated" as const, store: { ...store, ...patch } };
   }
 
+  async listOwnedProducts(_subject: string, _storeId: string) { return []; }
+  async createOwnedProduct() { return { kind: "store_not_found" as const }; }
+  async updateOwnedProduct() { return { kind: "not_found" as const }; }
+  async archiveOwnedProduct() { return false; }
+  async duplicateOwnedProduct() { return null; }
+
   async getPublicStorefront(slug: string): Promise<PublicStorefront | null> {
     const store = stores.find(
       (candidate) => candidate.slug === slug && candidate.status === "published"
@@ -94,7 +100,11 @@ class FakeRepository implements CommerceRepository {
         slug: "demo-product",
         description: null,
         price: "15000.00",
-        currencyCode: "XAF"
+        currencyCode: "XAF",
+        category: "Demo",
+        stockLabel: null,
+        imageUrls: ["https://images.example.com/demo.jpg"],
+        variants: []
       }]
     };
   }

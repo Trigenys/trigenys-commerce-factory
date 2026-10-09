@@ -5,6 +5,8 @@ import { createNeonRepository } from "./repository.ts";
 import type {
   CommerceRepository,
   Identity,
+  ProductInput,
+  ProductVariant,
   StoreCreateInput,
   StorePatch,
   StoreTheme,
@@ -286,6 +288,148 @@ function safePatch(value: unknown): StorePatch | null {
   return patch;
 }
 
+function safeImageUrl(value: unknown): string | null {
+  if (typeof value !== "string" || value.length > 2048) return null;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (
+    url.protocol !== "https:" ||
+    Boolean(url.username) ||
+    Boolean(url.password) ||
+    Boolean(url.hash)
+  ) {
+    return null;
+  }
+  return url.toString();
+}
+
+function safeVariants(value: unknown): ProductVariant[] | null {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 24) return null;
+  const variants: ProductVariant[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+    const row = item as Record<string, unknown>;
+    if (
+      Object.keys(row).some((key) => key !== "name" && key !== "value") ||
+      typeof row.name !== "string" ||
+      typeof row.value !== "string"
+    ) {
+      return null;
+    }
+    const name = row.name.trim();
+    const variantValue = row.value.trim();
+    if (
+      name.length < 1 ||
+      name.length > 60 ||
+      variantValue.length < 1 ||
+      variantValue.length > 80
+    ) {
+      return null;
+    }
+    variants.push({ name, value: variantValue });
+  }
+  return variants;
+}
+
+function safeProductInput(value: unknown): ProductInput | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const input = value as Record<string, unknown>;
+  const allowed = new Set([
+    "name",
+    "slug",
+    "description",
+    "price",
+    "currencyCode",
+    "category",
+    "stockLabel",
+    "status",
+    "sortOrder",
+    "imageUrls",
+    "variants"
+  ]);
+  if (Object.keys(input).some((key) => !allowed.has(key))) return null;
+
+  if (
+    typeof input.name !== "string" ||
+    input.name.trim().length < 1 ||
+    input.name.trim().length > 180
+  ) return null;
+  const name = input.name.trim();
+
+  const rawSlug =
+    typeof input.slug === "string" && input.slug.trim() ? input.slug : name;
+  const slug = normalizeSlug(rawSlug);
+  if (slug.length < 2) return null;
+
+  const rawPrice =
+    typeof input.price === "number" ? String(input.price) : input.price;
+  if (
+    typeof rawPrice !== "string" ||
+    !/^\d{1,12}(?:\.\d{1,2})?$/.test(rawPrice.trim())
+  ) return null;
+  const price = Number(rawPrice).toFixed(2);
+  if (!Number.isFinite(Number(price)) || Number(price) < 0) return null;
+
+  const currencyCode =
+    typeof input.currencyCode === "string"
+      ? input.currencyCode.trim().toUpperCase()
+      : "XAF";
+  if (!/^[A-Z]{3}$/.test(currencyCode)) return null;
+
+  const description = optionalText(input.description, 2000);
+  const category = optionalText(input.category, 80);
+  const stockLabel = optionalText(input.stockLabel, 80);
+  if (
+    description === undefined ||
+    category === undefined ||
+    stockLabel === undefined
+  ) return null;
+
+  const status =
+    input.status === undefined ? "draft" : input.status;
+  if (status !== "draft" && status !== "active") return null;
+
+  const sortOrder =
+    input.sortOrder === undefined ? 0 : input.sortOrder;
+  if (
+    typeof sortOrder !== "number" ||
+    !Number.isInteger(sortOrder) ||
+    sortOrder < 0 ||
+    sortOrder > 1_000_000
+  ) return null;
+
+  const rawImages = input.imageUrls === undefined ? [] : input.imageUrls;
+  if (!Array.isArray(rawImages) || rawImages.length > 8) return null;
+  const imageUrls: string[] = [];
+  for (const item of rawImages) {
+    const url = safeImageUrl(item);
+    if (!url || imageUrls.includes(url)) return null;
+    imageUrls.push(url);
+  }
+
+  const variants = safeVariants(input.variants);
+  if (!variants) return null;
+
+  return {
+    name,
+    slug,
+    description,
+    price,
+    currencyCode,
+    category,
+    stockLabel,
+    status,
+    sortOrder,
+    imageUrls,
+    variants
+  };
+}
+
 export function createApp(dependencies: AppDependencies = {}) {
   const app = new Hono<AppEnv>();
   const verifyIdentity = dependencies.verifyIdentity || verifyNeonIdentity;
@@ -294,7 +438,7 @@ export function createApp(dependencies: AppDependencies = {}) {
 
   app.use("/v1/*", cors({
     origin: (origin, c) => allowedOrigin(origin, c.env) || "",
-    allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
+    allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Authorization", "Content-Type"],
     maxAge: 600
   }));
@@ -417,6 +561,93 @@ export function createApp(dependencies: AppDependencies = {}) {
     }
     return c.json({ store: result.store });
   });
+
+  app.get("/v1/admin/stores/:storeId/products", async (c) => {
+    const repository = repositoryFactory(c.env);
+    const products = await repository.listOwnedProducts(
+      c.get("identity").subject,
+      c.req.param("storeId")
+    );
+    return c.json({ products });
+  });
+
+  app.post("/v1/admin/stores/:storeId/products", async (c) => {
+    let payload: unknown;
+    try {
+      payload = await c.req.json();
+    } catch {
+      return c.json({ error: "INVALID_JSON" }, 400);
+    }
+
+    const input = safeProductInput(payload);
+    if (!input) return c.json({ error: "INVALID_PRODUCT_INPUT" }, 400);
+
+    const repository = repositoryFactory(c.env);
+    const result = await repository.createOwnedProduct(
+      c.get("identity").subject,
+      c.req.param("storeId"),
+      input
+    );
+    if (result.kind === "store_not_found") {
+      return c.json({ error: "STORE_NOT_FOUND" }, 404);
+    }
+    if (result.kind === "slug_taken") {
+      return c.json({ error: "PRODUCT_SLUG_TAKEN" }, 409);
+    }
+    return c.json({ product: result.product }, 201);
+  });
+
+  app.patch("/v1/admin/stores/:storeId/products/:productId", async (c) => {
+    let payload: unknown;
+    try {
+      payload = await c.req.json();
+    } catch {
+      return c.json({ error: "INVALID_JSON" }, 400);
+    }
+
+    const input = safeProductInput(payload);
+    if (!input) return c.json({ error: "INVALID_PRODUCT_INPUT" }, 400);
+
+    const repository = repositoryFactory(c.env);
+    const result = await repository.updateOwnedProduct(
+      c.get("identity").subject,
+      c.req.param("storeId"),
+      c.req.param("productId"),
+      input
+    );
+    if (result.kind === "not_found") {
+      return c.json({ error: "PRODUCT_NOT_FOUND" }, 404);
+    }
+    if (result.kind === "slug_taken") {
+      return c.json({ error: "PRODUCT_SLUG_TAKEN" }, 409);
+    }
+    return c.json({ product: result.product });
+  });
+
+  app.delete("/v1/admin/stores/:storeId/products/:productId", async (c) => {
+    const repository = repositoryFactory(c.env);
+    const archived = await repository.archiveOwnedProduct(
+      c.get("identity").subject,
+      c.req.param("storeId"),
+      c.req.param("productId")
+    );
+    if (!archived) return c.json({ error: "PRODUCT_NOT_FOUND" }, 404);
+    return c.body(null, 204);
+  });
+
+  app.post(
+    "/v1/admin/stores/:storeId/products/:productId/duplicate",
+    async (c) => {
+      const repository = repositoryFactory(c.env);
+      const product = await repository.duplicateOwnedProduct(
+        c.get("identity").subject,
+        c.req.param("storeId"),
+        c.req.param("productId")
+      );
+      if (!product) return c.json({ error: "PRODUCT_NOT_FOUND" }, 404);
+      return c.json({ product }, 201);
+    }
+  );
 
   app.get("/v1/public/stores/:slug", async (c) => {
     const repository = repositoryFactory(c.env);

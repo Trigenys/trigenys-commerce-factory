@@ -67,6 +67,7 @@ async function merchantRequest<T>(
     throw new ApiError(response.status, code);
   }
 
+  if (response.status === 204) return undefined as T;
   return await response.json() as T;
 }
 
@@ -109,4 +110,107 @@ export async function updateStore(
     }
   );
   return body.store;
+}
+
+
+export type ProductVariant = {
+  name: string;
+  value: string;
+};
+
+export type Product = {
+  id: string;
+  storeId: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  price: string;
+  currencyCode: string;
+  category: string | null;
+  stockLabel: string | null;
+  status: "draft" | "active" | "archived";
+  sortOrder: number;
+  imageUrls: string[];
+  variants: ProductVariant[];
+};
+
+export type ProductInput = {
+  name: string;
+  slug: string;
+  description: string | null;
+  price: string;
+  currencyCode: string;
+  category: string | null;
+  stockLabel: string | null;
+  status: "draft" | "active";
+  sortOrder: number;
+  imageUrls: string[];
+  variants: ProductVariant[];
+};
+
+function productPath(storeId: string): string {
+  return "/v1/admin/stores/" + encodeURIComponent(storeId) + "/products";
+}
+
+export async function listProducts(
+  client: CommerceAuthClient,
+  storeId: string
+): Promise<Product[]> {
+  const body = await merchantRequest<{ products: Product[] }>(
+    client,
+    productPath(storeId)
+  );
+  return body.products;
+}
+
+export async function createProduct(
+  client: CommerceAuthClient,
+  storeId: string,
+  input: ProductInput
+): Promise<Product> {
+  const body = await merchantRequest<{ product: Product }>(
+    client,
+    productPath(storeId),
+    { method: "POST", body: JSON.stringify(input) }
+  );
+  return body.product;
+}
+
+export async function updateProduct(
+  client: CommerceAuthClient,
+  storeId: string,
+  productId: string,
+  input: ProductInput
+): Promise<Product> {
+  const body = await merchantRequest<{ product: Product }>(
+    client,
+    productPath(storeId) + "/" + encodeURIComponent(productId),
+    { method: "PATCH", body: JSON.stringify(input) }
+  );
+  return body.product;
+}
+
+export async function archiveProduct(
+  client: CommerceAuthClient,
+  storeId: string,
+  productId: string
+): Promise<void> {
+  await merchantRequest<void>(
+    client,
+    productPath(storeId) + "/" + encodeURIComponent(productId),
+    { method: "DELETE" }
+  );
+}
+
+export async function duplicateProduct(
+  client: CommerceAuthClient,
+  storeId: string,
+  productId: string
+): Promise<Product> {
+  const body = await merchantRequest<{ product: Product }>(
+    client,
+    productPath(storeId) + "/" + encodeURIComponent(productId) + "/duplicate",
+    { method: "POST" }
+  );
+  return body.product;
 }

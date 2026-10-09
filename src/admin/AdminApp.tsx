@@ -9,6 +9,7 @@ import {
   type Store,
   type StoreInput
 } from "./api";
+import ProductCatalog from "./ProductCatalog";
 import "./admin.css";
 
 type Language = "fr" | "en";
@@ -844,14 +845,11 @@ function StoreSettings({
           </div>
         </form>
 
-        <div className="next-card">
-          <span>05</span>
-          <div>
-            <strong>{t.nextProduct}</strong>
-            <p>{t.nextProductBody}</p>
-          </div>
-          <button type="button" disabled>{t.comingNext}</button>
-        </div>
+        <ProductCatalog
+          client={client}
+          store={store}
+          language={language}
+        />
       </section>
 
       <BrandPreview input={input} language={language} />
