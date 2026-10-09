@@ -187,10 +187,20 @@ export interface CommerceRepository {
     storeId: string,
     mediaId: string
   ): Promise<MediaObject | null>;
+  getOwnedMediaObjectByPublicId(
+    authSubject: string,
+    storeId: string,
+    publicId: string
+  ): Promise<MediaObject | null>;
   deleteOwnedMediaObject(
     authSubject: string,
     storeId: string,
     mediaId: string
+  ): Promise<boolean>;
+  deleteOwnedMediaObjectByPublicId(
+    authSubject: string,
+    storeId: string,
+    publicId: string
   ): Promise<boolean>;
   getPublicMediaObject(
     publicId: string
