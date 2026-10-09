@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { CSSProperties, useEffect, useMemo } from "react";
 import "./demo-storefront.css";
 
 type DemoProduct = {
@@ -6,20 +6,30 @@ type DemoProduct = {
   category: string;
   priceLabel: string;
   detail: string;
-  accent: string;
-  mark: string;
+  imageUrl: string;
+  imageFit?: "cover" | "contain";
 };
 
 type DemoMerchant = {
   slug: string;
   name: string;
   initials: string;
+  logoUrl?: string;
   location: string;
+  eyebrow: string;
+  headline: string;
   description: string;
   whatsappNumber: string;
   catalogUrl: string;
   publicSourceLabel: string;
   trustPoints: string[];
+  theme: {
+    ink: string;
+    primary: string;
+    primaryDark: string;
+    soft: string;
+    accent: string;
+  };
   products: DemoProduct[];
 };
 
@@ -29,64 +39,53 @@ const merchants: Record<string, DemoMerchant> = {
     name: "Faya Computer Technologic",
     initials: "FC",
     location: "Yaoundé • Mfoundi Mall · Douala • Bonamoussadi",
+    eyebrow: "PC • Workstations • Apple • Business",
+    headline: "La bonne machine pour votre vrai usage.",
     description:
-      "Ordinateurs portables et stations de travail pour étudiants, ingénieurs, créatifs et entreprises.",
+      "Une sélection plus lisible pour choisir selon le profil, le budget et les performances — puis confirmer directement sur WhatsApp.",
     whatsappNumber: "237699176612",
     catalogUrl: "https://wa.me/c/237699176612",
-    publicSourceLabel: "Catalogue et offres publiques observées en septembre 2026",
+    publicSourceLabel: "Sélection de démonstration construite à partir d’offres et visuels publics Faya Computer.",
     trustPoints: [
       "Machines testées avant vente",
-      "Garantie annoncée selon les modèles",
+      "SAV physique en boutique",
       "Livraison Yaoundé & Douala"
     ],
+    theme: {
+      ink: "#101820",
+      primary: "#0f5b78",
+      primaryDark: "#08384b",
+      soft: "#edf6fa",
+      accent: "#74d4ee"
+    },
     products: [
       {
-        name: "Lenovo ThinkPad P1 Gen 6",
-        category: "Workstation",
-        priceLabel: "699 900 FCFA",
-        detail: "Core i7 13e gen • 32 Go RAM • SSD 512 Go • RTX A1000",
-        accent: "workstation",
-        mark: "P1"
+        name: "MSI Gaming",
+        category: "Gaming",
+        priceLabel: "619 900 FCFA",
+        detail: "Machine gaming présentée dans les visuels publics Faya Computer.",
+        imageUrl: "https://businesslinkafrica.com/wp-content/uploads/2025/09/faya1g.jpg.webp"
       },
       {
-        name: "MacBook Pro 16” — 2019",
-        category: "Apple",
-        priceLabel: "499 900 FCFA",
-        detail: "Core i7 • 16 Go RAM • SSD 512 Go • Touch Bar",
-        accent: "apple",
-        mark: "MB"
-      },
-      {
-        name: "Laptops étudiants",
-        category: "Études",
-        priceLabel: "Dès 89 900 FCFA",
-        detail: "SSD rapide • format mobile • garantie annoncée",
-        accent: "student",
-        mark: "EDU"
-      },
-      {
-        name: "Dell Precision",
-        category: "Ingénierie",
-        priceLabel: "Voir le catalogue",
-        detail: "Pensé pour AutoCAD, SolidWorks, CATIA et Revit",
-        accent: "engineering",
-        mark: "DP"
-      },
-      {
-        name: "HP EliteBook",
+        name: "Lenovo ThinkPad Yoga",
         category: "Business",
-        priceLabel: "Voir le catalogue",
-        detail: "PC professionnel pour cadres et entreprises",
-        accent: "business",
-        mark: "HP"
+        priceLabel: "219 900 FCFA",
+        detail: "ThinkPad convertible présenté dans les visuels publics de la boutique.",
+        imageUrl: "https://businesslinkafrica.com/wp-content/uploads/2025/09/faya1e.jpg.webp"
       },
       {
-        name: "MacBook Pro M1 / M3",
-        category: "Création",
+        name: "Microsoft Surface",
+        category: "Mobilité",
         priceLabel: "Voir le catalogue",
-        detail: "Création, vidéo, design et développement Apple",
-        accent: "creator",
-        mark: "M3"
+        detail: "Format premium et mobile pour travail, études et déplacements.",
+        imageUrl: "https://businesslinkafrica.com/wp-content/uploads/2025/09/faya1d.jpg.webp"
+      },
+      {
+        name: "Sélection Apple",
+        category: "Apple",
+        priceLabel: "Voir le catalogue",
+        detail: "Produits Apple visibles dans la sélection publique Faya Computer.",
+        imageUrl: "https://businesslinkafrica.com/wp-content/uploads/2025/09/faya1c.jpg.webp"
       }
     ]
   },
@@ -94,131 +93,75 @@ const merchants: Record<string, DemoMerchant> = {
     slug: "la-boutique-de-gaby",
     name: "La Boutique de Gaby",
     initials: "GB",
+    logoUrl: "https://ayilaa.s3.eu-west-1.amazonaws.com/attraction/logos/669f8ce0eee6e_1721732320_La%20boutique%20de%20Gaby%20%281%29.jpg",
     location: "Yaoundé • Mfoundi Mall · Douala • Beedi",
+    eyebrow: "Nail art • Make-up • Accessoires",
+    headline: "Tout pour créer, choisir et commander sans chercher dans le fil.",
     description:
-      "Beauté, nail art, maquillage et accessoires réunis dans un catalogue WhatsApp déjà très actif.",
+      "Les produits sont présentés avec photo, prix et catégorie avant de passer sur WhatsApp pour confirmer la commande.",
     whatsappNumber: "237687054262",
     catalogUrl: "https://wa.me/c/237687054262",
-    publicSourceLabel: "Produits cités dans des publications publiques de septembre 2026",
+    publicSourceLabel: "Produits, prix et visuels issus d’une fiche publique de La Boutique de Gaby.",
     trustPoints: [
       "Catalogue WhatsApp actif",
-      "Points de vente à Yaoundé et Douala",
-      "Tutoriels et conseils produits réguliers"
+      "Yaoundé & Douala",
+      "Large choix nail art"
     ],
+    theme: {
+      ink: "#28151f",
+      primary: "#9d0b43",
+      primaryDark: "#65072b",
+      soft: "#fff0f5",
+      accent: "#ff8db5"
+    },
     products: [
       {
-        name: "Airbrush Nail Art",
+        name: "UV / LED SUN X7 220W",
+        category: "Lampes",
+        priceLabel: "10 000 FCFA",
+        detail: "Lampe UV/LED pour manucure et séchage.",
+        imageUrl: "https://ayilaa.s3.eu-west-1.amazonaws.com/attraction/7702/media/669f8d3f6803d_1721732415_La%20boutique%20de%20Gaby%20%287%29.jpg",
+        imageFit: "contain"
+      },
+      {
+        name: "Pinceau résine — taille 20",
+        category: "Outils",
+        priceLabel: "3 500 FCFA",
+        detail: "Pinceau pour construction et travail de la résine.",
+        imageUrl: "https://ayilaa.s3.eu-west-1.amazonaws.com/attraction/7702/media/669f8d4273238_1721732418_La%20boutique%20de%20Gaby%20%289%29.jpg",
+        imageFit: "contain"
+      },
+      {
+        name: "500 chablons dorés",
         category: "Nail art",
-        priceLabel: "Prix sur WhatsApp",
-        detail: "Pour dégradés, motifs précis et créations détaillées",
-        accent: "nails",
-        mark: "AIR"
+        priceLabel: "3 500 FCFA",
+        detail: "Rouleau de chablons pour extensions et construction.",
+        imageUrl: "https://ayilaa.s3.eu-west-1.amazonaws.com/attraction/7702/media/669f8d4690080_1721732422_La%20boutique%20de%20Gaby%20%2810%29.jpg",
+        imageFit: "contain"
       },
       {
-        name: "Blooming Gel",
-        category: "Nail art",
-        priceLabel: "Prix sur WhatsApp",
-        detail: "Pour des effets fluides et artistiques",
-        accent: "bloom",
-        mark: "BLM"
+        name: "Liner gel bleu — 10 ml",
+        category: "Gel",
+        priceLabel: "1 000 FCFA",
+        detail: "Gel liner pour détails et nail art.",
+        imageUrl: "https://ayilaa.s3.eu-west-1.amazonaws.com/attraction/7702/media/669f8d4726229_1721732423_La%20boutique%20de%20Gaby%20%288%29.jpg",
+        imageFit: "contain"
       },
       {
-        name: "Gel 3D",
-        category: "Nail art",
-        priceLabel: "Prix sur WhatsApp",
-        detail: "Décorations en relief et designs créatifs",
-        accent: "gel",
-        mark: "3D"
+        name: "Distributeur d’acétone — 200 ml",
+        category: "Outils",
+        priceLabel: "500 FCFA",
+        detail: "Distributeur compact pour poste de manucure.",
+        imageUrl: "https://ayilaa.s3.eu-west-1.amazonaws.com/attraction/7702/media/669f8d4a91384_1721732426_La%20boutique%20de%20Gaby%20%2811%29.jpg",
+        imageFit: "contain"
       },
       {
-        name: "Poudre néon & vernis fluorescent",
-        category: "Couleurs",
-        priceLabel: "Prix sur WhatsApp",
-        detail: "Teintes audacieuses pour manucures fluorescentes",
-        accent: "neon",
-        mark: "NEO"
-      },
-      {
-        name: "Beauty blenders & éponges",
-        category: "Make-up",
-        priceLabel: "Prix sur WhatsApp",
-        detail: "Accessoires pour application et finition maquillage",
-        accent: "makeup",
-        mark: "BB"
-      },
-      {
-        name: "Hair wax & accessoires baby hair",
-        category: "Cheveux",
-        priceLabel: "Prix sur WhatsApp",
-        detail: "Wax, peigne baby hair, peigne à queue et brillantine",
-        accent: "hair",
-        mark: "HAIR"
-      }
-    ]
-  },
-  "love-shop": {
-    slug: "love-shop",
-    name: "LOVE SHOP",
-    initials: "LS",
-    location: "Yaoundé • Awae Escalier",
-    description:
-      "Vêtements, chaussures et accessoires pour filles et garçons de 0 à 15 ans.",
-    whatsappNumber: "237656595525",
-    catalogUrl: "https://wa.me/c/237656595525",
-    publicSourceLabel: "Sélection issue d'offres et catégories publiques de 2026",
-    trustPoints: [
-      "Catalogue WhatsApp public",
-      "Chaîne WhatsApp et groupe VIP",
-      "Nouveautés annoncées régulièrement"
-    ],
-    products: [
-      {
-        name: "Sacs de classe",
-        category: "Rentrée",
-        priceLabel: "Prix dans le catalogue",
-        detail: "Sélection rentrée scolaire",
-        accent: "school",
-        mark: "BAG"
-      },
-      {
-        name: "Gourdes enfants",
-        category: "Rentrée",
-        priceLabel: "Prix dans le catalogue",
-        detail: "Accessoires pratiques pour l'école",
-        accent: "bottle",
-        mark: "H2O"
-      },
-      {
-        name: "Gamelles & sacs gamelles",
-        category: "Rentrée",
-        priceLabel: "Prix dans le catalogue",
-        detail: "Repas et goûters pour l'école",
-        accent: "lunch",
-        mark: "LUNCH"
-      },
-      {
-        name: "Montre solaire waterproof",
-        category: "Accessoires",
-        priceLabel: "Prix dans le catalogue",
-        detail: "Accessoire enfant annoncé dans la campagne rentrée",
-        accent: "watch",
-        mark: "WATCH"
-      },
-      {
-        name: "Vêtements enfants",
-        category: "Mode",
-        priceLabel: "Voir le catalogue",
-        detail: "Filles et garçons • 0 à 15 ans",
-        accent: "clothes",
-        mark: "KIDS"
-      },
-      {
-        name: "Chaussures enfants",
-        category: "Chaussures",
-        priceLabel: "Voir le catalogue",
-        detail: "Modèles confortables et habillés",
-        accent: "shoes",
-        mark: "SHOE"
+        name: "Lampe UV / LED SUN5 48W",
+        category: "Lampes",
+        priceLabel: "7 000 FCFA",
+        detail: "Lampe UV/LED compacte pour séchage des gels.",
+        imageUrl: "https://ayilaa.s3.eu-west-1.amazonaws.com/attraction/7702/media/669f8d4d6f0f6_1721732429_La%20boutique%20de%20Gaby%20%284%29.jpg",
+        imageFit: "contain"
       }
     ]
   }
@@ -236,6 +179,14 @@ function whatsappHref(merchant: DemoMerchant, product?: DemoProduct): string {
   return `https://wa.me/${merchant.whatsappNumber}?text=${encodeURIComponent(intro)}`;
 }
 
+function MerchantLogo({ merchant }: { merchant: DemoMerchant }) {
+  return merchant.logoUrl ? (
+    <img className="demo-merchant-logo" src={merchant.logoUrl} alt="" referrerPolicy="no-referrer" />
+  ) : (
+    <span className="demo-merchant-monogram">{merchant.initials}</span>
+  );
+}
+
 function DemoProductCard({
   merchant,
   product
@@ -245,23 +196,31 @@ function DemoProductCard({
 }) {
   return (
     <article className="demo-product-card">
-      <div className={`demo-product-art demo-product-art--${product.accent}`}>
-        <span aria-hidden="true">{product.mark}</span>
-        <small>APERÇU PRODUIT</small>
+      <div className="demo-product-media">
+        <img
+          src={product.imageUrl}
+          alt={product.name}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          className={product.imageFit === "contain" ? "is-contain" : ""}
+        />
+        <span>{product.category}</span>
       </div>
       <div className="demo-product-copy">
-        <span className="demo-product-category">{product.category}</span>
         <h3>{product.name}</h3>
         <p>{product.detail}</p>
-        <strong>{product.priceLabel}</strong>
-        <a
-          href={whatsappHref(merchant, product)}
-          target="_blank"
-          rel="noreferrer"
-          className="demo-whatsapp-button"
-        >
-          Commander sur WhatsApp <span aria-hidden="true">↗</span>
-        </a>
+        <div className="demo-product-bottom">
+          <strong>{product.priceLabel}</strong>
+          <a
+            href={whatsappHref(merchant, product)}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Commander ${product.name} sur WhatsApp`}
+          >
+            WhatsApp <span aria-hidden="true">↗</span>
+          </a>
+        </div>
       </div>
     </article>
   );
@@ -295,24 +254,32 @@ export default function DemoStorefrontApp() {
     return (
       <main className="demo-missing">
         <strong>Commerce Factory</strong>
-        <h1>Aperçu indisponible</h1>
-        <p>Cette démonstration privée n’existe pas ou n’est plus active.</p>
+        <h1>Aperçu retiré</h1>
+        <p>
+          Cette démonstration n’est pas prête à être présentée : nous attendons des visuels catalogue vérifiables plutôt que d’inventer des produits.
+        </p>
       </main>
     );
   }
 
+  const featured = merchant.products[0];
+  const themeStyle = {
+    "--demo-ink": merchant.theme.ink,
+    "--demo-primary": merchant.theme.primary,
+    "--demo-primary-dark": merchant.theme.primaryDark,
+    "--demo-soft": merchant.theme.soft,
+    "--demo-accent": merchant.theme.accent
+  } as CSSProperties;
+
   return (
-    <div className="demo-shell">
+    <div className="demo-shell" style={themeStyle}>
       <div className="demo-disclaimer">
-        <strong>Démo privée non officielle.</strong>
-        <span>
-          Aperçu Commerce Factory construit à partir d’informations publiques pour présenter le concept à {merchant.name}.
-        </span>
+        Démonstration privée Commerce Factory — non officielle, créée à partir d’informations publiques.
       </div>
 
       <header className="demo-header">
         <a className="demo-brand" href={"/demo/" + merchant.slug} aria-label={merchant.name}>
-          <span>{merchant.initials}</span>
+          <MerchantLogo merchant={merchant} />
           <div>
             <strong>{merchant.name}</strong>
             <small>{merchant.location}</small>
@@ -320,10 +287,10 @@ export default function DemoStorefrontApp() {
         </a>
         <div className="demo-header-actions">
           <a className="demo-catalog-link" href={merchant.catalogUrl} target="_blank" rel="noreferrer">
-            Catalogue WhatsApp
+            Catalogue actuel
           </a>
           <a className="demo-primary-button" href={whatsappHref(merchant)} target="_blank" rel="noreferrer">
-            Écrire sur WhatsApp
+            WhatsApp
           </a>
         </div>
       </header>
@@ -331,77 +298,74 @@ export default function DemoStorefrontApp() {
       <main>
         <section className="demo-hero">
           <div className="demo-hero-copy">
-            <span className="demo-overline">APERÇU DE BOUTIQUE • COMMERCE FACTORY</span>
-            <h1>{merchant.name}</h1>
+            <span className="demo-overline">{merchant.eyebrow}</span>
+            <h1>{merchant.headline}</h1>
             <p>{merchant.description}</p>
             <div className="demo-hero-actions">
               <a className="demo-primary-button demo-primary-button--large" href="#catalogue">
-                Voir la sélection
+                Voir les produits
               </a>
               <a className="demo-secondary-button" href={merchant.catalogUrl} target="_blank" rel="noreferrer">
-                Ouvrir le catalogue WhatsApp
+                Catalogue WhatsApp ↗
               </a>
             </div>
-            <div className="demo-trust-list" aria-label="Informations publiques">
+            <div className="demo-trust-list">
               {merchant.trustPoints.map((point) => <span key={point}>✓ {point}</span>)}
             </div>
           </div>
 
-          <div className="demo-phone-preview" aria-label="Aperçu mobile">
-            <div className="demo-phone-frame">
-              <div className="demo-phone-notch" />
-              <div className="demo-phone-head">
-                <span>{merchant.initials}</span>
-                <div>
-                  <strong>{merchant.name}</strong>
-                  <small>Catalogue WhatsApp connecté</small>
-                </div>
-              </div>
-              <div className="demo-phone-feature">
-                <span aria-hidden="true">{merchant.products[0]?.mark}</span>
-                <small>{merchant.products[0]?.category}</small>
-                <strong>{merchant.products[0]?.name}</strong>
-                <p>{merchant.products[0]?.priceLabel}</p>
-              </div>
-              <a href={whatsappHref(merchant, merchant.products[0])} target="_blank" rel="noreferrer">
-                Continuer sur WhatsApp
-              </a>
+          <a
+            className="demo-featured"
+            href={whatsappHref(merchant, featured)}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Voir ${featured.name} sur WhatsApp`}
+          >
+            <img
+              src={featured.imageUrl}
+              alt={featured.name}
+              referrerPolicy="no-referrer"
+              className={featured.imageFit === "contain" ? "is-contain" : ""}
+            />
+            <div className="demo-featured-gradient" />
+            <div className="demo-featured-copy">
+              <span>{featured.category}</span>
+              <strong>{featured.name}</strong>
+              <small>{featured.priceLabel}</small>
             </div>
-          </div>
+          </a>
         </section>
 
         <section className="demo-catalogue" id="catalogue">
           <div className="demo-section-heading">
             <div>
-              <span className="demo-overline">SÉLECTION DE DÉMONSTRATION</span>
-              <h2>Un catalogue plus clair avant la conversation WhatsApp.</h2>
+              <span className="demo-overline">Sélection</span>
+              <h2>Choisissez. Vérifiez. Passez sur WhatsApp.</h2>
             </div>
             <div className="demo-category-pills">
               {categories.map((category) => <span key={category}>{category}</span>)}
             </div>
           </div>
 
-          <p className="demo-source-note">
-            {merchant.publicSourceLabel}. Les produits ou prix non confirmés publiquement sont volontairement indiqués comme « prix sur WhatsApp ».
-          </p>
-
           <div className="demo-product-grid">
             {merchant.products.map((product) => (
               <DemoProductCard key={product.name} merchant={merchant} product={product} />
             ))}
           </div>
+
+          <p className="demo-source-note">{merchant.publicSourceLabel}</p>
         </section>
 
         <section className="demo-conversion-band">
           <div>
-            <span className="demo-overline">PARCOURS CLIENT</span>
-            <h2>Le client choisit d’abord. Le chat commence avec du contexte.</h2>
+            <span className="demo-overline">Commerce Factory × WhatsApp</span>
+            <h2>La vitrine fait le tri. WhatsApp conclut la vente.</h2>
             <p>
-              Commerce Factory ne remplace pas WhatsApp : il prépare mieux la conversation avant qu’elle commence.
+              Le client arrive dans la conversation avec le produit déjà identifié, au lieu de recommencer par « bonjour, prix ? ».
             </p>
           </div>
-          <a className="demo-primary-button demo-primary-button--large" href={whatsappHref(merchant)} target="_blank" rel="noreferrer">
-            Tester le parcours WhatsApp
+          <a className="demo-primary-button demo-primary-button--large" href={whatsappHref(merchant, featured)} target="_blank" rel="noreferrer">
+            Tester avec {featured.name}
           </a>
         </section>
       </main>
