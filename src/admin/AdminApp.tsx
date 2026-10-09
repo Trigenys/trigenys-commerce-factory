@@ -10,6 +10,7 @@ import {
   type Store,
   type StoreInput
 } from "./api";
+import AnalyticsPanel from "./AnalyticsPanel";
 import ProductCatalog from "./ProductCatalog";
 import "./admin.css";
 
@@ -903,6 +904,12 @@ function StoreSettings({
         </form>
 
         <ProductCatalog
+          client={client}
+          store={store}
+          language={language}
+        />
+
+        <AnalyticsPanel
           client={client}
           store={store}
           language={language}
