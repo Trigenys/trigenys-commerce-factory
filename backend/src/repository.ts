@@ -974,9 +974,21 @@ export function createNeonRepository(connectionString: string): CommerceReposito
         WHERE m.public_id = ${publicId}::uuid
           AND s.status = 'published'
           AND (
-            (m.kind = 'logo' AND m.product_id IS NULL)
+            (
+              m.kind = 'logo'
+              AND m.product_id IS NULL
+              AND s.logo_url LIKE '%/v1/media/' || m.public_id::text
+            )
             OR
-            (m.kind = 'product' AND p.status = 'active')
+            (
+              m.kind = 'product'
+              AND p.status = 'active'
+              AND EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements_text(p.image_urls) AS image_url
+                WHERE image_url LIKE '%/v1/media/' || m.public_id::text
+              )
+            )
           )
         LIMIT 1
       ` as Array<{
