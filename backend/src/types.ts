@@ -147,6 +147,11 @@ export interface CommerceRepository {
     productSlug: string | null,
     metadata: PublicEventMetadata
   ): Promise<boolean>;
+  getOwnedStoreAnalytics(
+    authSubject: string,
+    storeId: string,
+    days: number
+  ): Promise<StoreAnalytics | null>;
 }
 
 
@@ -197,3 +202,21 @@ export type PublicEventMetadata = Record<
   string,
   string | number | boolean | null
 >;
+
+
+export type ProductAnalytics = {
+  productId: string;
+  name: string;
+  views: number;
+  whatsappClicks: number;
+  clickThroughRate: number;
+};
+
+export type StoreAnalytics = {
+  days: number;
+  storeViews: number;
+  productViews: number;
+  whatsappClicks: number;
+  clickThroughRate: number;
+  topProducts: ProductAnalytics[];
+};
