@@ -12,7 +12,7 @@ Target: 10 qualified prospects → 5+ conversations → 2+ real beta pilots.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | M01 | Faya Computer Technologic | Computers / electronics | Ready in #46 | WhatsApp +237 699 176 612 | Not sent | — | — | — |
 | M02 | La Boutique de Gaby | Beauty / accessories | Ready in #46 | WhatsApp +237 687 054 262 | Not sent | — | — | — |
-| M03 | LOVE SHOP | Children fashion | Ready in #46 | WhatsApp +237 656 595 525 | Not sent | — | — | — |
+| M03 | LOVE SHOP | Children fashion | Paused — authentic product visuals not yet verified | WhatsApp +237 656 595 525 | Do not send | — | — | — |
 
 Do not add personal customer data, merchant credentials or private conversation content. Capture only business-level feedback needed for validation.
 
@@ -28,7 +28,7 @@ Bonjour 👋🏽 Je travaille sur Commerce Factory, un outil pensé pour les com
 
 ### M03 — LOVE SHOP
 
-Bonjour 👋🏽 Je travaille sur Commerce Factory, une solution pour présenter un catalogue de façon plus claire sur le web tout en gardant WhatsApp comme canal de commande. En découvrant LOVE SHOP et votre catalogue WhatsApp, j’ai préparé un petit aperçu privé avec quelques catégories publiques de la boutique. Ce n’est pas un site officiel et il n’est pas référencé. Si vous êtes d’accord, je peux vous envoyer le lien pour avoir votre avis.
+**PAUSED — ne pas contacter avec une démo pour l’instant.** Les produits/catégories sont publics, mais nous n’avons pas encore de visuels produit vérifiables suffisamment propres pour une démonstration commerciale. Qualité > volume : aucun placeholder ou stock visuel ne doit être présenté comme leur catalogue.
 
 ## When the merchant says yes
 
