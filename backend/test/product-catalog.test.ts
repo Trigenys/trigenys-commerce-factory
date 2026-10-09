@@ -144,8 +144,15 @@ class ProductRepository implements CommerceRepository {
     return copy;
   }
 
-  async publishOwnedStore(_subject: string, _storeId: string) {
-    return { kind: "not_found" as const };
+  async publishOwnedStore(subject: string, storeId: string) {
+    if (subject !== "merchant-1" || storeId !== store.id) {
+      return { kind: "not_found" as const };
+    }
+    if (!this.products.some((product) => product.status === "active")) {
+      return { kind: "active_product_required" as const };
+    }
+    store.status = "published";
+    return { kind: "published" as const, store };
   }
 
   async getPublicStorefront(slug: string): Promise<PublicStorefront | null> {
@@ -426,4 +433,57 @@ test("draft and archived products are never exposed publicly", async () => {
   assert.equal(response.status, 200);
   const body = await response.json() as PublicStorefront;
   assert.deepEqual(body.products.map((product) => product.slug), ["active"]);
+});
+
+
+test("store publication requires at least one active product", async () => {
+  const repository = new ProductRepository();
+  store.status = "draft";
+  const app = productApp(repository);
+
+  const blocked = await app.request(
+    "/v1/admin/stores/" + store.id + "/publish",
+    {
+      method: "POST",
+      headers: { Authorization: "Bearer merchant-1" }
+    },
+    env
+  );
+  assert.equal(blocked.status, 409);
+  assert.deepEqual(await blocked.json(), { error: "ACTIVE_PRODUCT_REQUIRED" });
+
+  await repository.createOwnedProduct("merchant-1", store.id, {
+    name: "Ready",
+    slug: "ready",
+    description: "Ready to publish",
+    price: "15000.00",
+    currencyCode: "XAF",
+    category: "Demo",
+    stockLabel: "En stock",
+    status: "active",
+    sortOrder: 10,
+    imageUrls: ["https://images.example.com/ready.jpg"],
+    variants: []
+  });
+
+  const published = await app.request(
+    "/v1/admin/stores/" + store.id + "/publish",
+    {
+      method: "POST",
+      headers: { Authorization: "Bearer merchant-1" }
+    },
+    env
+  );
+  assert.equal(published.status, 200);
+  const body = await published.json() as { store: StoreSummary };
+  assert.equal(body.store.status, "published");
+
+  const publicResponse = await app.request(
+    "/v1/public/stores/" + store.slug,
+    {},
+    env
+  );
+  assert.equal(publicResponse.status, 200);
+  const publicBody = await publicResponse.json() as PublicStorefront;
+  assert.deepEqual(publicBody.products.map((product) => product.slug), ["ready"]);
 });
