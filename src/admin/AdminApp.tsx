@@ -4,13 +4,18 @@ import { getAuthClient, getSessionSnapshot } from "./auth";
 import {
   ApiError,
   createStore,
+  deleteMediaByPublicId,
   listStores,
+  managedMediaPublicId,
   publishStore,
   updateStore,
+  updateStoreLogo,
+  uploadMedia,
   type Store,
   type StoreInput
 } from "./api";
 import AnalyticsPanel from "./AnalyticsPanel";
+import { MediaPreparationError, prepareImageForUpload } from "./media";
 import ProductCatalog from "./ProductCatalog";
 import "./admin.css";
 
@@ -60,11 +65,11 @@ const copy = {
     whatsapp: "Numéro WhatsApp",
     whatsappHint: "Ex. 670 00 00 01 ou +237 670 00 00 01",
     appearanceTitle: "Une identité simple pour commencer",
-    appearanceBody: "Le MVP démarre avec un seul thème solide. Votre logo sera ajouté via le pipeline média de la prochaine brique.",
+    appearanceBody: "Le MVP démarre avec un seul thème solide. Vous pourrez ajouter votre logo dès que la boutique est créée.",
     theme: "Thème",
     cleanTheme: "Clean — mobile-first",
     logoSoon: "Logo",
-    logoSoonBody: "Pour éviter de stocker des images n’importe comment, l’upload arrive avec la brique média #10. En attendant, la boutique utilise vos initiales.",
+    logoSoonBody: "Créez d’abord la boutique, puis ajoutez un logo optimisé depuis les paramètres.",
     reviewTitle: "Vérifiez avant de créer",
     reviewBody: "La boutique sera créée en brouillon. Rien n’est publié sans votre action.",
     previous: "Retour",
@@ -99,7 +104,16 @@ const copy = {
     noDescription: "Votre description apparaîtra ici.",
     noLocation: "Votre localisation apparaîtra ici.",
     fcfaReady: "FCFA prêt",
-    secure: "Données isolées par boutique"
+    secure: "Données isolées par boutique",
+    logoUpload: "Logo de la boutique",
+    logoUploadHint: "JPEG, PNG ou WebP. Optimisé automatiquement avant l’envoi.",
+    chooseLogo: "Choisir un logo",
+    removeLogo: "Retirer le logo",
+    logoUploading: "Optimisation et envoi…",
+    logoSaved: "Logo mis à jour.",
+    mediaUnsupported: "Format non pris en charge. Utilisez JPEG, PNG ou WebP.",
+    mediaTooLarge: "Image trop lourde. Utilisez une image source de moins de 12 Mo.",
+    mediaUploadFailed: "Impossible d’envoyer l’image pour le moment."
   },
   en: {
     back: "Back to site",
@@ -137,11 +151,11 @@ const copy = {
     whatsapp: "WhatsApp number",
     whatsappHint: "E.g. 670 00 00 01 or +237 670 00 00 01",
     appearanceTitle: "A simple identity to start",
-    appearanceBody: "The MVP starts with one strong theme. Logo upload lands with the next media pipeline brick.",
+    appearanceBody: "The MVP starts with one strong theme. You can add your logo as soon as the store is created.",
     theme: "Theme",
     cleanTheme: "Clean — mobile-first",
     logoSoon: "Logo",
-    logoSoonBody: "To avoid unsafe image storage, uploads arrive with media issue #10. Until then, the storefront uses your initials.",
+    logoSoonBody: "Create the store first, then add an optimized logo from store settings.",
     reviewTitle: "Review before creation",
     reviewBody: "The store is created as a draft. Nothing is published without your action.",
     previous: "Back",
@@ -176,7 +190,16 @@ const copy = {
     noDescription: "Your description will appear here.",
     noLocation: "Your location will appear here.",
     fcfaReady: "FCFA-ready",
-    secure: "Store-isolated data"
+    secure: "Store-isolated data",
+    logoUpload: "Store logo",
+    logoUploadHint: "JPEG, PNG or WebP. Automatically optimized before upload.",
+    chooseLogo: "Choose logo",
+    removeLogo: "Remove logo",
+    logoUploading: "Optimizing and uploading…",
+    logoSaved: "Logo updated.",
+    mediaUnsupported: "Unsupported format. Use JPEG, PNG or WebP.",
+    mediaTooLarge: "Image is too large. Use a source image under 12 MB.",
+    mediaUploadFailed: "Unable to upload the image right now."
   }
 } as const;
 
@@ -774,6 +797,7 @@ function StoreSettings({
   const [serverError, setServerError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [publishBusy, setPublishBusy] = useState(false);
+  const [logoBusy, setLogoBusy] = useState(false);
 
   async function publishCurrentStore() {
     setPublishBusy(true);
@@ -794,6 +818,71 @@ function StoreSettings({
       }
     } finally {
       setPublishBusy(false);
+    }
+  }
+
+  async function uploadLogo(file: File | null) {
+    if (!file) return;
+    setLogoBusy(true);
+    setMessage(null);
+    setServerError(null);
+
+    try {
+      const prepared = await prepareImageForUpload(file);
+      const media = await uploadMedia(client, store.id, prepared, "logo");
+      const previousPublicId = store.logoUrl
+        ? managedMediaPublicId(store.logoUrl)
+        : null;
+      const updated = await updateStoreLogo(client, store.id, media.publicUrl);
+      onUpdated(updated);
+      setMessage(t.logoSaved);
+
+      if (previousPublicId && previousPublicId !== media.publicId) {
+        try {
+          await deleteMediaByPublicId(client, store.id, previousPublicId);
+        } catch {
+          // Best-effort cleanup; the documented orphan sweep is the fallback.
+        }
+      }
+    } catch (error) {
+      if (error instanceof MediaPreparationError) {
+        setServerError(
+          error.code === "UNSUPPORTED_MEDIA_TYPE"
+            ? t.mediaUnsupported
+            : error.code.includes("TOO_LARGE")
+              ? t.mediaTooLarge
+              : t.mediaUploadFailed
+        );
+      } else {
+        setServerError(t.mediaUploadFailed);
+      }
+    } finally {
+      setLogoBusy(false);
+    }
+  }
+
+  async function removeLogo() {
+    if (!store.logoUrl) return;
+    setLogoBusy(true);
+    setMessage(null);
+    setServerError(null);
+    const publicId = managedMediaPublicId(store.logoUrl);
+
+    try {
+      const updated = await updateStoreLogo(client, store.id, null);
+      onUpdated(updated);
+      if (publicId) {
+        try {
+          await deleteMediaByPublicId(client, store.id, publicId);
+        } catch {
+          // Best-effort cleanup; the documented orphan sweep is the fallback.
+        }
+      }
+      setMessage(t.logoSaved);
+    } catch {
+      setServerError(t.mediaUploadFailed);
+    } finally {
+      setLogoBusy(false);
     }
   }
 
@@ -887,6 +976,44 @@ function StoreSettings({
                 <option value="clean">{t.cleanTheme}</option>
               </select>
             </label>
+
+            <div className="span-2 store-logo-field">
+              <span>{t.logoUpload}</span>
+              <div className="store-logo-row">
+                <div className="store-logo-preview">
+                  {store.logoUrl ? (
+                    <img src={store.logoUrl} alt="" />
+                  ) : (
+                    <span>{initials(store.name).toUpperCase()}</span>
+                  )}
+                </div>
+                <div className="store-logo-actions">
+                  <label className="admin-secondary store-logo-upload">
+                    <span>{logoBusy ? t.logoUploading : t.chooseLogo}</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      disabled={logoBusy}
+                      onChange={(event) => {
+                        void uploadLogo(event.currentTarget.files?.[0] || null);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                  {store.logoUrl ? (
+                    <button
+                      type="button"
+                      className="admin-secondary"
+                      onClick={() => void removeLogo()}
+                      disabled={logoBusy}
+                    >
+                      {t.removeLogo}
+                    </button>
+                  ) : null}
+                  <small>{t.logoUploadHint}</small>
+                </div>
+              </div>
+            </div>
           </div>
 
           {serverError ? <p className="form-message error">{serverError}</p> : null}
