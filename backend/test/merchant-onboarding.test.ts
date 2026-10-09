@@ -71,6 +71,8 @@ class OnboardingRepository implements CommerceRepository {
 
   async recordPublicEvent() { return false; }
 
+  async getOwnedStoreAnalytics() { return null; }
+
   async getPublicStorefront(_slug: string): Promise<PublicStorefront | null> {
     return null;
   }
