@@ -3,15 +3,19 @@ import type { CommerceAuthClient } from "./auth";
 import {
   ApiError,
   archiveProduct,
+  deleteMediaByPublicId,
   createProduct,
   duplicateProduct,
   listProducts,
+  managedMediaPublicId,
   updateProduct,
+  uploadMedia,
   type Product,
   type ProductInput,
   type ProductVariant,
   type Store
 } from "./api";
+import { MediaPreparationError, prepareImageForUpload } from "./media";
 import "./catalog.css";
 
 type Language = "fr" | "en";
@@ -37,7 +41,14 @@ const copy = {
     active: "Actif",
     archived: "Archivé",
     images: "Images",
-    imagesHint: "URLs HTTPS, une par ligne. Maximum 8.",
+    imagesHint: "JPEG, PNG ou WebP. Nous optimisons automatiquement en WebP, max 8 images.",
+    uploadImages: "Ajouter des images",
+    uploading: "Optimisation et envoi…",
+    removeImage: "Retirer",
+    createdAddImages: "Produit créé. Vous pouvez maintenant ajouter ses images.",
+    mediaUnsupported: "Format non pris en charge. Utilisez JPEG, PNG ou WebP.",
+    mediaTooLarge: "Image trop lourde. Utilisez une image source de moins de 12 Mo.",
+    mediaUploadFailed: "Impossible d’envoyer l’image pour le moment.",
     variants: "Variantes",
     variantsHint: "Une par ligne au format Nom: Valeur. Ex. Couleur: Noir",
     save: "Enregistrer",
@@ -78,7 +89,14 @@ const copy = {
     active: "Active",
     archived: "Archived",
     images: "Images",
-    imagesHint: "HTTPS URLs, one per line. Maximum 8.",
+    imagesHint: "JPEG, PNG or WebP. We optimize automatically to WebP, maximum 8 images.",
+    uploadImages: "Add images",
+    uploading: "Optimizing and uploading…",
+    removeImage: "Remove",
+    createdAddImages: "Product created. You can now add its images.",
+    mediaUnsupported: "Unsupported format. Use JPEG, PNG or WebP.",
+    mediaTooLarge: "Image is too large. Use a source image under 12 MB.",
+    mediaUploadFailed: "Unable to upload the image right now.",
     variants: "Variants",
     variantsHint: "One per line as Name: Value. Example Color: Black",
     save: "Save",
@@ -286,6 +304,8 @@ export default function ProductCatalog({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mediaBusy, setMediaBusy] = useState(false);
+  const [pendingDeleteUrls, setPendingDeleteUrls] = useState<string[]>([]);
 
   const ordered = useMemo(
     () => [...products].sort((a, b) => {
@@ -325,6 +345,7 @@ export default function ProductCatalog({
     setSlugTouched(false);
     setError(null);
     setMessage(null);
+    setPendingDeleteUrls([]);
   }
 
   function startEdit(product: Product) {
@@ -333,6 +354,65 @@ export default function ProductCatalog({
     setSlugTouched(true);
     setError(null);
     setMessage(null);
+    setPendingDeleteUrls([]);
+  }
+
+  async function uploadImages(files: FileList | null) {
+    if (!editor?.id || !files?.length) return;
+    const current = editor.imageText
+      .split(/\r?\n/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (current.length + files.length > 8) {
+      setError(t.invalid);
+      return;
+    }
+
+    setMediaBusy(true);
+    setError(null);
+    try {
+      const next = [...current];
+      for (const file of Array.from(files)) {
+        const prepared = await prepareImageForUpload(file);
+        const media = await uploadMedia(
+          client,
+          store.id,
+          prepared,
+          "product",
+          editor.id
+        );
+        next.push(media.publicUrl);
+      }
+      setEditor({ ...editor, imageText: next.join("\n") });
+    } catch (cause) {
+      if (cause instanceof MediaPreparationError) {
+        setError(
+          cause.code === "UNSUPPORTED_MEDIA_TYPE"
+            ? t.mediaUnsupported
+            : cause.code.includes("TOO_LARGE")
+              ? t.mediaTooLarge
+              : t.mediaUploadFailed
+        );
+      } else {
+        setError(t.mediaUploadFailed);
+      }
+    } finally {
+      setMediaBusy(false);
+    }
+  }
+
+  function removeImage(url: string) {
+    if (!editor) return;
+    const next = editor.imageText
+      .split(/\r?\n/)
+      .map((value) => value.trim())
+      .filter((value) => value && value !== url);
+    setEditor({ ...editor, imageText: next.join("\n") });
+    if (managedMediaPublicId(url)) {
+      setPendingDeleteUrls((current) =>
+        current.includes(url) ? current : [...current, url]
+      );
+    }
   }
 
   async function save(event: FormEvent) {
@@ -350,12 +430,27 @@ export default function ProductCatalog({
     try {
       if (editor.id) {
         await updateProduct(client, store.id, editor.id, input);
+        for (const url of pendingDeleteUrls) {
+          const publicId = managedMediaPublicId(url);
+          if (!publicId) continue;
+          try {
+            await deleteMediaByPublicId(client, store.id, publicId);
+          } catch {
+            // The orphan cleanup path handles storage records left behind.
+          }
+        }
+        await reload();
+        setEditor(null);
+        setPendingDeleteUrls([]);
+        setMessage(t.saved);
       } else {
-        await createProduct(client, store.id, input);
+        const created = await createProduct(client, store.id, input);
+        await reload();
+        setEditor(editorFromProduct(created));
+        setSlugTouched(true);
+        setPendingDeleteUrls([]);
+        setMessage(t.createdAddImages);
       }
-      await reload();
-      setEditor(null);
-      setMessage(t.saved);
     } catch (cause) {
       if (cause instanceof ApiError && cause.code === "PRODUCT_SLUG_TAKEN") {
         setError(t.slugTaken);
@@ -555,18 +650,41 @@ export default function ProductCatalog({
               />
             </label>
 
-            <label className="span-2">
+            <div className="span-2 catalog-media-field">
               <span>{t.images}</span>
-              <textarea
-                rows={3}
-                value={editor.imageText}
-                onChange={(event) =>
-                  setEditor({ ...editor, imageText: event.target.value })
-                }
-                placeholder="https://…/product.jpg"
-              />
+              <div className="catalog-media-grid">
+                {editor.imageText
+                  .split(/\r?\n/)
+                  .map((url) => url.trim())
+                  .filter(Boolean)
+                  .map((url) => (
+                    <div className="catalog-media-item" key={url}>
+                      <img src={url} alt="" loading="lazy" />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(url)}
+                        disabled={busy || mediaBusy}
+                      >
+                        {t.removeImage}
+                      </button>
+                    </div>
+                  ))}
+              </div>
+              <label className="catalog-upload-control">
+                <span>{mediaBusy ? t.uploading : t.uploadImages}</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  disabled={!editor.id || busy || mediaBusy}
+                  onChange={(event) => {
+                    void uploadImages(event.currentTarget.files);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
               <small>{t.imagesHint}</small>
-            </label>
+            </div>
 
             <label className="span-2">
               <span>{t.variants}</span>
@@ -586,12 +704,15 @@ export default function ProductCatalog({
             <button
               type="button"
               className="admin-secondary"
-              onClick={() => setEditor(null)}
-              disabled={busy}
+              onClick={() => {
+                setEditor(null);
+                setPendingDeleteUrls([]);
+              }}
+              disabled={busy || mediaBusy}
             >
               {t.cancel}
             </button>
-            <button className="admin-primary" type="submit" disabled={busy}>
+            <button className="admin-primary" type="submit" disabled={busy || mediaBusy}>
               {editor.id ? t.save : t.create}
             </button>
           </div>
