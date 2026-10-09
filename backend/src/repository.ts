@@ -947,11 +947,49 @@ export function createNeonRepository(connectionString: string): CommerceReposito
       return rows[0] ? mapMedia(rows[0]) : null;
     },
 
+    async getOwnedMediaObjectByPublicId(authSubject, storeId, publicId) {
+      const rows = await sql`
+        SELECT
+          m.id,
+          m.public_id,
+          m.store_id,
+          m.product_id,
+          m.kind,
+          m.object_key,
+          m.content_type,
+          m.byte_size
+        FROM media_objects m
+        INNER JOIN store_members sm ON sm.store_id = m.store_id
+        WHERE m.public_id = ${publicId}::uuid
+          AND m.store_id = ${storeId}
+          AND sm.auth_subject = ${authSubject}
+          AND sm.role = 'owner'
+        LIMIT 1
+      ` as MediaRow[];
+
+      return rows[0] ? mapMedia(rows[0]) : null;
+    },
+
     async deleteOwnedMediaObject(authSubject, storeId, mediaId) {
       const rows = await sql`
         DELETE FROM media_objects m
         USING store_members sm
         WHERE m.id = ${mediaId}
+          AND m.store_id = ${storeId}
+          AND sm.store_id = m.store_id
+          AND sm.auth_subject = ${authSubject}
+          AND sm.role = 'owner'
+        RETURNING m.id
+      ` as Array<{ id: string }>;
+
+      return Boolean(rows[0]);
+    },
+
+    async deleteOwnedMediaObjectByPublicId(authSubject, storeId, publicId) {
+      const rows = await sql`
+        DELETE FROM media_objects m
+        USING store_members sm
+        WHERE m.public_id = ${publicId}::uuid
           AND m.store_id = ${storeId}
           AND sm.store_id = m.store_id
           AND sm.auth_subject = ${authSubject}
