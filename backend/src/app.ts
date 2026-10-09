@@ -449,10 +449,11 @@ function publicWebOrigin(env: WorkerBindings): string | null {
   if (!configured) return null;
   try {
     const url = new URL(configured);
+    const localHttp =
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1");
     if (
-      (url.protocol !== "https:" &&
-        url.hostname !== "localhost" &&
-        url.hostname !== "127.0.0.1") ||
+      (url.protocol !== "https:" && !localHttp) ||
       url.username ||
       url.password ||
       url.hash
@@ -807,7 +808,18 @@ export function createApp(dependencies: AppDependencies = {}) {
       const allowedVariants = new Set(
         product.variants.map((item) => item.name + "\u0000" + item.value)
       );
+      const requiredVariantNames = new Set(
+        product.variants.map((item) => item.name)
+      );
+      const selectedVariantNames = new Set(
+        variants.map((item) => item.name)
+      );
       if (
+        selectedVariantNames.size !== variants.length ||
+        selectedVariantNames.size !== requiredVariantNames.size ||
+        [...requiredVariantNames].some(
+          (name) => !selectedVariantNames.has(name)
+        ) ||
         variants.some(
           (item) => !allowedVariants.has(item.name + "\u0000" + item.value)
         )
