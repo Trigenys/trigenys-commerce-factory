@@ -4,6 +4,7 @@ import { createApp } from "../src/app.ts";
 import type {
   CommerceRepository,
   PublicStorefront,
+  StoreCreateInput,
   StorePatch,
   StoreSummary
 } from "../src/types.ts";
@@ -16,7 +17,12 @@ const stores: StoreSummary[] = [
     status: "published",
     whatsappNumber: "+237670000001",
     countryCode: "CM",
-    currencyCode: "XAF"
+    currencyCode: "XAF",
+    description: "Alice description",
+    businessLocation: "Douala",
+    contactEmail: "alice@example.com",
+    theme: "clean",
+    logoUrl: null
   },
   {
     id: "22222222-2222-4222-8222-222222222222",
@@ -25,7 +31,12 @@ const stores: StoreSummary[] = [
     status: "draft",
     whatsappNumber: "+237670000002",
     countryCode: "CM",
-    currencyCode: "XAF"
+    currencyCode: "XAF",
+    description: null,
+    businessLocation: "Yaoundé",
+    contactEmail: null,
+    theme: "clean",
+    logoUrl: null
   }
 ];
 
@@ -42,6 +53,10 @@ class FakeRepository implements CommerceRepository {
     return stores.filter((store) => store.id === storeId);
   }
 
+  async createOwnedStore(_subject: string, _input: StoreCreateInput) {
+    return { kind: "owner_exists" as const };
+  }
+
   async getOwnedStore(subject: string, storeId: string) {
     return stores.find(
       (store) => store.id === storeId && membership.get(subject) === storeId
@@ -50,9 +65,9 @@ class FakeRepository implements CommerceRepository {
 
   async updateOwnedStore(subject: string, storeId: string, patch: StorePatch) {
     const store = await this.getOwnedStore(subject, storeId);
-    if (!store) return null;
+    if (!store) return { kind: "not_found" as const };
     this.updates.push({ subject, storeId, patch });
-    return { ...store, ...patch };
+    return { kind: "updated" as const, store: { ...store, ...patch } };
   }
 
   async getPublicStorefront(slug: string): Promise<PublicStorefront | null> {
@@ -67,7 +82,11 @@ class FakeRepository implements CommerceRepository {
         slug: store.slug,
         whatsappNumber: store.whatsappNumber,
         countryCode: store.countryCode,
-        currencyCode: store.currencyCode
+        currencyCode: store.currencyCode,
+        description: store.description,
+        businessLocation: store.businessLocation,
+        theme: store.theme,
+        logoUrl: store.logoUrl
       },
       products: [{
         id: "33333333-3333-4333-8333-333333333333",

@@ -452,7 +452,7 @@ export default function App() {
               EN
             </button>
           </div>
-          <a className="button button-primary button-compact" href="#launch">
+          <a className="button button-primary button-compact" href="/app">
             {t.createStore}
           </a>
         </div>
@@ -471,7 +471,7 @@ export default function App() {
             </h1>
             <p className="hero-lede">{t.heroLead}</p>
             <div className="hero-actions">
-              <a className="button button-primary" href="#launch">{t.createStore} <span>→</span></a>
+              <a className="button button-primary" href="/app">{t.createStore} <span>→</span></a>
               <a className="button button-soft" href="#showcase">{t.demoStore}</a>
             </div>
             <div className="trust-row" aria-label={t.principlesLabel}>
@@ -681,7 +681,7 @@ export default function App() {
                 <ul>
                   {plan.features.map((feature) => <li key={feature}>✓ {feature}</li>)}
                 </ul>
-                <a href={plan.tier === "starter" ? "#launch" : "#social"} className={plan.featured ? "button button-primary" : "button button-soft"}>
+                <a href={plan.tier === "starter" ? "/app" : "#social"} className={plan.featured ? "button button-primary" : "button button-soft"}>
                   {plan.cta}
                 </a>
               </article>
@@ -695,7 +695,7 @@ export default function App() {
             <span className="overline inverse">{t.launchOverline}</span>
             <h2>{t.launchTitle}</h2>
             <p>{t.launchBody}</p>
-            <a className="button button-primary launch-button" href="#how">{t.launchCta}</a>
+            <a className="button button-primary launch-button" href="/app">{t.launchCta}</a>
             <small>{t.launchNote}</small>
           </div>
         </section>
