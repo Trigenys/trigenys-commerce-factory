@@ -4,5 +4,8 @@
   "pagesProject": "trigenys-commerce-factory",
   "runtimeSecrets": {
     "TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN": "__WEB_URL__"
+  },
+  "r2": {
+    "recipe": "private-media"
   }
 }
