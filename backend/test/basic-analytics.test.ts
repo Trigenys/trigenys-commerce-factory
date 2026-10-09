@@ -69,6 +69,13 @@ class AnalyticsRepository implements CommerceRepository {
   async archiveOwnedProduct() { return false; }
   async duplicateOwnedProduct() { return null; }
 
+  async createOwnedMediaObject() { return null; }
+  async getOwnedMediaObject() { return null; }
+  async getOwnedMediaObjectByPublicId() { return null; }
+  async deleteOwnedMediaObject() { return false; }
+  async deleteOwnedMediaObjectByPublicId() { return false; }
+  async getPublicMediaObject() { return null; }
+
   async getPublicStorefront(slug: string) {
     return slug === storeSlug ? publicStorefront : null;
   }
