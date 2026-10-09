@@ -1,6 +1,6 @@
 # RAIDER — Commerce Factory MVP
 
-Last reviewed: 2026-10-08
+Last reviewed: 2026-10-09
 
 RAIDER means **Risks, Assumptions, Issues, Dependencies, Evidence, Results**.
 
@@ -37,6 +37,7 @@ RAIDER means **Risks, Assumptions, Issues, Dependencies, Evidence, Results**.
 - AppFactory Project Automation.
 - Neon PostgreSQL for relational data and branch-scoped Managed Better Auth for merchant identity.
 - Cloudflare Pages + Worker/Hono for web delivery and the trusted API boundary.
+- Private Cloudflare R2 media bucket, provisioned through AppFactory and bound only to the Worker.
 - WhatsApp deep-link behavior.
 - Meta platform APIs only for later integrations.
 
@@ -49,6 +50,8 @@ RAIDER means **Risks, Assumptions, Issues, Dependencies, Evidence, Results**.
 - Tenant-owned API queries bind the verified auth subject to `store_members` server-side; client-supplied store IDs never grant access.
 - Cross-tenant read/write negative tests and the public-storefront response-surface test are committed under `backend/test/`.
 - Database and Auth runtime values are provisioned through AppFactory into the Worker; the browser never receives the PostgreSQL credential.
+- Product/store images are resized in-browser, stored canonically as WebP, capped at 2 MiB, and delivered through opaque Worker media URLs rather than a public R2 domain.
+- Media metadata is tenant-owned in Neon and cross-tenant upload/delete tests are part of the backend test suite.
 
 ## Results to measure
 
