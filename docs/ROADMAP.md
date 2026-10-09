@@ -27,7 +27,10 @@ A merchant should be able to complete the full value loop at the end of this pha
 
 - #8 Merchant analytics.
 - #13 Deployment/environments.
-- external merchant usability test.
+- #42 Marketing landing conversion refresh.
+- #43 Three personalized merchant demo storefronts.
+- #44 Personalized outbound validation and two beta pilots.
+- #2 Close merchant validation only after real evidence is captured.
 
 ## Phase 4 — integrations after core validation
 
