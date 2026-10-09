@@ -65,6 +65,10 @@ class OnboardingRepository implements CommerceRepository {
   async archiveOwnedProduct() { return false; }
   async duplicateOwnedProduct() { return null; }
 
+  async publishOwnedStore(_subject: string, _storeId: string) {
+    return { kind: "not_found" as const };
+  }
+
   async getPublicStorefront(_slug: string): Promise<PublicStorefront | null> {
     return null;
   }
