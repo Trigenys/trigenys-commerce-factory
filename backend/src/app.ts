@@ -562,6 +562,21 @@ export function createApp(dependencies: AppDependencies = {}) {
     return c.json({ store: result.store });
   });
 
+  app.post("/v1/admin/stores/:storeId/publish", async (c) => {
+    const repository = repositoryFactory(c.env);
+    const result = await repository.publishOwnedStore(
+      c.get("identity").subject,
+      c.req.param("storeId")
+    );
+    if (result.kind === "not_found") {
+      return c.json({ error: "STORE_NOT_FOUND" }, 404);
+    }
+    if (result.kind === "active_product_required") {
+      return c.json({ error: "ACTIVE_PRODUCT_REQUIRED" }, 409);
+    }
+    return c.json({ store: result.store });
+  });
+
   app.get("/v1/admin/stores/:storeId/products", async (c) => {
     const repository = repositoryFactory(c.env);
     const products = await repository.listOwnedProducts(
