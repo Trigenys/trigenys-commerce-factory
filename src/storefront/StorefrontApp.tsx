@@ -51,7 +51,9 @@ const copy = {
     stock: "Disponibilité",
     share: "Partager",
     powered: "Propulsé par Commerce Factory",
-    browse: "Découvrir les produits"
+    browse: "Découvrir les produits",
+    handoffError: "Impossible d’ouvrir WhatsApp pour le moment. Réessayez.",
+    openingWhatsApp: "Ouverture de WhatsApp…"
   },
   en: {
     back: "Back to store",
@@ -66,7 +68,9 @@ const copy = {
     stock: "Availability",
     share: "Share",
     powered: "Powered by Commerce Factory",
-    browse: "Browse products"
+    browse: "Browse products",
+    handoffError: "Unable to open WhatsApp right now. Try again.",
+    openingWhatsApp: "Opening WhatsApp…"
   }
 } as const;
 
@@ -160,19 +164,6 @@ function applyMetadata(
   setCanonical(pageUrl);
 }
 
-function whatsappHref(
-  storefront: PublicStorefront,
-  product: PublicProduct,
-  language: Language
-): string {
-  const phone = storefront.store.whatsappNumber.replace(/\D/g, "");
-  const price = formatMoney(product.price, product.currencyCode, language);
-  const message = language === "fr"
-    ? `Bonjour, je suis intéressé(e) par ${product.name} — ${price}. ${window.location.href}`
-    : `Hello, I'm interested in ${product.name} — ${price}. ${window.location.href}`;
-  return "https://wa.me/" + phone + "?text=" + encodeURIComponent(message);
-}
-
 function StoreHeader({ storefront }: { storefront: PublicStorefront }) {
   const initials = storefront.store.name
     .split(/\s+/)
@@ -245,6 +236,71 @@ function ProductDetail({
 }) {
   const t = copy[language];
   const [selectedImage, setSelectedImage] = useState(product.imageUrls[0] || "");
+  const variantGroups = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    for (const variant of product.variants) {
+      const values = groups.get(variant.name) || [];
+      if (!values.includes(variant.value)) values.push(variant.value);
+      groups.set(variant.name, values);
+    }
+    return [...groups.entries()].map(([name, values]) => ({ name, values }));
+  }, [product.variants]);
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>(
+    () => Object.fromEntries(
+      variantGroups.map((group) => [group.name, group.values[0] || ""])
+    )
+  );
+  const [handoffBusy, setHandoffBusy] = useState(false);
+  const [handoffError, setHandoffError] = useState<string | null>(null);
+
+  async function openWhatsApp() {
+    if (handoffBusy) return;
+    setHandoffBusy(true);
+    setHandoffError(null);
+
+    const variants = variantGroups.map((group) => ({
+      name: group.name,
+      value: selectedVariants[group.name] || group.values[0] || ""
+    }));
+
+    try {
+      const response = await fetch(
+        apiBaseUrl +
+          "/v1/public/stores/" + encodeURIComponent(storefront.store.slug) +
+          "/products/" + encodeURIComponent(product.slug) +
+          "/whatsapp",
+        {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            eventId: crypto.randomUUID(),
+            language,
+            variants
+          }),
+          keepalive: true
+        }
+      );
+      if (!response.ok) throw new Error("handoff failed");
+      const body = await response.json() as {
+        href?: unknown;
+        eventName?: unknown;
+      };
+      if (
+        typeof body.href !== "string" ||
+        !body.href.startsWith("https://wa.me/") ||
+        body.eventName !== "whatsapp_order_click"
+      ) {
+        throw new Error("invalid handoff");
+      }
+      window.location.assign(body.href);
+    } catch {
+      setHandoffError(t.handoffError);
+      setHandoffBusy(false);
+    }
+  }
 
   return (
     <main className="product-detail-page">
@@ -289,27 +345,48 @@ function ProductDetail({
           ) : null}
           {product.description ? <p className="product-description">{product.description}</p> : null}
 
-          {product.variants.length ? (
+          {variantGroups.length ? (
             <div className="product-variants">
               <strong>{t.variants}</strong>
-              <div>
-                {product.variants.map((variant, index) => (
-                  <span key={variant.name + variant.value + index}>
-                    {variant.name}: {variant.value}
-                  </span>
-                ))}
-              </div>
+              {variantGroups.map((group) => (
+                <div className="product-variant-group" key={group.name}>
+                  <small>{group.name}</small>
+                  <div>
+                    {group.values.map((value) => (
+                      <button
+                        type="button"
+                        key={value}
+                        className={
+                          selectedVariants[group.name] === value ? "active" : ""
+                        }
+                        onClick={() =>
+                          setSelectedVariants({
+                            ...selectedVariants,
+                            [group.name]: value
+                          })
+                        }
+                      >
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : null}
 
-          <a
+          {handoffError ? (
+            <p className="public-handoff-error" role="alert">{handoffError}</p>
+          ) : null}
+
+          <button
+            type="button"
             className="public-wa-button"
-            href={whatsappHref(storefront, product, language)}
-            target="_blank"
-            rel="noreferrer"
+            onClick={openWhatsApp}
+            disabled={handoffBusy}
           >
-            WA · {t.buy}
-          </a>
+            WA · {handoffBusy ? t.openingWhatsApp : t.buy}
+          </button>
 
           <button
             type="button"

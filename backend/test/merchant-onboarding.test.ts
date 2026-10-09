@@ -69,6 +69,8 @@ class OnboardingRepository implements CommerceRepository {
     return { kind: "not_found" as const };
   }
 
+  async recordPublicEvent() { return false; }
+
   async getPublicStorefront(_slug: string): Promise<PublicStorefront | null> {
     return null;
   }

@@ -140,6 +140,13 @@ export interface CommerceRepository {
     storeId: string,
     productId: string
   ): Promise<ProductSummary | null>;
+  recordPublicEvent(
+    eventId: string,
+    eventName: PublicEventName,
+    storeSlug: string,
+    productSlug: string | null,
+    metadata: PublicEventMetadata
+  ): Promise<boolean>;
 }
 
 
@@ -179,3 +186,14 @@ export type ProductUpdateResult =
   | { kind: "updated"; product: ProductSummary }
   | { kind: "not_found" }
   | { kind: "slug_taken" };
+
+
+export type PublicEventName =
+  | "store_view"
+  | "product_view"
+  | "whatsapp_order_click";
+
+export type PublicEventMetadata = Record<
+  string,
+  string | number | boolean | null
+>;

@@ -80,6 +80,8 @@ class FakeRepository implements CommerceRepository {
     return { kind: "not_found" as const };
   }
 
+  async recordPublicEvent() { return false; }
+
   async getPublicStorefront(slug: string): Promise<PublicStorefront | null> {
     const store = stores.find(
       (candidate) => candidate.slug === slug && candidate.status === "published"
