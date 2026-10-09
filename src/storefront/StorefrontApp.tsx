@@ -74,6 +74,41 @@ const copy = {
   }
 } as const;
 
+const capturedPageEvents = new Set<string>();
+
+function capturePageEvent(
+  eventName: "store_view" | "product_view",
+  storeSlug: string,
+  productSlug: string | null
+) {
+  if (!apiBaseUrl) return;
+  const key = [eventName, storeSlug, productSlug || ""].join(":");
+  if (capturedPageEvents.has(key)) return;
+
+  try {
+    if (window.sessionStorage.getItem("cf:event:" + key)) return;
+    window.sessionStorage.setItem("cf:event:" + key, "1");
+  } catch {
+    // Session storage can be unavailable in strict privacy contexts.
+  }
+  capturedPageEvents.add(key);
+
+  void fetch(apiBaseUrl + "/v1/public/events", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      eventId: crypto.randomUUID(),
+      eventName,
+      storeSlug,
+      productSlug
+    }),
+    keepalive: true
+  }).catch(() => undefined);
+}
+
 function currentLanguage(): Language {
   return navigator.language.toLowerCase().startsWith("fr") ? "fr" : "en";
 }
@@ -481,6 +516,12 @@ export default function StorefrontApp() {
       return;
     }
     applyMetadata(storefront, product);
+
+    if (route?.productSlug && product) {
+      capturePageEvent("product_view", storefront.store.slug, product.slug);
+    } else if (!route?.productSlug) {
+      capturePageEvent("store_view", storefront.store.slug, null);
+    }
   }, [storefront, product, route?.productSlug, language]);
 
   if (loading) {
