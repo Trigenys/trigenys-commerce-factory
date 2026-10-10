@@ -694,6 +694,7 @@ export default function App() {
                         className="merchant-showcase-image"
                         pictureClassName="merchant-showcase-picture"
                         sizes="(max-width: 760px) 92vw, 31vw"
+                        loading="eager"
                       />
                       <span className="merchant-showcase-category">{item.title}</span>
                     </div>
