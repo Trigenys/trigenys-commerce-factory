@@ -1,3 +1,4 @@
+import { parseThemeSettings } from "../../shared/store-themes.ts";
 import { neon } from "@neondatabase/serverless";
 import type {
   CommerceRepository,
@@ -30,6 +31,7 @@ type StoreRow = {
   business_location: string | null;
   contact_email: string | null;
   theme: StoreTheme;
+  theme_settings: unknown;
   logo_url: string | null;
 };
 
@@ -87,6 +89,7 @@ function mapStore(row: StoreRow): StoreSummary {
     businessLocation: row.business_location,
     contactEmail: row.contact_email,
     theme: row.theme,
+    themeSettings: parseThemeSettings(row.theme_settings) ?? {},
     logoUrl: row.logo_url
   };
 }
@@ -162,6 +165,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           s.business_location,
           s.contact_email,
           s.theme,
+          s.theme_settings,
           s.logo_url
         FROM stores s
         INNER JOIN store_members sm ON sm.store_id = s.id
@@ -197,6 +201,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
               business_location,
               contact_email,
               theme,
+              theme_settings,
               logo_url
             )
             SELECT
@@ -211,6 +216,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
               ${input.businessLocation},
               ${input.contactEmail},
               ${input.theme},
+              ${JSON.stringify(input.themeSettings ?? {})}::jsonb,
               ${input.logoUrl}
             FROM new_merchant
             RETURNING
@@ -225,6 +231,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
               business_location,
               contact_email,
               theme,
+              theme_settings,
               logo_url
           ),
           new_membership AS (
@@ -269,6 +276,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           s.business_location,
           s.contact_email,
           s.theme,
+          s.theme_settings,
           s.logo_url
         FROM stores s
         INNER JOIN store_members sm ON sm.store_id = s.id
@@ -292,6 +300,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
       const contactEmail =
         patch.contactEmail === undefined ? null : patch.contactEmail;
       const theme = patch.theme ?? null;
+      const themeSettings = JSON.stringify(patch.themeSettings ?? {});
       const logoUrl = patch.logoUrl === undefined ? null : patch.logoUrl;
 
       try {
@@ -316,6 +325,10 @@ export function createNeonRepository(connectionString: string): CommerceReposito
               ELSE s.contact_email
             END,
             theme = COALESCE(${theme}, s.theme),
+            theme_settings = CASE
+              WHEN ${patch.themeSettings !== undefined} THEN ${themeSettings}::jsonb
+              ELSE s.theme_settings
+            END,
             logo_url = CASE
               WHEN ${patch.logoUrl !== undefined} THEN ${logoUrl}
               ELSE s.logo_url
@@ -338,6 +351,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
             s.business_location,
             s.contact_email,
             s.theme,
+            s.theme_settings,
             s.logo_url
         ` as StoreRow[];
         return rows[0]
@@ -368,6 +382,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           s.business_location,
           s.contact_email,
           s.theme,
+          s.theme_settings,
           s.logo_url
         FROM stores s
         INNER JOIN store_members sm ON sm.store_id = s.id
@@ -408,6 +423,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           business_location,
           contact_email,
           theme,
+          theme_settings,
           logo_url
       ` as StoreRow[];
 
@@ -427,6 +443,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           description,
           business_location,
           theme,
+          theme_settings,
           logo_url
         FROM stores
         WHERE slug = ${slug}
@@ -441,6 +458,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
         description: string | null;
         business_location: string | null;
         theme: StoreTheme;
+        theme_settings: unknown;
         logo_url: string | null;
       }>;
 
@@ -488,6 +506,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           description: store.description,
           businessLocation: store.business_location,
           theme: store.theme,
+          themeSettings: parseThemeSettings(store.theme_settings) ?? {},
           logoUrl: store.logo_url
         },
         products: products.map((product) => ({

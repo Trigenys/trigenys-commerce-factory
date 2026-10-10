@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { isStoreTheme, parseThemeSettings } from "../../shared/store-themes.ts";
 import { cors } from "hono/cors";
 import { bearerToken, verifyNeonIdentity, type IdentityVerifier } from "./auth.ts";
 import { createNeonRepository } from "./repository.ts";
@@ -11,7 +12,6 @@ import type {
   PublicStorefront,
   StoreCreateInput,
   StorePatch,
-  StoreTheme,
   WorkerBindings
 } from "./types.ts";
 
@@ -29,7 +29,6 @@ type AppDependencies = {
   repositoryFactory?: (env: WorkerBindings) => CommerceRepository;
 };
 
-const STORE_THEMES = new Set<StoreTheme>(["clean"]);
 const MAX_MEDIA_BYTES = 2 * 1024 * 1024;
 
 function validUuid(value: string): boolean {
@@ -152,7 +151,8 @@ function safeCreate(value: unknown): StoreCreateInput | null {
     "description",
     "businessLocation",
     "contactEmail",
-    "theme"
+    "theme",
+    "themeSettings"
   ]);
   if (Object.keys(input).some((key) => !allowed.has(key))) return null;
 
@@ -203,10 +203,9 @@ function safeCreate(value: unknown): StoreCreateInput | null {
 
   const theme =
     input.theme === undefined ? "clean" : input.theme;
-  if (
-    typeof theme !== "string" ||
-    !STORE_THEMES.has(theme as StoreTheme)
-  ) return null;
+  if (!isStoreTheme(theme)) return null;
+  const themeSettings = parseThemeSettings(input.themeSettings === undefined ? {} : input.themeSettings);
+  if (!themeSettings) return null;
 
   return {
     name,
@@ -217,7 +216,8 @@ function safeCreate(value: unknown): StoreCreateInput | null {
     description,
     businessLocation,
     contactEmail,
-    theme: theme as StoreTheme,
+    theme,
+    themeSettings,
     logoUrl: null
   };
 }
@@ -235,6 +235,7 @@ function safePatch(value: unknown): StorePatch | null {
     "businessLocation",
     "contactEmail",
     "theme",
+    "themeSettings",
     "logoUrl"
   ]);
   if (Object.keys(input).some((key) => !allowed.has(key))) return null;
@@ -298,11 +299,14 @@ function safePatch(value: unknown): StorePatch | null {
   }
 
   if (input.theme !== undefined) {
-    if (
-      typeof input.theme !== "string" ||
-      !STORE_THEMES.has(input.theme as StoreTheme)
-    ) return null;
-    patch.theme = input.theme as StoreTheme;
+    if (!isStoreTheme(input.theme)) return null;
+    patch.theme = input.theme;
+  }
+
+  if (input.themeSettings !== undefined) {
+    const settings = parseThemeSettings(input.themeSettings);
+    if (!settings) return null;
+    patch.themeSettings = settings;
   }
 
   if (input.logoUrl !== undefined) {

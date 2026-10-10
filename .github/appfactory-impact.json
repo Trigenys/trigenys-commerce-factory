@@ -17,7 +17,10 @@
         "tsconfig*.json",
         ".github/appfactory-frontend.json",
         ".github/appfactory-visual-qa.json",
-        ".github/workflows/visual-qa.yml"
+        ".github/workflows/visual-qa.yml",
+        "shared/**",
+        "scripts/verify-store-themes.mjs",
+        ".github/workflows/ci.yml"
       ],
       "gates": [
         "visual-qa"
@@ -27,7 +30,8 @@
       "paths": [
         "backend/**",
         "db/**",
-        ".github/workflows/appfactory-infrastructure.yml"
+        ".github/workflows/appfactory-infrastructure.yml",
+        "shared/**"
       ],
       "gates": [
         "backend-ci"

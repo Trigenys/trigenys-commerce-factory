@@ -1,4 +1,5 @@
 import type { CommerceAuthClient } from "./auth";
+import type { StoreTheme, ThemeSettings } from "../../shared/store-themes";
 import { getApiToken } from "./auth";
 import { apiBaseUrl } from "./runtime";
 
@@ -13,7 +14,8 @@ export type Store = {
   description: string | null;
   businessLocation: string | null;
   contactEmail: string | null;
-  theme: "clean";
+  theme: StoreTheme;
+  themeSettings?: ThemeSettings;
   logoUrl: string | null;
 };
 
@@ -26,7 +28,8 @@ export type StoreInput = {
   description: string;
   businessLocation: string;
   contactEmail: string;
-  theme: "clean";
+  theme: StoreTheme;
+  themeSettings: ThemeSettings;
 };
 
 type ErrorBody = { error?: string };

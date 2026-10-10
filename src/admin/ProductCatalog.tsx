@@ -290,11 +290,13 @@ function formatMoney(value: string, currencyCode: string, language: Language) {
 export default function ProductCatalog({
   client,
   store,
-  language
+  language,
+  onProductsChange
 }: {
   client: CommerceAuthClient;
   store: Store;
   language: Language;
+  onProductsChange?: (products: Product[]) => void;
 }) {
   const t = copy[language];
   const [products, setProducts] = useState<Product[]>([]);
@@ -319,6 +321,7 @@ export default function ProductCatalog({
   async function reload() {
     const next = await listProducts(client, store.id);
     setProducts(next);
+    onProductsChange?.(next);
   }
 
   useEffect(() => {
@@ -326,7 +329,7 @@ export default function ProductCatalog({
     (async () => {
       try {
         const next = await listProducts(client, store.id);
-        if (!cancelled) setProducts(next);
+        if (!cancelled) { setProducts(next); onProductsChange?.(next); }
       } catch {
         if (!cancelled) setError(t.loadError);
       } finally {
@@ -334,7 +337,7 @@ export default function ProductCatalog({
       }
     })();
     return () => { cancelled = true; };
-  }, [client, store.id, language]);
+  }, [client, store.id, language, onProductsChange]);
 
   function startCreate() {
     const maxOrder = products.reduce(

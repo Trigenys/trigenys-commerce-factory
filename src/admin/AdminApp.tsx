@@ -12,12 +12,17 @@ import {
   updateStoreLogo,
   uploadMedia,
   type Store,
-  type StoreInput
+  type StoreInput,
+  type Product
 } from "./api";
 import AnalyticsPanel from "./AnalyticsPanel";
 import { MediaPreparationError, prepareImageForUpload } from "./media";
 import ProductCatalog from "./ProductCatalog";
 import "./admin.css";
+import { resolveStoreTheme, themeFonts } from "../../shared/store-themes";
+import { themeShellProps } from "../storefront/theme-style";
+import ThemePicker from "../themes/ThemePicker";
+import LiveThemePreview from "../themes/LiveThemePreview";
 
 type Language = "fr" | "en";
 type AuthMode = "signin" | "signup";
@@ -64,10 +69,9 @@ const copy = {
     whatsappBody: "Nous normalisons le numéro au format international avant de l’enregistrer.",
     whatsapp: "Numéro WhatsApp",
     whatsappHint: "Ex. 670 00 00 01 ou +237 670 00 00 01",
-    appearanceTitle: "Une identité simple pour commencer",
-    appearanceBody: "Le MVP démarre avec un seul thème solide. Vous pourrez ajouter votre logo dès que la boutique est créée.",
+    appearanceTitle: "Un univers pour votre boutique",
+    appearanceBody: "Choisissez une présentation adaptée à votre activité, puis personnalisez son style. Vous pourrez ajouter votre logo après la création.",
     theme: "Thème",
-    cleanTheme: "Clean — mobile-first",
     logoSoon: "Logo",
     logoSoonBody: "Créez d’abord la boutique, puis ajoutez un logo optimisé depuis les paramètres.",
     reviewTitle: "Vérifiez avant de créer",
@@ -150,10 +154,9 @@ const copy = {
     whatsappBody: "We normalize the number to international format before saving it.",
     whatsapp: "WhatsApp number",
     whatsappHint: "E.g. 670 00 00 01 or +237 670 00 00 01",
-    appearanceTitle: "A simple identity to start",
-    appearanceBody: "The MVP starts with one strong theme. You can add your logo as soon as the store is created.",
+    appearanceTitle: "A style for your storefront",
+    appearanceBody: "Choose a presentation for your business and customize its style. You can add your logo after creating the store.",
     theme: "Theme",
-    cleanTheme: "Clean — mobile-first",
     logoSoon: "Logo",
     logoSoonBody: "Create the store first, then add an optimized logo from store settings.",
     reviewTitle: "Review before creation",
@@ -236,7 +239,8 @@ function emptyInput(email = ""): StoreInput {
     description: "",
     businessLocation: "",
     contactEmail: email,
-    theme: "clean"
+    theme: "clean",
+    themeSettings: {}
   };
 }
 
@@ -250,7 +254,8 @@ function storeToInput(store: Store): StoreInput {
     description: store.description || "",
     businessLocation: store.businessLocation || "",
     contactEmail: store.contactEmail || "",
-    theme: store.theme
+    theme: store.theme,
+    themeSettings: store.themeSettings ?? {}
   };
 }
 
@@ -297,10 +302,11 @@ function BrandPreview({
   language: Language;
 }) {
   const t = copy[language];
+  const theme = resolveStoreTheme(input.theme, input.themeSettings);
   return (
     <aside className="merchant-preview" aria-label={t.preview}>
       <span className="merchant-preview-label">{t.preview}</span>
-      <div className="merchant-preview-phone">
+      <div className="merchant-preview-phone" style={{ ...themeShellProps(input).style, background: theme.tokens.background, color: theme.tokens.ink }}>
         <div className="merchant-preview-top">
           <span className="merchant-preview-logo">{initials(input.name).toUpperCase()}</span>
           <div>
@@ -309,10 +315,10 @@ function BrandPreview({
           </div>
           <b>{input.currencyCode}</b>
         </div>
-        <div className="merchant-preview-hero">
+        <div className="merchant-preview-hero" style={{ background: theme.tokens.scene, color: theme.tokens.sceneInk }}>
           <span>{t.fcfaReady}</span>
-          <h3>{input.name || "Commerce Store"}</h3>
-          <p>{input.description || t.noDescription}</p>
+          <h3 style={{ fontFamily: themeFonts[theme.font] }}>{input.name || "Commerce Store"}</h3>
+          <p style={{ color: theme.tokens.sceneMuted }}>{input.description || t.noDescription}</p>
         </div>
         <div className="merchant-preview-product">
           <i />
@@ -716,15 +722,7 @@ function Onboarding({
           {step === 2 ? (
             <div className="appearance-grid">
               <div className="admin-form">
-                <label>
-                  <span>{t.theme}</span>
-                  <select
-                    value={input.theme}
-                    onChange={() => setInput({ ...input, theme: "clean" })}
-                  >
-                    <option value="clean">{t.cleanTheme}</option>
-                  </select>
-                </label>
+                <ThemePicker value={input.theme} settings={input.themeSettings} language={language} onChange={(theme, themeSettings) => setInput({ ...input, theme, themeSettings })} />
                 <div className="logo-pending">
                   <span className="merchant-preview-logo">{initials(input.name).toUpperCase()}</span>
                   <div>
@@ -745,7 +743,7 @@ function Onboarding({
                 <div><span>{t.whatsapp}</span><strong>{input.whatsappNumber}</strong></div>
                 <div><span>{t.location}</span><strong>{input.businessLocation || "—"}</strong></div>
                 <div><span>{t.currency}</span><strong>{input.currencyCode}</strong></div>
-                <div><span>{t.theme}</span><strong>{t.cleanTheme}</strong></div>
+                <div><span>{t.theme}</span><strong>{resolveStoreTheme(input.theme).name}</strong></div>
               </div>
               <BrandPreview input={input} language={language} />
             </div>
@@ -798,6 +796,7 @@ function StoreSettings({
   const [busy, setBusy] = useState(false);
   const [publishBusy, setPublishBusy] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
+  const [previewProducts, setPreviewProducts] = useState<Product[]>([]);
 
   async function publishCurrentStore() {
     setPublishBusy(true);
@@ -970,13 +969,6 @@ function StoreSettings({
               />
               {errors.whatsappNumber ? <small className="field-error">{errors.whatsappNumber}</small> : null}
             </label>
-            <label>
-              <span>{t.theme}</span>
-              <select value={input.theme} onChange={() => setInput({ ...input, theme: "clean" })}>
-                <option value="clean">{t.cleanTheme}</option>
-              </select>
-            </label>
-
             <div className="span-2 store-logo-field">
               <span>{t.logoUpload}</span>
               <div className="store-logo-row">
@@ -1016,6 +1008,9 @@ function StoreSettings({
             </div>
           </div>
 
+          <div className="settings-divider" />
+          <ThemePicker value={input.theme} settings={input.themeSettings} language={language} imageUrl={previewProducts.find((product) => product.status === "active")?.imageUrls[0]} onChange={(theme, themeSettings) => setInput({ ...input, theme, themeSettings })} />
+
           {serverError ? <p className="form-message error">{serverError}</p> : null}
           {message ? <p className="form-message success">{message}</p> : null}
 
@@ -1030,10 +1025,16 @@ function StoreSettings({
           </div>
         </form>
 
+        <LiveThemePreview language={language} storefront={{
+          store: { ...store, ...input, logoUrl: store.logoUrl },
+          products: previewProducts.filter((product) => product.status === "active").sort((a, b) => a.sortOrder - b.sortOrder)
+        }} />
+
         <ProductCatalog
           client={client}
           store={store}
           language={language}
+          onProductsChange={setPreviewProducts}
         />
 
         <AnalyticsPanel

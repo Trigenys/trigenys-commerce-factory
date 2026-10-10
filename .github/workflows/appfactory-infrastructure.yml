@@ -8,6 +8,7 @@ on:
       - ".appfactory/pages.json"
       - ".appfactory/worker.json"
       - "backend/**"
+      - "shared/**"
       - ".github/workflows/appfactory-infrastructure.yml"
 
 permissions:

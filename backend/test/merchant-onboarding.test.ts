@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { storeThemeIds } from "../../shared/store-themes.ts";
 import {
   createApp,
   normalizeSlug,
@@ -94,6 +95,63 @@ function onboardingApp(repository: OnboardingRepository) {
     })
   });
 }
+
+const themeRequestHeaders = { Authorization: "Bearer valid", "Content-Type": "application/json" };
+const themedStoreInput = { name: "Atelier", slug: "atelier", whatsappNumber: "+237670000001" };
+
+test("every registered theme survives store creation and merchant reload", async () => {
+  for (const theme of storeThemeIds) {
+    const repository = new OnboardingRepository();
+    const app = onboardingApp(repository);
+    const settings = { accent: "#AABBCC", font: "serif", imageFit: "contain" };
+    const created = await app.request("/v1/admin/stores", {
+      method: "POST", headers: themeRequestHeaders,
+      body: JSON.stringify({ ...themedStoreInput, theme, themeSettings: settings })
+    }, env);
+    assert.equal(created.status, 201, theme);
+    const reloaded = await app.request("/v1/admin/me/stores", { headers: themeRequestHeaders }, env);
+    const { stores } = await reloaded.json() as { stores: StoreSummary[] };
+    assert.equal(stores[0].theme, theme);
+    assert.deepEqual(stores[0].themeSettings, { ...settings, accent: "#aabbcc" });
+  }
+});
+
+test("changing a theme preserves store identity and unrelated settings", async () => {
+  const repository = new OnboardingRepository();
+  const app = onboardingApp(repository);
+  await app.request("/v1/admin/stores", {
+    method: "POST", headers: themeRequestHeaders,
+    body: JSON.stringify({ ...themedStoreInput, themeSettings: { accent: "#112233" } })
+  }, env);
+  const original = repository.stores[0];
+  const response = await app.request("/v1/admin/stores/" + original.id, {
+    method: "PATCH", headers: themeRequestHeaders, body: JSON.stringify({ theme: "sport-stadium" })
+  }, env);
+  assert.equal(response.status, 200);
+  assert.deepEqual(repository.stores[0], { ...original, theme: "sport-stadium" });
+  const reset = await app.request("/v1/admin/stores/" + original.id, {
+    method: "PATCH", headers: themeRequestHeaders, body: JSON.stringify({ themeSettings: {} })
+  }, env);
+  assert.equal(reset.status, 200);
+  assert.deepEqual(repository.stores[0].themeSettings, {});
+});
+
+test("invalid themes and non-declarative settings fail before writing", async () => {
+  const invalid = [
+    { theme: "unregistered" }, { theme: "__proto__" }, { themeSettings: null },
+    { themeSettings: [] }, { themeSettings: { accent: "red; background:url(https://evil.example)" } },
+    { themeSettings: { font: "url(https://evil.example)" } }, { themeSettings: { imageFit: "fill" } },
+    { themeSettings: { css: "body {display:none}" } }, { themeSettings: { heroImageUrl: "https://evil.example" } }
+  ];
+  for (const input of invalid) {
+    const repository = new OnboardingRepository();
+    const response = await onboardingApp(repository).request("/v1/admin/stores", {
+      method: "POST", headers: themeRequestHeaders, body: JSON.stringify({ ...themedStoreInput, ...input })
+    }, env);
+    assert.equal(response.status, 400, JSON.stringify(input));
+    assert.equal(repository.createInput, null);
+  }
+});
 
 test("slug normalization is stable and URL-safe", () => {
   assert.equal(normalizeSlug("  Chez Maman — Douala  "), "chez-maman-douala");

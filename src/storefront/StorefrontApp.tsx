@@ -2,40 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { apiBaseUrl } from "../admin/runtime";
 import "./storefront.css";
 
-type Language = "fr" | "en";
-
-type Variant = {
-  name: string;
-  value: string;
-};
-
-type PublicProduct = {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  price: string;
-  currencyCode: string;
-  category: string | null;
-  stockLabel: string | null;
-  imageUrls: string[];
-  variants: Variant[];
-};
-
-type PublicStorefront = {
-  store: {
-    name: string;
-    slug: string;
-    whatsappNumber: string;
-    countryCode: string;
-    currencyCode: string;
-    description: string | null;
-    businessLocation: string | null;
-    theme: "clean";
-    logoUrl: string | null;
-  };
-  products: PublicProduct[];
-};
+import { formatMoney, type Language, type PublicProduct, type PublicStorefront } from "./types";
+import { themeShellProps } from "./theme-style";
+import ThemeHero from "./ThemeHero";
 
 const copy = {
   fr: {
@@ -123,22 +92,6 @@ function parseRoute() {
   };
 }
 
-function formatMoney(
-  value: string,
-  currency: string,
-  language: Language
-): string {
-  const amount = Number(value);
-  if (!Number.isFinite(amount)) return value + " " + currency;
-  const noDecimals = currency === "XAF" || currency === "XOF";
-  return new Intl.NumberFormat(language === "fr" ? "fr-FR" : "en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: noDecimals ? 0 : 2,
-    maximumFractionDigits: noDecimals ? 0 : 2
-  }).format(amount);
-}
-
 function setMeta(
   selector: string,
   attribute: "name" | "property",
@@ -199,7 +152,7 @@ function applyMetadata(
   setCanonical(pageUrl);
 }
 
-function StoreHeader({ storefront }: { storefront: PublicStorefront }) {
+function StoreHeader({ storefront, homeHref }: { storefront: PublicStorefront; homeHref: string }) {
   const initials = storefront.store.name
     .split(/\s+/)
     .filter(Boolean)
@@ -209,7 +162,7 @@ function StoreHeader({ storefront }: { storefront: PublicStorefront }) {
 
   return (
     <header className="public-store-header">
-      <a className="public-store-brand" href={"/store/" + storefront.store.slug}>
+      <a className="public-store-brand" href={homeHref}>
         {storefront.store.logoUrl ? (
           <img src={storefront.store.logoUrl} alt="" />
         ) : (
@@ -228,19 +181,19 @@ function StoreHeader({ storefront }: { storefront: PublicStorefront }) {
 }
 
 function ProductCard({
-  storefront,
   product,
-  language
+  language,
+  href
 }: {
-  storefront: PublicStorefront;
   product: PublicProduct;
   language: Language;
+  href: string;
 }) {
   return (
     <article className="public-product-card">
       <a
         className="public-product-image"
-        href={"/store/" + storefront.store.slug + "/p/" + product.slug}
+        href={href}
       >
         {product.imageUrls[0] ? (
           <img src={product.imageUrls[0]} alt={product.name} loading="lazy" />
@@ -250,7 +203,7 @@ function ProductCard({
       </a>
       <div className="public-product-copy">
         {product.category ? <small>{product.category}</small> : null}
-        <a href={"/store/" + storefront.store.slug + "/p/" + product.slug}>
+        <a href={href}>
           <h3>{product.name}</h3>
         </a>
         <strong>{formatMoney(product.price, product.currencyCode, language)}</strong>
@@ -263,11 +216,15 @@ function ProductCard({
 function ProductDetail({
   storefront,
   product,
-  language
+  language,
+  homeHref,
+  preview = false
 }: {
   storefront: PublicStorefront;
   product: PublicProduct;
   language: Language;
+  homeHref: string;
+  preview?: boolean;
 }) {
   const t = copy[language];
   const [selectedImage, setSelectedImage] = useState(product.imageUrls[0] || "");
@@ -289,7 +246,7 @@ function ProductDetail({
   const [handoffError, setHandoffError] = useState<string | null>(null);
 
   async function openWhatsApp() {
-    if (handoffBusy) return;
+    if (handoffBusy || preview) return;
     setHandoffBusy(true);
     setHandoffError(null);
 
@@ -339,7 +296,7 @@ function ProductDetail({
 
   return (
     <main className="product-detail-page">
-      <a className="public-back" href={"/store/" + storefront.store.slug}>
+      <a className="public-back" href={homeHref}>
         ← {t.back}
       </a>
 
@@ -360,6 +317,7 @@ function ProductDetail({
                   key={url}
                   className={url === selectedImage ? "active" : ""}
                   onClick={() => setSelectedImage(url)}
+                  aria-pressed={url === selectedImage}
                   aria-label={product.name + " " + (index + 1)}
                 >
                   <img src={url} alt="" loading="lazy" />
@@ -400,6 +358,7 @@ function ProductDetail({
                             [group.name]: value
                           })
                         }
+                        aria-pressed={selectedVariants[group.name] === value}
                       >
                         {value}
                       </button>
@@ -418,9 +377,9 @@ function ProductDetail({
             type="button"
             className="public-wa-button"
             onClick={openWhatsApp}
-            disabled={handoffBusy}
+            disabled={handoffBusy || preview}
           >
-            WA · {handoffBusy ? t.openingWhatsApp : t.buy}
+            {preview ? (language === "fr" ? "Aperçu · commandes désactivées" : "Preview · ordering disabled") : "WA · " + (handoffBusy ? t.openingWhatsApp : t.buy)}
           </button>
 
           <button
@@ -453,7 +412,6 @@ export default function StorefrontApp() {
   const [storefront, setStorefront] = useState<PublicStorefront | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [category, setCategory] = useState<string | null>(null);
 
   useEffect(() => {
     if (!route || !apiBaseUrl) {
@@ -491,22 +449,6 @@ export default function StorefrontApp() {
       (candidate) => candidate.slug === route.productSlug
     ) || null;
   }, [storefront, route?.productSlug]);
-
-  const categories = useMemo(() => {
-    if (!storefront) return [];
-    return Array.from(new Set(
-      storefront.products
-        .map((item) => item.category)
-        .filter((item): item is string => Boolean(item))
-    ));
-  }, [storefront]);
-
-  const filteredProducts = useMemo(() => {
-    if (!storefront) return [];
-    return category
-      ? storefront.products.filter((item) => item.category === category)
-      : storefront.products;
-  }, [storefront, category]);
 
   useEffect(() => {
     if (!storefront) return;
@@ -547,27 +489,60 @@ export default function StorefrontApp() {
     );
   }
 
-  if (route.productSlug) {
+  return <StorefrontView storefront={storefront} language={language} productSlug={route.productSlug} />;
+}
+
+export function StorefrontView({ storefront, language, productSlug = null, homeHref = "/store/" + storefront.store.slug, productHref = (item) => "/store/" + storefront.store.slug + "/p/" + item.slug, preview = false }: {
+  storefront: PublicStorefront;
+  language: Language;
+  productSlug?: string | null;
+  homeHref?: string;
+  productHref?: (product: PublicProduct) => string;
+  preview?: boolean;
+}) {
+  const t = copy[language];
+  const [category, setCategory] = useState<string | null>(null);
+  const product = storefront.products.find((item) => item.slug === productSlug) ?? null;
+  const categories = useMemo(() => {
+    if (!storefront) return [];
+    return Array.from(new Set(
+      storefront.products
+        .map((item) => item.category)
+        .filter((item): item is string => Boolean(item))
+    ));
+  }, [storefront]);
+
+  const filteredProducts = useMemo(() => {
+    if (!storefront) return [];
+    return category
+      ? storefront.products.filter((item) => item.category === category)
+      : storefront.products;
+  }, [storefront, category]);
+
+  if (productSlug) {
     if (!product) {
       return (
-        <div className="public-store-shell">
-          <StoreHeader storefront={storefront} />
+        <div {...themeShellProps(storefront.store)}>
+          <StoreHeader storefront={storefront} homeHref={homeHref} />
           <main className="public-state">
             <h1>404</h1>
             <p>{t.productNotFound}</p>
-            <a href={"/store/" + storefront.store.slug}>← {t.back}</a>
+            <a href={homeHref}>← {t.back}</a>
           </main>
         </div>
       );
     }
 
     return (
-      <div className="public-store-shell">
-        <StoreHeader storefront={storefront} />
+      <div {...themeShellProps(storefront.store)}>
+        <StoreHeader storefront={storefront} homeHref={homeHref} />
         <ProductDetail
+          key={product.id}
           storefront={storefront}
           product={product}
           language={language}
+          homeHref={homeHref}
+          preview={preview}
         />
         <footer className="public-store-footer">{t.powered}</footer>
       </div>
@@ -575,24 +550,13 @@ export default function StorefrontApp() {
   }
 
   return (
-    <div className="public-store-shell">
-      <StoreHeader storefront={storefront} />
+    <div {...themeShellProps(storefront.store)}>
+      <StoreHeader storefront={storefront} homeHref={homeHref} />
 
       <main>
-        <section className="public-store-hero">
-          <div>
-            <span className="public-overline">{t.browse}</span>
-            <h1>{storefront.store.name}</h1>
-            {storefront.store.description ? (
-              <p>{storefront.store.description}</p>
-            ) : null}
-            {storefront.store.businessLocation ? (
-              <small>{storefront.store.businessLocation}</small>
-            ) : null}
-          </div>
-        </section>
+        <ThemeHero storefront={storefront} language={language} productHref={productHref} />
 
-        <section className="public-catalog-section">
+        <section className="public-catalog-section" id="catalog">
           <div className="public-catalog-heading">
             <h2>{t.products}</h2>
             {categories.length ? (
@@ -623,7 +587,7 @@ export default function StorefrontApp() {
               {filteredProducts.map((item) => (
                 <ProductCard
                   key={item.id}
-                  storefront={storefront}
+                  href={productHref(item)}
                   product={item}
                   language={language}
                 />

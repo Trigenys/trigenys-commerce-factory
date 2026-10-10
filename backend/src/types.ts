@@ -1,3 +1,6 @@
+import type { StoreTheme, ThemeSettings } from "../../shared/store-themes.ts";
+export type { StoreTheme } from "../../shared/store-themes.ts";
+
 export interface MediaBucketObject {
   body: ReadableStream<Uint8Array> | null;
   httpMetadata?: {
@@ -32,8 +35,6 @@ export type WorkerBindings = {
 
 export type Identity = { subject: string; email?: string };
 
-export type StoreTheme = "clean";
-
 export type StoreSummary = {
   id: string;
   name: string;
@@ -46,6 +47,7 @@ export type StoreSummary = {
   businessLocation: string | null;
   contactEmail: string | null;
   theme: StoreTheme;
+  themeSettings?: ThemeSettings;
   logoUrl: string | null;
 };
 
@@ -59,6 +61,7 @@ export type StoreCreateInput = {
   businessLocation: string | null;
   contactEmail: string | null;
   theme: StoreTheme;
+  themeSettings?: ThemeSettings;
   logoUrl: string | null;
 };
 
@@ -79,6 +82,7 @@ export type StorePatch = Partial<
     | "businessLocation"
     | "contactEmail"
     | "theme"
+    | "themeSettings"
     | "logoUrl"
   >
 >;
@@ -116,6 +120,7 @@ export type PublicStorefront = {
     description: string | null;
     businessLocation: string | null;
     theme: StoreTheme;
+    themeSettings?: ThemeSettings;
     logoUrl: string | null;
   };
   products: PublicProduct[];

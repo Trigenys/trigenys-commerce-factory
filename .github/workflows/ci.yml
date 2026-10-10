@@ -25,6 +25,10 @@ jobs:
       - run: npm install --ignore-scripts
       - run: npm run typecheck
       - run: npm run build
+      - name: Install browser for storefront checks
+        run: npx playwright install --with-deps chromium
+      - name: Verify storefront themes and media transparency
+        run: npm run test:themes
       - name: Install backend dependencies
         working-directory: backend
         run: npm install --ignore-scripts
