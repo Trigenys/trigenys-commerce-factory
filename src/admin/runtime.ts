@@ -1,3 +1,4 @@
+import { timedFetch } from "../lib/requests";
 const configuredApiBase =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
 
@@ -11,7 +12,7 @@ export async function fetchRuntimeConfig(): Promise<{ authBaseUrl: string }> {
     throw new Error("Commerce Factory API is not configured.");
   }
 
-  const response = await fetch(apiBaseUrl + "/v1/config", {
+  const response = await timedFetch(apiBaseUrl + "/v1/config", {
     headers: { Accept: "application/json" }
   });
   if (!response.ok) {

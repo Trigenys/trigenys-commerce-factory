@@ -1,3 +1,5 @@
+import { registerJourneyRoutes } from "./journey-routes.ts";
+import type { JourneyRepository } from "./journey-types.ts";
 import { Hono } from "hono";
 import { isStoreTheme, parseThemeSettings } from "../../shared/store-themes.ts";
 import { cors } from "hono/cors";
@@ -19,12 +21,13 @@ type Variables = {
   identity: Identity;
 };
 
-type AppEnv = {
+export type AppEnv = {
   Bindings: WorkerBindings;
   Variables: Variables;
 };
 
 type AppDependencies = {
+  journeyRepositoryFactory?: (env: WorkerBindings) => JourneyRepository;
   verifyIdentity?: IdentityVerifier;
   repositoryFactory?: (env: WorkerBindings) => CommerceRepository;
 };
@@ -570,7 +573,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use("/v1/*", cors({
     origin: (origin, c) => allowedOrigin(origin, c.env) || "",
     allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allowHeaders: ["Authorization", "Content-Type"],
+    allowHeaders: ["Authorization", "Content-Type", "X-Order-Token", "X-Support-Token"],
     maxAge: 600
   }));
 
@@ -606,11 +609,28 @@ export function createApp(dependencies: AppDependencies = {}) {
     try {
       const identity = await verifyIdentity(token, authBaseUrl);
       c.set("identity", identity);
-      await next();
     } catch {
       return c.json({ error: "AUTH_INVALID" }, 401);
     }
+    await next();
   });
+
+  app.use("/v1/admin/stores/:storeId/*", async (c, next) => {
+    const repository = repositoryFactory(c.env);
+    if (repository.getStoreRole) {
+      const storeId = c.req.param("storeId")!;
+      if (!validUuid(storeId)) return c.json({error:"STORE_NOT_FOUND"},404);
+      const role = await repository.getStoreRole(c.get("identity").subject, storeId);
+      if (!role) return c.json({error:"STORE_NOT_FOUND"},404);
+      const rest = c.req.path.split("/stores/"+storeId)[1] || "";
+      const ownerArea = rest.startsWith("/team") || rest.startsWith("/analytics") || rest.startsWith("/publish") || (rest === "" && c.req.method !== "GET");
+      if (role !== "owner" && ownerArea) return c.json({error:"OWNER_REQUIRED"},403);
+    }
+    await next();
+  });
+
+  registerJourneyRoutes(app, repositoryFactory, dependencies.journeyRepositoryFactory);
+  app.onError(() => new Response(JSON.stringify({error:"SERVICE_UNAVAILABLE"}),{status:503,headers:{"Content-Type":"application/json","Retry-After":"5","Cache-Control":"no-store"}}));
 
   app.get("/v1/admin/me/stores", async (c) => {
     const repository = repositoryFactory(c.env);

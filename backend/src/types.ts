@@ -33,9 +33,10 @@ export type WorkerBindings = {
   MEDIA_BUCKET?: MediaBucket;
 };
 
-export type Identity = { subject: string; email?: string };
+export type Identity = { subject: string; email?: string; emailVerified?: boolean };
 
 export type StoreSummary = {
+  role?: "owner" | "staff";
   id: string;
   name: string;
   slug: string;
@@ -127,6 +128,7 @@ export type PublicStorefront = {
 };
 
 export interface CommerceRepository {
+  getStoreRole?(authSubject: string, storeId: string): Promise<"owner" | "staff" | null>;
   listOwnedStores(authSubject: string): Promise<StoreSummary[]>;
   createOwnedStore(
     authSubject: string,

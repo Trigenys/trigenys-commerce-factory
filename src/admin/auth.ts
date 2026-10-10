@@ -20,7 +20,7 @@ export function getAuthClient(): Promise<CommerceAuthClient> {
   if (!clientPromise) {
     clientPromise = fetchRuntimeConfig().then(({ authBaseUrl }) =>
       createCommerceAuthClient(authBaseUrl)
-    );
+    ).catch((error) => { clientPromise = null; throw error; });
   }
   return clientPromise;
 }
@@ -39,6 +39,7 @@ export async function getSessionSnapshot(
   client: CommerceAuthClient
 ): Promise<{ authenticated: boolean; email: string }> {
   const result = await client.getSession();
+  if (result.error && result.error.status !== 401) throw new Error("AUTH_SESSION_UNAVAILABLE");
   const data = result.data;
 
   if (

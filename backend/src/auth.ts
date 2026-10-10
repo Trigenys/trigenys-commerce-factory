@@ -45,6 +45,7 @@ export const verifyNeonIdentity: IdentityVerifier = async (
 
   return {
     subject: payload.sub,
+    emailVerified: payload.emailVerified === true || payload.email_verified === true,
     ...(typeof payload.email === "string" ? { email: payload.email } : {})
   };
 };

@@ -726,6 +726,10 @@ export default function App() {
           <a href="#how">{t.navHow}</a>
           <a href="#showcase">{t.navShowcase}</a>
           <a href="/themes">{t.navThemes}</a>
+          <a href="/help">{language === "fr" ? "Aide" : "Help"}</a>
+          <a href="/contact">Contact</a>
+          <a href="/privacy">{language === "fr" ? "Confidentialité" : "Privacy"}</a>
+          <a href="/terms">{language === "fr" ? "Conditions" : "Terms"}</a>
           <a href="#dashboard">{t.navDashboard}</a>
           <a href="#pricing">{t.navPricing}</a>
         </div>

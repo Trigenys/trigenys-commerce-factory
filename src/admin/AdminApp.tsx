@@ -1,3 +1,11 @@
+import MerchantWorkspace from "./MerchantWorkspace";
+import InvitationAccept from "./InvitationAccept";
+import PlatformPanel from "./PlatformPanel";
+import { preferredLanguage, rememberLanguage } from "../lib/language";
+import "../pages/public-pages.css";
+import AccountAccess from "./AccountAccess";
+import RecoveryState from "../components/RecoveryState";
+import { useDraft, useUnsavedChanges } from "../lib/drafts";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { CommerceAuthClient } from "./auth";
 import { getAuthClient, getSessionSnapshot } from "./auth";
@@ -6,6 +14,7 @@ import {
   createStore,
   deleteMediaByPublicId,
   listStores,
+  listProducts,
   managedMediaPublicId,
   publishStore,
   updateStore,
@@ -15,9 +24,7 @@ import {
   type StoreInput,
   type Product
 } from "./api";
-import AnalyticsPanel from "./AnalyticsPanel";
 import { MediaPreparationError, prepareImageForUpload } from "./media";
-import ProductCatalog from "./ProductCatalog";
 import "./admin.css";
 import { resolveStoreTheme, themeFonts } from "../../shared/store-themes";
 import { themeShellProps } from "../storefront/theme-style";
@@ -25,7 +32,6 @@ import ThemePicker from "../themes/ThemePicker";
 import LiveThemePreview from "../themes/LiveThemePreview";
 
 type Language = "fr" | "en";
-type AuthMode = "signin" | "signup";
 type OnboardingStep = 0 | 1 | 2 | 3;
 
 const steps = {
@@ -206,11 +212,7 @@ const copy = {
   }
 } as const;
 
-function languageFromPreference(): Language {
-  const saved = window.localStorage.getItem("commerce-factory-language");
-  if (saved === "fr" || saved === "en") return saved;
-  return window.navigator.language.toLowerCase().startsWith("fr") ? "fr" : "en";
-}
+function languageFromPreference(): Language { return preferredLanguage(); }
 
 function slugify(value: string): string {
   return value
@@ -328,151 +330,6 @@ function BrandPreview({
       </div>
       <small className="merchant-secure-note">✓ {t.secure}</small>
     </aside>
-  );
-}
-
-function AuthScreen({
-  client,
-  language,
-  onAuthenticated
-}: {
-  client: CommerceAuthClient;
-  language: Language;
-  onAuthenticated: () => Promise<void>;
-}) {
-  const t = copy[language];
-  const [mode, setMode] = useState<AuthMode>("signup");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const result = mode === "signup"
-        ? await client.signUp.email({
-            name: name.trim() || email.split("@")[0] || "Merchant",
-            email: email.trim(),
-            password
-          })
-        : await client.signIn.email({
-            email: email.trim(),
-            password
-          });
-
-      if (result.error) {
-        setError(result.error.message || t.authError);
-        return;
-      }
-
-      const session = await getSessionSnapshot(client);
-      if (!session.authenticated) {
-        setMode("signin");
-        setMessage(t.accountCreated);
-        return;
-      }
-
-      await onAuthenticated();
-    } catch {
-      setError(t.authError);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <main className="auth-layout">
-      <section className="auth-copy">
-        <span className="admin-eyebrow">Commerce Factory</span>
-        <h1>{t.authTitle}</h1>
-        <p>{t.authBody}</p>
-        <div className="auth-benefits">
-          <span>✓ WhatsApp-first</span>
-          <span>✓ XAF / FCFA</span>
-          <span>✓ Mobile-first</span>
-        </div>
-      </section>
-
-      <section className="auth-card">
-        <div className="auth-tabs" role="tablist">
-          <button
-            type="button"
-            className={mode === "signup" ? "active" : ""}
-            onClick={() => { setMode("signup"); setError(null); }}
-          >
-            {t.signUp}
-          </button>
-          <button
-            type="button"
-            className={mode === "signin" ? "active" : ""}
-            onClick={() => { setMode("signin"); setError(null); }}
-          >
-            {t.signIn}
-          </button>
-        </div>
-
-        <form onSubmit={submit} className="admin-form">
-          {mode === "signup" ? (
-            <label>
-              <span>{t.name}</span>
-              <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                autoComplete="name"
-                required
-              />
-            </label>
-          ) : null}
-
-          <label>
-            <span>{t.email}</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
-              required
-            />
-          </label>
-
-          <label>
-            <span>{t.password}</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              minLength={8}
-              required
-            />
-            <small>{t.passwordHint}</small>
-          </label>
-
-          {error ? <p className="form-message error" role="alert">{error}</p> : null}
-          {message ? <p className="form-message success">{message}</p> : null}
-
-          <button className="admin-primary" type="submit" disabled={busy}>
-            {busy
-              ? mode === "signup" ? t.creatingAccount : t.signingIn
-              : t.continue}
-          </button>
-        </form>
-
-        <button
-          type="button"
-          className="auth-switch"
-          onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
-        >
-          {mode === "signup" ? t.haveAccount : t.needAccount}
-        </button>
-      </section>
-    </main>
   );
 }
 
@@ -600,7 +457,10 @@ function Onboarding({
 }) {
   const t = copy[language];
   const [step, setStep] = useState<OnboardingStep>(0);
-  const [input, setInput] = useState<StoreInput>(() => emptyInput(email));
+  const draft = useDraft("commerce-onboarding:"+email, emptyInput(email), (value): value is StoreInput => Boolean(value && typeof value === "object" && "name" in value && "themeSettings" in value));
+  const input = draft.value;
+  const setInput = draft.setValue;
+  useUnsavedChanges(Boolean(input.name));
   const [slugTouched, setSlugTouched] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -612,6 +472,7 @@ function Onboarding({
     if (Object.keys(found).length > 0) return;
     setServerError(null);
     setStep((Math.min(3, step + 1)) as OnboardingStep);
+    window.requestAnimationFrame(() => document.getElementById("onboarding-step")?.focus());
   }
 
   async function submit() {
@@ -623,6 +484,7 @@ function Onboarding({
     setServerError(null);
     try {
       const store = await createStore(client, input);
+      draft.discard();
       onCreated(store);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -652,7 +514,7 @@ function Onboarding({
   ][step];
 
   return (
-    <main className="merchant-layout">
+    <main className="merchant-layout" id="merchant-main">
       <aside className="merchant-progress">
         <span className="admin-eyebrow">{t.onboardingEyebrow}</span>
         <h1>{t.onboardingTitle}</h1>
@@ -675,11 +537,12 @@ function Onboarding({
       </aside>
 
       <section className="merchant-workspace">
+        <p role="status" className="draft-note">{language === "fr" ? (draft.available ? "Votre brouillon est conservé dans cet onglet." : "Cet appareil ne permet pas de conserver le brouillon. Gardez cette page ouverte.") : (draft.available ? "Your draft is saved in this tab." : "This device cannot save drafts. Keep this page open.")}</p>
         <div className="merchant-form-card">
           <div className="merchant-form-head">
             <span>0{step + 1}</span>
             <div>
-              <h2>{title}</h2>
+              <h2 tabIndex={-1} id="onboarding-step">{title}</h2>
               <p>{body}</p>
             </div>
           </div>
@@ -780,15 +643,21 @@ function StoreSettings({
   client,
   store,
   language,
-  onUpdated
+  onUpdated,
+  section = "settings"
 }: {
   client: CommerceAuthClient;
   store: Store;
   language: Language;
   onUpdated: (store: Store) => void;
+  section?: "settings" | "appearance";
 }) {
   const t = copy[language];
-  const [input, setInput] = useState<StoreInput>(() => storeToInput(store));
+  const draft = useDraft("commerce-settings:"+store.id, storeToInput(store), (value): value is StoreInput => Boolean(value && typeof value === "object" && "name" in value && "themeSettings" in value));
+  const input = draft.value;
+  const setInput = draft.setValue;
+  const dirty = JSON.stringify(input) !== JSON.stringify(storeToInput(store));
+  useUnsavedChanges(dirty);
   const [slugTouched, setSlugTouched] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
@@ -797,6 +666,12 @@ function StoreSettings({
   const [publishBusy, setPublishBusy] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
   const [previewProducts, setPreviewProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (section === "appearance") listProducts(client, store.id).then(value => { if (!cancelled) setPreviewProducts(value); }).catch(() => { if (!cancelled) setServerError(t.genericError); });
+    return () => { cancelled = true; };
+  }, [client, store.id, section]);
 
   async function publishCurrentStore() {
     setPublishBusy(true);
@@ -900,6 +775,8 @@ function StoreSettings({
     try {
       const updated = await updateStore(client, store.id, input);
       onUpdated(updated);
+      setInput(storeToInput(updated));
+      draft.discard();
       setMessage(t.saved);
     } catch (error) {
       if (error instanceof ApiError && error.code === "SLUG_TAKEN") {
@@ -913,12 +790,12 @@ function StoreSettings({
   }
 
   return (
-    <main className="settings-layout">
+    <div className="settings-layout">
       <section className="settings-main">
         <span className="admin-eyebrow">{t.settingsEyebrow}</span>
         <div className="settings-title-row">
           <div>
-            <h1>{t.settingsTitle}</h1>
+            <h1>{section === "appearance" ? (language === "fr" ? "L’apparence de votre boutique" : "Your store appearance") : t.settingsTitle}</h1>
             <p>{t.settingsBody}</p>
           </div>
           <div className="store-status-actions">
@@ -948,6 +825,7 @@ function StoreSettings({
         </div>
 
         <form className="merchant-form-card settings-card" onSubmit={save}>
+          <div hidden={section === "appearance"}>
           <BusinessFields
             input={input}
             setInput={setInput}
@@ -957,10 +835,11 @@ function StoreSettings({
             setSlugTouched={setSlugTouched}
           />
 
+          </div>
           <div className="settings-divider" />
 
           <div className="admin-form admin-form-grid">
-            <label>
+            <label hidden={section === "appearance"}>
               <span>{t.whatsapp}</span>
               <input
                 value={input.whatsappNumber}
@@ -969,7 +848,7 @@ function StoreSettings({
               />
               {errors.whatsappNumber ? <small className="field-error">{errors.whatsappNumber}</small> : null}
             </label>
-            <div className="span-2 store-logo-field">
+            <div className="span-2 store-logo-field" hidden={section !== "appearance"}>
               <span>{t.logoUpload}</span>
               <div className="store-logo-row">
                 <div className="store-logo-preview">
@@ -1009,10 +888,13 @@ function StoreSettings({
           </div>
 
           <div className="settings-divider" />
+          <div hidden={section !== "appearance"}>
           <ThemePicker value={input.theme} settings={input.themeSettings} language={language} imageUrl={previewProducts.find((product) => product.status === "active")?.imageUrls[0]} onChange={(theme, themeSettings) => setInput({ ...input, theme, themeSettings })} />
 
-          {serverError ? <p className="form-message error">{serverError}</p> : null}
-          {message ? <p className="form-message success">{message}</p> : null}
+          </div>
+          <p className="draft-note" role="status">{dirty ? (language === "fr" ? "Modifications non enregistrées · brouillon conservé dans cet onglet." : "Unsaved changes · draft kept in this tab.") : (language === "fr" ? "Vos réglages sont enregistrés." : "Your settings are saved.")}</p>
+          {serverError ? <p className="form-message error" role="alert">{serverError}</p> : null}
+          {message ? <p className="form-message success" role="status">{message}</p> : null}
 
           <div className="settings-actions">
             <span>
@@ -1025,27 +907,15 @@ function StoreSettings({
           </div>
         </form>
 
-        <LiveThemePreview language={language} storefront={{
+        {section === "appearance" && <LiveThemePreview language={language} storefront={{
           store: { ...store, ...input, logoUrl: store.logoUrl },
           products: previewProducts.filter((product) => product.status === "active").sort((a, b) => a.sortOrder - b.sortOrder)
-        }} />
+        }} />}
 
-        <ProductCatalog
-          client={client}
-          store={store}
-          language={language}
-          onProductsChange={setPreviewProducts}
-        />
-
-        <AnalyticsPanel
-          client={client}
-          store={store}
-          language={language}
-        />
       </section>
 
       <BrandPreview input={input} language={language} />
-    </main>
+    </div>
   );
 }
 
@@ -1055,7 +925,9 @@ export default function AdminApp() {
   const [sessionEmail, setSessionEmail] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [store, setStore] = useState<Store | null>(null);
+  const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
+  const [attempt, setAttempt] = useState(0);
   const [fatalError, setFatalError] = useState<string | null>(null);
 
   const t = copy[language];
@@ -1063,7 +935,7 @@ export default function AdminApp() {
   useEffect(() => {
     document.documentElement.lang = language;
     document.title = "Commerce Factory — Merchant";
-    window.localStorage.setItem("commerce-factory-language", language);
+    rememberLanguage(language);
   }, [language]);
 
   async function hydrate(nextClient: CommerceAuthClient) {
@@ -1075,8 +947,10 @@ export default function AdminApp() {
       return;
     }
 
-    const stores = await listStores(nextClient);
-    setStore(stores[0] || null);
+    const nextStores = await listStores(nextClient);
+    setStores(nextStores);
+    const wanted = new URLSearchParams(window.location.search).get("store");
+    setStore(nextStores.find(item => item.id === wanted) || nextStores[0] || null);
   }
 
   useEffect(() => {
@@ -1100,23 +974,33 @@ export default function AdminApp() {
       }
     })();
     return () => { cancelled = true; };
+  }, [attempt]);
+
+  useEffect(() => {
+    const expire = () => { setAuthenticated(false); setSessionEmail(""); };
+    window.addEventListener("merchant-session-expired", expire);
+    return () => window.removeEventListener("merchant-session-expired", expire);
   }, []);
 
   const header = useMemo(() => (
     <header className="admin-header">
+      <a className="skip-link" href="#merchant-main">{language === "fr" ? "Aller au contenu" : "Skip to content"}</a>
       <a href="/" className="admin-brand">
         <img src="/commerce-factory-logo-v3.png?v=3" alt="Commerce Factory" />
       </a>
       <div className="admin-header-actions">
+        <a className="admin-back" href="/help">{language === "fr" ? "Aide" : "Help"}</a>
         <div className="admin-language">
           <button
             type="button"
             className={language === "fr" ? "active" : ""}
+            aria-pressed={language === "fr"}
             onClick={() => setLanguage("fr")}
           >FR</button>
           <button
             type="button"
             className={language === "en" ? "active" : ""}
+            aria-pressed={language === "en"}
             onClick={() => setLanguage("en")}
           >EN</button>
         </div>
@@ -1125,7 +1009,8 @@ export default function AdminApp() {
             type="button"
             className="admin-signout"
             onClick={async () => {
-              await client.signOut();
+              try { const result=await client.signOut();if(result.error)throw new Error("SIGN_OUT_FAILED"); } catch { setFatalError(language === "fr" ? "La déconnexion n’a pas abouti. Réessayez." : "Sign out did not complete. Try again.");return; }
+              try { for (const key of Object.keys(sessionStorage)) if (/^commerce-(onboarding|settings|product):/.test(key)) sessionStorage.removeItem(key); } catch { /* Optional storage. */ }
               setAuthenticated(false);
               setStore(null);
               setSessionEmail("");
@@ -1145,8 +1030,8 @@ export default function AdminApp() {
       <div className="admin-shell">
         {header}
         <main className="admin-loading">
-          <span className="admin-loader" />
-          <p>{t.loading}</p>
+          <span className="admin-loader" aria-hidden="true" />
+          <p role="status">{t.loading}</p>
         </main>
       </div>
     );
@@ -1156,10 +1041,7 @@ export default function AdminApp() {
     return (
       <div className="admin-shell">
         {header}
-        <main className="admin-loading">
-          <p className="form-message error">{fatalError || t.genericError}</p>
-          <a className="admin-primary" href="/">{t.back}</a>
-        </main>
+        <RecoveryState language={language} title={language === "fr" ? "Votre espace est temporairement indisponible" : "Your workspace is temporarily unavailable"} message={language === "fr" ? "Vérifiez votre connexion puis réessayez. Vos données enregistrées sont conservées." : "Check your connection and try again. Your saved data is safe."} retry={() => { setFatalError(null);setLoading(true);setAttempt(value=>value+1); }} />
       </div>
     );
   }
@@ -1168,26 +1050,26 @@ export default function AdminApp() {
     <div className="admin-shell">
       {header}
       {!authenticated ? (
-        <AuthScreen
+        <AccountAccess
           client={client}
           language={language}
           onAuthenticated={async () => {
             await hydrate(client);
           }}
         />
+      ) : window.location.pathname === "/app/accept-invitation" ? (
+        <InvitationAccept client={client} language={language} />
+      ) : window.location.pathname === "/app/platform" && !store ? (
+        <main id="merchant-main"><PlatformPanel client={client} language={language} /></main>
       ) : store ? (
-        <StoreSettings
-          client={client}
-          store={store}
-          language={language}
-          onUpdated={setStore}
-        />
+        <MerchantWorkspace client={client} store={store} stores={stores.length ? stores : [store]} language={language} onUpdated={setStore}
+          renderSettings={(section) => <StoreSettings key={store.id+section} client={client} store={store} language={language} section={section} onUpdated={setStore} />} />
       ) : (
         <Onboarding
           client={client}
           language={language}
           email={sessionEmail}
-          onCreated={setStore}
+          onCreated={(created) => { setStore(created);setStores([created]); }}
         />
       )}
     </div>

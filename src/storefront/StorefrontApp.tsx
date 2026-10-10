@@ -5,6 +5,11 @@ import "./storefront.css";
 import { formatMoney, type Language, type PublicProduct, type PublicStorefront } from "./types";
 import { themeShellProps } from "./theme-style";
 import ThemeHero from "./ThemeHero";
+import { useStoreCart, type StoreCart } from "./cart";
+import CartCheckout from "./CartCheckout";
+import { timedFetch } from "../lib/requests";
+import { preferredLanguage, rememberLanguage } from "../lib/language";
+import RecoveryState from "../components/RecoveryState";
 
 const copy = {
   fr: {
@@ -78,18 +83,13 @@ function capturePageEvent(
   }).catch(() => undefined);
 }
 
-function currentLanguage(): Language {
-  return navigator.language.toLowerCase().startsWith("fr") ? "fr" : "en";
-}
-
-function parseRoute() {
-  const parts = window.location.pathname.split("/").filter(Boolean);
+export function parseStoreRoute(pathname = window.location.pathname) {
+  const parts = pathname.split("/").filter(Boolean);
   if (parts[0] !== "store" || !parts[1]) return null;
-  return {
-    storeSlug: decodeURIComponent(parts[1]),
-    productSlug:
-      parts[2] === "p" && parts[3] ? decodeURIComponent(parts[3]) : null
-  };
+  if (!(parts.length === 2 || (parts.length === 3 && parts[2] === "cart") || (parts.length === 4 && parts[2] === "p"))) return null;
+  try {
+    return { storeSlug: decodeURIComponent(parts[1]), productSlug: parts[2] === "p" ? decodeURIComponent(parts[3]) : null, cart: parts[2] === "cart" };
+  } catch { return null; }
 }
 
 function setMeta(
@@ -129,7 +129,7 @@ function applyMetadata(
     product?.description ||
     storefront.store.description ||
     "Boutique en ligne " + storefront.store.name;
-  const pageUrl = window.location.href;
+  const pageUrl = window.location.origin + window.location.pathname;
   const image =
     product?.imageUrls[0] ||
     storefront.store.logoUrl ||
@@ -152,7 +152,7 @@ function applyMetadata(
   setCanonical(pageUrl);
 }
 
-function StoreHeader({ storefront, homeHref }: { storefront: PublicStorefront; homeHref: string }) {
+function StoreHeader({ storefront, homeHref, language, cart, preview }: { storefront: PublicStorefront; homeHref: string; language:Language; cart:StoreCart; preview:boolean }) {
   const initials = storefront.store.name
     .split(/\s+/)
     .filter(Boolean)
@@ -175,7 +175,10 @@ function StoreHeader({ storefront, homeHref }: { storefront: PublicStorefront; h
           ) : null}
         </div>
       </a>
-      <span className="public-currency">{storefront.store.currencyCode}</span>
+      <div className="store-header-actions"><span className="public-currency">{storefront.store.currencyCode}</span>
+        {!preview && <a className="store-cart-link" href={homeHref + "/cart"}>{language === "fr" ? "Panier" : "Cart"} ({cart.lines.reduce((n,l)=>n+l.quantity,0)})</a>}
+        {!preview && <div className="store-language" role="group" aria-label={language === "fr" ? "Langue" : "Language"}>{(["fr","en"] as const).map(value=><button key={value} type="button" aria-pressed={value===language} onClick={()=>{rememberLanguage(value);window.location.reload();}}>{value.toUpperCase()}</button>)}</div>}
+      </div>
     </header>
   );
 }
@@ -218,13 +221,15 @@ function ProductDetail({
   product,
   language,
   homeHref,
-  preview = false
+  preview = false,
+  cart
 }: {
   storefront: PublicStorefront;
   product: PublicProduct;
   language: Language;
   homeHref: string;
   preview?: boolean;
+  cart:StoreCart;
 }) {
   const t = copy[language];
   const [selectedImage, setSelectedImage] = useState(product.imageUrls[0] || "");
@@ -242,6 +247,8 @@ function ProductDetail({
       variantGroups.map((group) => [group.name, group.values[0] || ""])
     )
   );
+  const [cartMessage, setCartMessage] = useState("");
+  const [quantity, setQuantity] = useState(1);
   const [handoffBusy, setHandoffBusy] = useState(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
 
@@ -256,7 +263,7 @@ function ProductDetail({
     }));
 
     try {
-      const response = await fetch(
+      const response = await timedFetch(
         apiBaseUrl +
           "/v1/public/stores/" + encodeURIComponent(storefront.store.slug) +
           "/products/" + encodeURIComponent(product.slug) +
@@ -295,7 +302,7 @@ function ProductDetail({
   }
 
   return (
-    <main className="product-detail-page">
+    <main className="product-detail-page" id="store-main">
       <a className="public-back" href={homeHref}>
         ← {t.back}
       </a>
@@ -369,6 +376,11 @@ function ProductDetail({
             </div>
           ) : null}
 
+          {!preview && <div className="product-cart-actions"><label>{language === "fr" ? "Quantité" : "Quantity"}<input type="number" min={1} max={99} value={quantity} onChange={e=>setQuantity(Math.max(1,Math.min(99,Number(e.target.value)||1)))} /></label><button type="button" className="cart-primary" onClick={()=>{
+            const added=cart.add({productId:product.id,quantity,variants:selectedVariants});
+            setCartMessage(added ? (language === "fr" ? "Ajouté à votre panier." : "Added to your cart.") : (language === "fr" ? "Votre panier contient déjà 50 choix. Retirez un article pour continuer." : "Your cart already contains 50 choices. Remove an item to continue."));
+          }}>{language === "fr" ? "Ajouter au panier" : "Add to cart"}</button></div>}
+          {cartMessage && <p role="status">{cartMessage} <a href={homeHref+"/cart"}>{language === "fr" ? "Voir le panier" : "View cart"}</a></p>}
           {handoffError ? (
             <p className="public-handoff-error" role="alert">{handoffError}</p>
           ) : null}
@@ -393,7 +405,7 @@ function ProductDetail({
                   url: window.location.href
                 }).catch(() => undefined);
               } else {
-                await navigator.clipboard?.writeText(window.location.href);
+                await navigator.clipboard?.writeText(window.location.href).then(()=>setCartMessage(language === "fr" ? "Lien copié." : "Link copied.")).catch(()=>setCartMessage(language === "fr" ? "Copiez le lien dans la barre d’adresse." : "Copy the link from the address bar."));
               }
             }}
           >
@@ -406,12 +418,14 @@ function ProductDetail({
 }
 
 export default function StorefrontApp() {
-  const route = parseRoute();
-  const language = currentLanguage();
+  const route = parseStoreRoute();
+  const language = preferredLanguage();
   const t = copy[language];
   const [storefront, setStorefront] = useState<PublicStorefront | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!route || !apiBaseUrl) {
@@ -421,27 +435,28 @@ export default function StorefrontApp() {
     }
 
     let cancelled = false;
+    setLoading(true);setFailed(false);setNotFound(false);
     (async () => {
       try {
-        const response = await fetch(
+        const response = await timedFetch(
           apiBaseUrl + "/v1/public/stores/" + encodeURIComponent(route.storeSlug),
           { headers: { Accept: "application/json" } }
         );
         if (!response.ok) {
-          if (!cancelled) setNotFound(true);
+          if (!cancelled) { if(response.status === 404) setNotFound(true); else setFailed(true); }
           return;
         }
         const body = await response.json() as PublicStorefront;
         if (!cancelled) setStorefront(body);
       } catch {
-        if (!cancelled) setNotFound(true);
+        if (!cancelled) setFailed(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
 
     return () => { cancelled = true; };
-  }, []);
+  }, [attempt]);
 
   const product = useMemo(() => {
     if (!storefront || !route?.productSlug) return null;
@@ -458,6 +473,8 @@ export default function StorefrontApp() {
       return;
     }
     applyMetadata(storefront, product);
+    document.documentElement.lang=language;
+    if(route?.cart) {document.title=(language === "fr" ? "Panier" : "Cart")+" — "+storefront.store.name;setMeta('meta[name="robots"]',"name","noindex,nofollow");return;}
 
     if (route?.productSlug && product) {
       capturePageEvent("product_view", storefront.store.slug, product.slug);
@@ -477,6 +494,8 @@ export default function StorefrontApp() {
     );
   }
 
+  if (failed) return <RecoveryState language={language} title={language === "fr" ? "La boutique attend votre retour" : "Let’s reconnect to the store"} message={language === "fr" ? "Le chargement a été interrompu. Réessayez pour retrouver le catalogue." : "Loading was interrupted. Retry to return to the catalog."} retry={()=>setAttempt(v=>v+1)} />;
+
   if (notFound || !storefront || !route) {
     return (
       <div className="public-store-shell">
@@ -489,18 +508,20 @@ export default function StorefrontApp() {
     );
   }
 
-  return <StorefrontView storefront={storefront} language={language} productSlug={route.productSlug} />;
+  return <StorefrontView storefront={storefront} language={language} productSlug={route.productSlug} cartPage={route.cart} />;
 }
 
-export function StorefrontView({ storefront, language, productSlug = null, homeHref = "/store/" + storefront.store.slug, productHref = (item) => "/store/" + storefront.store.slug + "/p/" + item.slug, preview = false }: {
+export function StorefrontView({ storefront, language, productSlug = null, homeHref = "/store/" + storefront.store.slug, productHref = (item) => "/store/" + storefront.store.slug + "/p/" + item.slug, preview = false, cartPage = false }: {
   storefront: PublicStorefront;
   language: Language;
   productSlug?: string | null;
   homeHref?: string;
   productHref?: (product: PublicProduct) => string;
   preview?: boolean;
+  cartPage?: boolean;
 }) {
   const t = copy[language];
+  const cart = useStoreCart(storefront.store.slug,!preview);
   const [category, setCategory] = useState<string | null>(null);
   const product = storefront.products.find((item) => item.slug === productSlug) ?? null;
   const categories = useMemo(() => {
@@ -519,11 +540,15 @@ export function StorefrontView({ storefront, language, productSlug = null, homeH
       : storefront.products;
   }, [storefront, category]);
 
+  const footer = <footer className="public-store-footer"><span>{t.powered}</span><nav aria-label={language === "fr" ? "Aide et informations" : "Help and information"}><a href="/help">{language === "fr" ? "Aide" : "Help"}</a><a href="/contact">Contact</a><a href="/privacy">{language === "fr" ? "Confidentialité" : "Privacy"}</a><a href="/terms">{language === "fr" ? "Conditions" : "Terms"}</a></nav></footer>;
+  const skip = <a className="skip-link" href="#store-main">{language === "fr" ? "Aller au contenu" : "Skip to content"}</a>;
+  if (cartPage && !preview) return <div {...themeShellProps(storefront.store)}>{skip}<StoreHeader storefront={storefront} homeHref={homeHref} language={language} cart={cart} preview={preview} /><main id="store-main"><CartCheckout storefront={storefront} language={language} cart={cart} /></main>{footer}</div>;
   if (productSlug) {
     if (!product) {
       return (
         <div {...themeShellProps(storefront.store)}>
-          <StoreHeader storefront={storefront} homeHref={homeHref} />
+        {skip}
+          <StoreHeader storefront={storefront} homeHref={homeHref} language={language} cart={cart} preview={preview} />
           <main className="public-state">
             <h1>404</h1>
             <p>{t.productNotFound}</p>
@@ -535,7 +560,8 @@ export function StorefrontView({ storefront, language, productSlug = null, homeH
 
     return (
       <div {...themeShellProps(storefront.store)}>
-        <StoreHeader storefront={storefront} homeHref={homeHref} />
+        {skip}
+        <StoreHeader storefront={storefront} homeHref={homeHref} language={language} cart={cart} preview={preview} />
         <ProductDetail
           key={product.id}
           storefront={storefront}
@@ -543,17 +569,19 @@ export function StorefrontView({ storefront, language, productSlug = null, homeH
           language={language}
           homeHref={homeHref}
           preview={preview}
+          cart={cart}
         />
-        <footer className="public-store-footer">{t.powered}</footer>
+        {footer}
       </div>
     );
   }
 
   return (
     <div {...themeShellProps(storefront.store)}>
-      <StoreHeader storefront={storefront} homeHref={homeHref} />
+        {skip}
+      <StoreHeader storefront={storefront} homeHref={homeHref} language={language} cart={cart} preview={preview} />
 
-      <main>
+      <main id="store-main">
         <ThemeHero storefront={storefront} language={language} productHref={productHref} />
 
         <section className="public-catalog-section" id="catalog">
@@ -564,6 +592,7 @@ export function StorefrontView({ storefront, language, productSlug = null, homeH
                 <button
                   type="button"
                   className={category === null ? "active" : ""}
+                  aria-pressed={category === null}
                   onClick={() => setCategory(null)}
                 >
                   {t.all}
@@ -573,6 +602,7 @@ export function StorefrontView({ storefront, language, productSlug = null, homeH
                     type="button"
                     key={item}
                     className={category === item ? "active" : ""}
+                    aria-pressed={category === item}
                     onClick={() => setCategory(item)}
                   >
                     {item}
@@ -599,7 +629,7 @@ export function StorefrontView({ storefront, language, productSlug = null, homeH
         </section>
       </main>
 
-      <footer className="public-store-footer">{t.powered}</footer>
+      {footer}
     </div>
   );
 }

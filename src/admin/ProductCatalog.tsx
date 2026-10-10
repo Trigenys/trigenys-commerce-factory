@@ -1,3 +1,4 @@
+import { useDraft, useUnsavedChanges } from "../lib/drafts";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { CommerceAuthClient } from "./auth";
 import {
@@ -300,7 +301,10 @@ export default function ProductCatalog({
 }) {
   const t = copy[language];
   const [products, setProducts] = useState<Product[]>([]);
-  const [editor, setEditor] = useState<EditorState | null>(null);
+  const draft = useDraft<EditorState | null>("commerce-product:"+store.id, null, (value): value is EditorState | null => value === null || Boolean(value && typeof value === "object" && "imageText" in value && "name" in value));
+  const editor = draft.value;
+  const setEditor = draft.setValue;
+  useUnsavedChanges(Boolean(editor));
   const [slugTouched, setSlugTouched] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -340,6 +344,7 @@ export default function ProductCatalog({
   }, [client, store.id, language, onProductsChange]);
 
   function startCreate() {
+    if (editor && !window.confirm(language === "fr" ? "Remplacer le brouillon en cours ?" : "Replace the current draft?")) return;
     const maxOrder = products.reduce(
       (max, product) => Math.max(max, product.sortOrder),
       0
@@ -352,6 +357,7 @@ export default function ProductCatalog({
   }
 
   function startEdit(product: Product) {
+    if (editor && !window.confirm(language === "fr" ? "Remplacer le brouillon en cours ?" : "Replace the current draft?")) return;
     if (product.status === "archived") return;
     setEditor(editorFromProduct(product));
     setSlugTouched(true);
@@ -444,6 +450,7 @@ export default function ProductCatalog({
         }
         await reload();
         setEditor(null);
+        draft.discard();
         setPendingDeleteUrls([]);
         setMessage(t.saved);
       } else {
@@ -485,7 +492,7 @@ export default function ProductCatalog({
     try {
       await archiveProduct(client, store.id, product.id);
       await reload();
-      if (editor?.id === product.id) setEditor(null);
+      if (editor?.id === product.id) {setEditor(null);draft.discard();}
     } catch {
       setError(t.genericError);
     } finally {
@@ -545,6 +552,7 @@ export default function ProductCatalog({
       </div>
 
       {message ? <p className="form-message success">{message}</p> : null}
+      {editor ? <p className="draft-note" role="status">{language === "fr" ? "Brouillon conservé dans cet onglet. Enregistrez pour appliquer vos modifications." : "Draft kept in this tab. Save to apply changes."}</p> : null}
       {error ? <p className="form-message error" role="alert">{error}</p> : null}
 
       {editor ? (
@@ -708,7 +716,9 @@ export default function ProductCatalog({
               type="button"
               className="admin-secondary"
               onClick={() => {
+                if(!window.confirm(language === "fr" ? "Abandonner ce brouillon ?" : "Discard this draft?"))return;
                 setEditor(null);
+        draft.discard();
                 setPendingDeleteUrls([]);
               }}
               disabled={busy || mediaBusy}
