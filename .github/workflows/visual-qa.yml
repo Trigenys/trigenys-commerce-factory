@@ -11,20 +11,20 @@ permissions:
 
 jobs:
   impact:
-    uses: EagleFox31/appfactory-project-automation/.github/workflows/reusable-impact-analysis.yml@151add8b850fb8a81f5ecceaa4fde1505fd9c1a2
+    uses: EagleFox31/appfactory-project-automation/.github/workflows/reusable-impact-analysis.yml@01baea249aa271bab751a819aad255d9a101ad43
     with:
-      appfactory_ref: 151add8b850fb8a81f5ecceaa4fde1505fd9c1a2
+      appfactory_ref: 01baea249aa271bab751a819aad255d9a101ad43
       config_path: .github/appfactory-impact.json
       mode: auto
 
   visual-qa:
     needs: impact
     if: ${{ contains(fromJSON(needs.impact.outputs.gates), 'visual-qa') }}
-    uses: EagleFox31/appfactory-project-automation/.github/workflows/reusable-visual-qa.yml@151add8b850fb8a81f5ecceaa4fde1505fd9c1a2
+    uses: EagleFox31/appfactory-project-automation/.github/workflows/reusable-visual-qa.yml@01baea249aa271bab751a819aad255d9a101ad43
     permissions:
       contents: read
     with:
-      appfactory_ref: 151add8b850fb8a81f5ecceaa4fde1505fd9c1a2
+      appfactory_ref: 01baea249aa271bab751a819aad255d9a101ad43
       config_path: .github/appfactory-visual-qa.json
       checkout_ref: ${{ github.event.pull_request.head.sha || github.sha }}
       install_command: npm install --ignore-scripts --no-audit --no-fund
