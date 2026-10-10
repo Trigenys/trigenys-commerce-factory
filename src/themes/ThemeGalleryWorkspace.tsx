@@ -1,3 +1,4 @@
+import { merchantAppHref } from "../merchant-navigation";
 import { useState } from "react";
 import { isStoreTheme, resolveStoreTheme, type StoreTheme, type ThemeSettings } from "../../shared/store-themes";
 import { StorefrontView } from "../storefront/StorefrontApp";
@@ -34,7 +35,7 @@ export default function ThemeGalleryWorkspace() {
     const url = new URL(window.location.href); url.pathname = "/themes/" + value; url.search = ""; url.hash = ""; window.history.replaceState(null, "", url);
   }
   return <div className="theme-gallery-workspace">
-      <aside className="theme-gallery-controls"><ThemePicker value={theme} settings={settings} language="fr" onChange={changeTheme} /><a className="theme-gallery-cta" href="/app">Créer ma boutique avec Commerce Factory ↗</a></aside>
+      <aside className="theme-gallery-controls"><ThemePicker value={theme} settings={settings} language="fr" onChange={changeTheme} /><a className="theme-gallery-cta" href={merchantAppHref()}>Créer ma boutique avec Commerce Factory ↗</a>{merchantAppHref() !== "/app" ? <p className="theme-gallery-merchant-note">Création et connexion sur le site principal. Ces nouveaux styles sont encore en aperçu.</p> : null}</aside>
       <section className="theme-gallery-preview" aria-label="Aperçu du thème">
         <div className="theme-gallery-preview-label"><div><strong>{resolveStoreTheme(theme, settings).name}</strong><span>Catalogue fictif pour comparer les présentations</span></div><a href={"/themes/" + theme}>Lien vers ce thème ↗</a></div>
         <div onClickCapture={(event) => {

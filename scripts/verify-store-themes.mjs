@@ -1,8 +1,20 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright";
 import { storeThemeIds } from "../shared/store-themes.ts";
+import { merchantAppHref, productionMerchantAppUrl } from "../src/merchant-navigation.ts";
+
+for (const [hostname, expected] of [
+  ["trigenys-commerce-factory.pages.dev", "/app"],
+  ["localhost", "/app"],
+  ["127.0.0.1", "/app"],
+  ["feat-55-multi-sector-storefr.trigenys-commerce-factory.pages.dev", productionMerchantAppUrl],
+  ["8c24169d.trigenys-commerce-factory.pages.dev", productionMerchantAppUrl],
+  ["another-project.pages.dev", "/app"],
+  ["trigenys-commerce-factory.pages.dev.example.com", "/app"]
+]) assert.equal(merchantAppHref(hostname), expected, hostname + ": merchant entry origin");
 
 const base = "http://127.0.0.1:5174";
 const server = spawn(process.execPath, ["node_modules/vite/bin/vite.js", "--host", "127.0.0.1", "--port", "5174", "--strictPort"], { stdio: "pipe" });
@@ -126,8 +138,49 @@ try {
     return { type: output.type, width: bitmap.width, height: bitmap.height, corner: decoded.getImageData(0, 0, 1, 1).data[3], center: decoded.getImageData(bitmap.width / 2, bitmap.height / 2, 1, 1).data[3] };
   });
   assert.deepEqual(alpha, { type: "image/webp", width: 1600, height: 800, corner: 0, center: 255 });
+
+  // Exercise the built application on a Pages preview origin. Serve only local
+  // build assets and intercept the destination; CI does not create an account
+  // or grant a PR preview access to the production API.
+  const previewOrigin = "https://qa-merchant.trigenys-commerce-factory.pages.dev";
+  const previewPage = await browser.newPage({ locale: "fr-FR" });
+  const previewErrors = [];
+  previewPage.on("pageerror", (error) => previewErrors.push(error.message));
+  await previewPage.route(previewOrigin + "/**", async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    const asset = pathname.startsWith("/assets/") || pathname.startsWith("/landing/") || /^\/[a-zA-Z0-9-]+\.(png|svg|ico)$/.test(pathname);
+    const file = asset ? pathname : "/index.html";
+    const extension = file.split(".").pop();
+    const contentType = { js: "application/javascript", css: "text/css", webp: "image/webp", avif: "image/avif", png: "image/png", svg: "image/svg+xml", html: "text/html" }[extension] || "application/octet-stream";
+    await route.fulfill({ contentType, body: await readFile(new URL("../dist" + file, import.meta.url)) });
+  });
+  await previewPage.route(productionMerchantAppUrl, (route) => route.fulfill({
+    contentType: "text/html",
+    body: '<h1>Espace marchand</h1><label>Email <input type="email"></label>'
+  }));
+  await previewPage.goto(previewOrigin + "/");
+  await previewPage.locator(".cfh-primary").waitFor();
+  await checkPage(previewPage, "preview landing");
+  const creationLinks = await previewPage.locator('a[href$="/app"]').evaluateAll((links) => links.map((link) => link.getAttribute("href")));
+  assert.ok(creationLinks.length > 0);
+  assert.ok(creationLinks.every((href) => href === productionMerchantAppUrl), "All landing creation/login links use the canonical merchant origin");
+  await previewPage.goto(previewOrigin + "/themes/beauty-ecrin");
+  await previewPage.locator(".theme-gallery-cta").waitFor();
+  for (const selector of [".theme-gallery-create", ".theme-gallery-cta"]) {
+    assert.equal(await previewPage.locator(selector).getAttribute("href"), productionMerchantAppUrl);
+  }
+  await Promise.all([
+    previewPage.waitForURL(productionMerchantAppUrl),
+    previewPage.locator(".theme-gallery-create").click()
+  ]);
+  assert.equal(await previewPage.getByLabel("Email").isVisible(), true);
+  await previewPage.goto(previewOrigin + "/app");
+  await previewPage.waitForURL(productionMerchantAppUrl);
+  assert.equal(await previewPage.getByLabel("Email").isVisible(), true, "An old preview /app link also reaches the canonical merchant entry");
+  assert.deepEqual(previewErrors, [], "Preview merchant navigation errors");
+  await previewPage.close();
   assert.deepEqual(errors, [], "Browser errors");
-  console.log(`Verified ${storeThemeIds.length} themes at desktop/mobile sizes, product pages, filtering, variants, handoff, gallery deep links and transparent WebP resizing.`);
+  console.log(`Verified ${storeThemeIds.length} themes at desktop/mobile sizes, product pages, filtering, variants, handoff, gallery deep links, transparent WebP resizing and preview-to-canonical merchant navigation.`);
 } finally {
   await browser?.close();
   server.kill("SIGTERM");

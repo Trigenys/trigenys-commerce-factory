@@ -1,3 +1,4 @@
+import { merchantAppHref } from "./merchant-navigation";
 import { useEffect, useState } from "react";
 import CommerceJourney from "./components/CommerceJourney";
 import CommerceHero from "./components/CommerceHero";
@@ -503,7 +504,7 @@ export default function App() {
         </nav>
 
         <div className="header-actions">
-          <a className="header-login" href="/app">{t.login}</a>
+          <a className="header-login" href={merchantAppHref()}>{t.login}</a>
           <div className="language-switch" role="group" aria-label={t.languageLabel}>
             <button
               type="button"
@@ -522,7 +523,7 @@ export default function App() {
               EN
             </button>
           </div>
-          <a className="button button-primary button-compact" href="/app">
+          <a className="button button-primary button-compact" href={merchantAppHref()}>
             {t.createStore}
           </a>
         </div>
@@ -690,7 +691,7 @@ export default function App() {
                 <ul>
                   {plan.features.map((feature) => <li key={feature}>✓ {feature}</li>)}
                 </ul>
-                <a href={plan.tier === "starter" ? "/app" : "#social"} className={plan.featured ? "button button-primary" : "button button-soft"}>
+                <a href={plan.tier === "starter" ? merchantAppHref() : "#social"} className={plan.featured ? "button button-primary" : "button button-soft"}>
                   {plan.cta}
                 </a>
               </article>
@@ -704,7 +705,7 @@ export default function App() {
             <span className="overline inverse">{t.launchOverline}</span>
             <h2>{t.launchTitle}</h2>
             <p>{t.launchBody}</p>
-            <a className="button button-primary launch-button" href="/app">{t.launchCta}</a>
+            <a className="button button-primary launch-button" href={merchantAppHref()}>{t.launchCta}</a>
             <small>{t.launchNote}</small>
           </div>
         </section>

@@ -47,6 +47,10 @@ Cloudflare Pages preview deployments are created from non-main branches.
 
 Preview is intentionally read-only with respect to production infrastructure provisioning. Pull requests do not receive permission to create/reconcile Neon targets through AppFactory.
 
+Merchant creation/login links on this project's Pages preview hosts point to the canonical production `/app` origin. Direct visits to a preview `/app` also redirect there before loading the merchant client. The preview origin is not added to production API CORS or Managed Auth trusted domains. Local development and the canonical site retain relative `/app` navigation.
+
+The theme showroom remains a presentation preview until its migration and Worker rollout are complete. Opening the production merchant app does not enable draft-only themes.
+
 When isolated API/database previews become necessary, use AppFactory's existing `staging` Worker/Hyperdrive identity instead of sharing production credentials with PR builds.
 
 ### Production

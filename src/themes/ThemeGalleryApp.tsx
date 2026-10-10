@@ -1,3 +1,4 @@
+import { merchantAppHref } from "../merchant-navigation";
 import { lazy, Suspense, useEffect } from "react";
 import { storeThemeIds } from "../../shared/store-themes";
 import "./theme-gallery-shell.css";
@@ -13,7 +14,7 @@ export default function ThemeGalleryApp() {
     robots?.setAttribute("content", "noindex,follow");
   }, []);
   return <div className="theme-gallery-app">
-    <header className="theme-gallery-header"><a href="/">Commerce Factory <span>Thèmes</span></a><a className="theme-gallery-create" href="/app">Créer ma boutique ↗</a></header>
+    <header className="theme-gallery-header"><a href="/">Commerce Factory <span>Thèmes</span></a><a className="theme-gallery-create" href={merchantAppHref()}>Créer ma boutique ↗</a></header>
     <section className="theme-gallery-intro"><span>LA BIBLIOTHÈQUE COMMERCE FACTORY</span><h1>{storeThemeIds.length - 1} styles.<br />Une boutique à votre image.</h1><p>Mode, sport, beauté, maison, alimentation… Explorez les univers, personnalisez leur style et ouvrez les fiches produits dans l’aperçu.</p></section>
     <Suspense fallback={<div className="theme-gallery-loading" role="status">Chargement des aperçus…</div>}>
       <ThemeGalleryWorkspace />

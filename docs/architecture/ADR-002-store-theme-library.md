@@ -24,12 +24,15 @@ Apply the reviewed migration to the dedicated Commerce Factory database before d
 
 No database migration or production Worker deployment is performed by the theme showroom. Its preview works independently of merchant authentication.
 
+On Pages preview hosts, creation links open the canonical production merchant application. Direct preview `/app` URLs redirect there before initializing authentication. The preview does not gain production CORS/Auth permissions, and its draft themes are not presented as activated in production.
+
 ## Validation
 
 - Frontend typecheck and production build.
 - Backend check: creation/reload for all IDs, theme patch preservation, settings reset, malformed settings rejection, public configuration and WhatsApp compatibility, existing tenant/media/catalog tests.
 - `npm run test:themes` uses Playwright on a local Vite server with mocked public API data. It exercises all 25 IDs at 1440px/390px on store/product routes, category filtering and readable active-filter styles, variants, image selection, handoff, empty catalogs, showroom selection/deep links, a functional creation link while the workspace download is paused, and PNG-to-WebP transparency after resizing.
 - `npx playwright install --with-deps chromium` installs the test browser. CI runs the same command before the theme checks.
+- Build with `npm run build` before `npm run test:themes`: its preview-origin navigation checks use the production assets in `dist`. They verify all merchant links and old preview `/app` URLs reach the canonical origin, with a mocked destination so no account is created during CI.
 - AppFactory visual QA additionally visits `/themes` for all six compositions and one product route at desktop/mobile sizes; the marketing `/` route stays covered.
 
 ## RAIDER
