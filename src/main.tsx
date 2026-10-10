@@ -1,24 +1,31 @@
-import { StrictMode } from "react";
+import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
-import AdminApp from "./admin/AdminApp";
-import StorefrontApp from "./storefront/StorefrontApp";
-import DemoStorefrontApp from "./demo/DemoStorefrontApp";
 import "./styles.css";
 
-const path = window.location.pathname;
-const isMerchantApp = path === "/app" || path.startsWith("/app/");
-const isStorefront = path.startsWith("/store/");
-const isDemoStorefront = path.startsWith("/demo/");
+// The public landing must not download merchant-admin, storefront or
+// personalized-demo code before the visitor chooses one of those routes.
+const AdminApp = lazy(() => import("./admin/AdminApp"));
+const StorefrontApp = lazy(() => import("./storefront/StorefrontApp"));
+const DemoStorefrontApp = lazy(() => import("./demo/DemoStorefrontApp"));
+
+const pathname = window.location.pathname;
+const isMerchantApp = pathname === "/app" || pathname.startsWith("/app/");
+const isStorefront = pathname.startsWith("/store/");
+const isDemoStorefront = pathname.startsWith("/demo/");
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    {isMerchantApp ? (
-      <AdminApp />
-    ) : isStorefront ? (
-      <StorefrontApp />
-    ) : isDemoStorefront ? (
-      <DemoStorefrontApp />
+    {isMerchantApp || isStorefront || isDemoStorefront ? (
+      <Suspense fallback={<main role="status" aria-live="polite" style={{ padding: "2rem", minHeight: "40vh" }}>Chargement…</main>}>
+        {isMerchantApp ? (
+          <AdminApp />
+        ) : isStorefront ? (
+          <StorefrontApp />
+        ) : (
+          <DemoStorefrontApp />
+        )}
+      </Suspense>
     ) : (
       <App />
     )}
