@@ -59,6 +59,11 @@ try {
       await checkPage(page, `${theme}/${viewport.width}/store`);
       await page.locator(".public-category-filter button", { hasText: "Beauté" }).click();
       assert.equal(await page.locator(".public-product-card").count(), 1);
+      const activeFilter = await page.locator(".public-category-filter button.active").evaluate((button) => {
+        const styles = getComputedStyle(button);
+        return { background: styles.backgroundColor, foreground: styles.color };
+      });
+      assert.deepEqual(activeFilter, { background: "rgb(255, 204, 51)", foreground: "rgb(0, 0, 0)" }, theme + ": active filter uses the readable accent pair");
       await page.goto(base + "/store/theme-test/p/sac-signature");
       await page.locator(".product-detail-copy").waitFor();
       await checkPage(page, `${theme}/${viewport.width}/product`);
@@ -79,7 +84,21 @@ try {
   await page.locator(".public-empty-catalog").waitFor();
   await checkPage(page, "empty catalog");
 
-  await page.goto(base + "/themes/beauty-ecrin");
+  // The showroom's introduction and creation link must work while its
+  // interactive workspace is still downloading, including reduced motion.
+  let releaseWorkspace;
+  const workspaceDownload = new Promise((resolve) => { releaseWorkspace = resolve; });
+  await page.route("**/src/themes/ThemeGalleryWorkspace.tsx*", async (route) => {
+    await workspaceDownload;
+    await route.continue();
+  });
+  await page.goto(base + "/themes/beauty-ecrin", { waitUntil: "domcontentloaded" });
+  await page.locator(".theme-gallery-loading").waitFor();
+  assert.equal(await page.locator(".theme-gallery-create").isVisible(), true);
+  assert.equal(await page.locator(".theme-gallery-create").getAttribute("href"), "/app");
+  assert.ok((await page.locator(".theme-gallery-intro h1").textContent()).includes("24 styles"));
+  releaseWorkspace();
+  await page.unroute("**/src/themes/ThemeGalleryWorkspace.tsx*");
   await page.locator(".theme-choice").first().waitFor();
   assert.equal(await page.locator(".theme-choice").count(), storeThemeIds.length);
   await page.getByLabel("Secteur d’activité").selectOption("sport");

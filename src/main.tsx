@@ -1,6 +1,7 @@
 import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import ThemeGalleryApp from "./themes/ThemeGalleryApp";
 import "./styles.css";
 
 // The public landing must not download merchant-admin, storefront or
@@ -8,7 +9,6 @@ import "./styles.css";
 const AdminApp = lazy(() => import("./admin/AdminApp"));
 const StorefrontApp = lazy(() => import("./storefront/StorefrontApp"));
 const DemoStorefrontApp = lazy(() => import("./demo/DemoStorefrontApp"));
-const ThemeGalleryApp = lazy(() => import("./themes/ThemeGalleryApp"));
 
 const pathname = window.location.pathname;
 const isMerchantApp = pathname === "/app" || pathname.startsWith("/app/");

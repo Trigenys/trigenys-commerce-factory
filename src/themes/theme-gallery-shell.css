@@ -1,0 +1,12 @@
+.theme-gallery-app { min-height: 100vh; background: #f4f3ed; color: #19372b; font-family: "Plus Jakarta Sans", system-ui, sans-serif; }
+.theme-gallery-header { max-width: 1500px; margin: auto; padding: 24px 32px; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.theme-gallery-header a { color: inherit; text-decoration: none; font-size: 15px; font-weight: 800; }
+.theme-gallery-header span { margin-left: 12px; font-weight: 400; color: #5a6b61; }
+.theme-gallery-header a.theme-gallery-create { border-radius: 999px; background: #19372b; color: white; padding: 14px 22px; font-size: 12px; }
+.theme-gallery-intro { max-width: 1500px; margin: auto; padding: 44px 32px 56px; }
+.theme-gallery-intro > span { font-size: 11px; letter-spacing: .15em; font-weight: 800; }
+.theme-gallery-intro h1 { margin: 22px 0; font-family: "Space Grotesk", system-ui, sans-serif; font-weight: 600; letter-spacing: -.06em; font-size: clamp(42px, 6vw, 84px); line-height: 1.03; }
+.theme-gallery-intro p { max-width: 620px; color: #56645e; font-size: 16px; line-height: 1.8; }
+.theme-gallery-loading { max-width: 1500px; margin: auto; padding: 0 32px 60px; min-height: 600px; color: #56645e; }
+@media (max-width: 760px) { .theme-gallery-header { padding: 18px; } .theme-gallery-header span { display: none; } .theme-gallery-intro { padding: 30px 20px; } .theme-gallery-loading { padding: 0 20px 40px; } }
+@media (max-width: 440px) { .theme-gallery-header a { font-size: 12px; } .theme-gallery-header a.theme-gallery-create { padding: 12px 14px; } }

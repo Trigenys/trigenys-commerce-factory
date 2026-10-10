@@ -14,6 +14,8 @@ The merchant picker supports sector filtering, resettable customization and an i
 
 The showroom uses a clearly marked fictional, mixed-sector catalog with existing local imagery. Sector-specific demo photography and further art direction remain follow-up work in #55. The selection is a first library, not a conversion-performance claim.
 
+Its introduction and creation link render in the initial application shell. The interactive workspace loads separately on showroom routes, so opening `/themes` does not delay the first text paint or the functional CTA until the storefront renderer is downloaded.
+
 ## Persistence and rollout
 
 Migration `0006_store_theme_library.sql` expands the theme constraint and adds `theme_settings jsonb NOT NULL DEFAULT '{}'`. It is additive and rerunnable; existing stores retain `clean` and empty settings. The API normalizes and validates settings before saving them, and public responses include only the allowed configuration.
@@ -26,7 +28,7 @@ No database migration or production Worker deployment is performed by the theme 
 
 - Frontend typecheck and production build.
 - Backend check: creation/reload for all IDs, theme patch preservation, settings reset, malformed settings rejection, public configuration and WhatsApp compatibility, existing tenant/media/catalog tests.
-- `npm run test:themes` uses Playwright on a local Vite server with mocked public API data. It exercises all 25 IDs at 1440px/390px on store/product routes, category filtering, variants, image selection, handoff, empty catalogs, showroom selection/deep links and PNG-to-WebP transparency after resizing.
+- `npm run test:themes` uses Playwright on a local Vite server with mocked public API data. It exercises all 25 IDs at 1440px/390px on store/product routes, category filtering and readable active-filter styles, variants, image selection, handoff, empty catalogs, showroom selection/deep links, a functional creation link while the workspace download is paused, and PNG-to-WebP transparency after resizing.
 - `npx playwright install --with-deps chromium` installs the test browser. CI runs the same command before the theme checks.
 - AppFactory visual QA additionally visits `/themes` for all six compositions and one product route at desktop/mobile sizes; the marketing `/` route stays covered.
 

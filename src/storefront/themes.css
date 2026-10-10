@@ -1,7 +1,7 @@
 .public-store-shell[data-theme] { font-family: "Plus Jakarta Sans", system-ui, sans-serif; --shop-line: color-mix(in srgb, var(--shop-ink) 14%, transparent); }
 .public-store-shell[data-theme] h1, .public-store-shell[data-theme] h2, .public-store-shell[data-theme] .product-detail-price { font-family: var(--theme-font); }
 .public-store-shell[data-theme] .public-store-header { background: color-mix(in srgb, var(--shop-bg) 94%, transparent); }
-.public-store-shell[data-theme] .public-store-brand > span, .public-store-shell[data-theme] .public-category-filter button.active { color: var(--theme-on-accent); }
+.public-store-shell[data-theme] .public-store-brand > span { color: var(--theme-on-accent); }
 .public-store-shell[data-theme] .public-currency { background: var(--shop-card); color: var(--shop-ink); }
 .public-store-shell[data-theme] .public-overline, .public-store-shell[data-theme] .public-product-copy > small, .public-store-shell[data-theme] .public-product-copy > strong, .public-store-shell[data-theme] .product-detail-price { color: var(--shop-ink); }
 .public-store-shell[data-theme] .public-product-image, .public-store-shell[data-theme] .product-gallery-main { background: color-mix(in srgb, var(--shop-card) 85%, var(--theme-scene)); }
@@ -9,6 +9,7 @@
 .public-store-shell[data-theme] .product-gallery-main { min-height: 0; aspect-ratio: 1; }
 .public-store-shell[data-theme] .product-gallery-main img { height: 100%; max-height: none; }
 .public-store-shell[data-theme] .public-category-filter button, .public-store-shell[data-theme] .public-share-button, .public-store-shell[data-theme] .product-variant-group button { background: var(--shop-card); }
+.public-store-shell[data-theme] .public-category-filter button.active { background: var(--shop-primary); border-color: var(--shop-primary); color: var(--theme-on-accent); }
 .public-store-shell[data-theme] .product-variant-group button.active { background: var(--shop-primary); color: var(--theme-on-accent); }
 .public-store-shell[data-theme] .public-category-filter button, .public-store-shell[data-theme] .product-variant-group button { min-height: 44px; font-size: 12px; }
 .public-store-shell[data-theme] .public-product-copy h3 { font-size: 16px; }
