@@ -3,7 +3,7 @@
   "routes": [
     {
       "path": "/",
-      "primaryCtaSelector": "main .hero-actions a.button-primary",
+      "primaryCtaSelector": "main .cfh-actions a.cfh-primary",
       "expectedCtaHref": "/app"
     }
   ],

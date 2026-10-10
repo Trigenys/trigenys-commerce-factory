@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import CommerceJourney from "./components/CommerceJourney";
+import CommerceHero from "./components/CommerceHero";
 
 const images = {
   earbuds: {
@@ -454,44 +455,6 @@ const copyByLanguage = {
   }
 } as const;
 
-function ProductCard({
-  image,
-  name,
-  price,
-  badge,
-  buyLabel
-}: {
-  image: LandingImageAsset;
-  name: string;
-  price: string;
-  badge?: string;
-  buyLabel: string;
-}) {
-  return (
-    <article className="product-card">
-      <div className="product-image-wrap">
-        <ResponsiveLandingImage
-          image={image}
-          alt=""
-          className="product-image"
-          pictureClassName="product-image-picture"
-          sizes="(max-width: 420px) 45vw, (max-width: 780px) 42vw, 240px"
-          loading="eager"
-        />
-        {badge ? <span className="product-badge">{badge}</span> : null}
-      </div>
-      <div className="product-copy">
-        <p>{name}</p>
-        <strong>{price}</strong>
-      </div>
-      <span className="whatsapp-button" aria-hidden="true">
-        <span className="wa-dot">WA</span>
-        {buyLabel}
-      </span>
-    </article>
-  );
-}
-
 export default function App() {
   const [language, setLanguage] = useState<Language>(() => {
     const saved = window.localStorage.getItem("commerce-factory-language");
@@ -564,84 +527,7 @@ export default function App() {
       </header>
 
       <main id="top" tabIndex={-1}>
-        <section className="hero-section section">
-          <div className="hero-aura hero-aura-one" />
-          <div className="hero-aura hero-aura-two" />
-
-          <div className="hero-copy">
-            <span className="eyebrow"><i /> {t.heroEyebrow}</span>
-            <h1>
-              {t.heroTitleOne}
-              <span>{t.heroTitleTwo}</span>
-            </h1>
-            <p className="hero-lede">{t.heroLead}</p>
-            <div className="hero-actions">
-              <a className="button button-primary" href="/app">{t.createStore} <span>→</span></a>
-              <a className="button button-soft" href="#showcase">{t.demoStore}</a>
-            </div>
-            <div className="trust-row" aria-label={t.principlesLabel}>
-              <span>✓ {t.noCode}</span>
-              <span>✓ {t.fcfaReady}</span>
-              <span>✓ {t.mobileFirst}</span>
-              <span>✓ {t.whatsappNative}</span>
-            </div>
-            <div className="proof-card">
-              <span className="proof-icon">✓</span>
-              <div>
-                <strong>{t.proofTitle}</strong>
-                <p>{t.proofBody}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="hero-visual" role="group" aria-label={t.storefrontExample}>
-            <span className="visual-kicker">
-              {language === "fr" ? "Boutique démo • WhatsApp-first" : "Demo storefront • WhatsApp-first"}
-            </span>
-            <div className="browser-card">
-              <div className="browser-bar">
-                <span className="browser-dots"><i /><i /><i /></span>
-                <span className="address-pill">commercefactory.shop/techpulse</span>
-                <span>↗</span>
-              </div>
-              <div className="store-preview">
-                <div className="store-preview-header">
-                  <div className="merchant-name">
-                    <span className="merchant-avatar">TP</span>
-                    <span><strong>TechPulse</strong><small>Douala • {t.demoStorefront}</small></span>
-                  </div>
-                  <span className="currency-pill">XAF</span>
-                </div>
-                <div className="category-pills">
-                  <span className="active">Audio</span><span>{t.phones}</span><span>{t.laptops}</span>
-                </div>
-                <div className="product-grid">
-                  <ProductCard image={images.earbuds} name="Wireless Earbuds Pro" price={language === "fr" ? "145 000 FCFA" : "145,000 FCFA"} badge={t.popular} buyLabel={t.buyWhatsApp} />
-                  <ProductCard image={images.headphones} name="Sony WH-1000XM5" price={language === "fr" ? "230 000 FCFA" : "230,000 FCFA"} badge={t.newLabel} buyLabel={t.buyWhatsApp} />
-                </div>
-              </div>
-            </div>
-
-            <div className="phone-card">
-              <div className="phone-notch" />
-              <span className="phone-store-name">TechPulse Mobile</span>
-              <ResponsiveLandingImage
-                image={images.watch}
-                alt=""
-                className="phone-product-image"
-                pictureClassName="phone-product-picture"
-                sizes="180px"
-                loading="eager"
-              />
-              <span className="phone-product-name">Smart Watch Ultra</span>
-              <strong>65,000 FCFA</strong>
-              <span className="phone-status">{t.readyWhatsApp}</span>
-              <span className="whatsapp-button phone-button" aria-hidden="true">
-                <span className="wa-dot">WA</span> {t.buyWhatsApp}
-              </span>
-            </div>
-          </div>
-        </section>
+        <CommerceHero language={language} />
 
         <section className="section section-tint" id="how">
           <div className="section-heading centered">
