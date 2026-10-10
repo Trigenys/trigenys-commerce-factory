@@ -16,10 +16,11 @@ const sampleProducts: PublicStorefront["products"] = [
 
 export default function ThemeGalleryApp() {
   const params = new URLSearchParams(window.location.search);
-  const initial = params.get("theme");
+  const path = window.location.pathname.split("/").filter(Boolean);
+  const initial = path[1] || params.get("theme");
   const [theme, setTheme] = useState<StoreTheme>(isStoreTheme(initial) ? initial : "beauty-ecrin");
   const [settings, setSettings] = useState<ThemeSettings>({});
-  const [productSlug, setProductSlug] = useState<string | null>(params.get("product"));
+  const [productSlug, setProductSlug] = useState<string | null>(path[2] === "p" ? path[3] || null : params.get("product"));
   useEffect(() => {
     document.title = "Bibliothèque de thèmes — Commerce Factory";
     let robots = document.head.querySelector('meta[name="robots"]');
@@ -32,7 +33,7 @@ export default function ThemeGalleryApp() {
   };
   function changeTheme(value: StoreTheme, nextSettings: ThemeSettings) {
     setTheme(value); setSettings(nextSettings); setProductSlug(null);
-    const url = new URL(window.location.href); url.searchParams.set("theme", value); url.searchParams.delete("product"); window.history.replaceState(null, "", url);
+    const url = new URL(window.location.href); url.pathname = "/themes/" + value; url.search = ""; url.hash = ""; window.history.replaceState(null, "", url);
   }
   return <div className="theme-gallery-app">
     <header className="theme-gallery-header"><a href="/">Commerce Factory <span>Thèmes</span></a><a className="theme-gallery-create" href="/app">Créer ma boutique ↗</a></header>
@@ -40,15 +41,16 @@ export default function ThemeGalleryApp() {
     <div className="theme-gallery-workspace">
       <aside className="theme-gallery-controls"><ThemePicker value={theme} settings={settings} language="fr" onChange={changeTheme} /><a className="theme-gallery-cta" href="/app">Créer ma boutique avec Commerce Factory ↗</a></aside>
       <section className="theme-gallery-preview" aria-label="Aperçu du thème">
-        <div className="theme-gallery-preview-label"><div><strong>{resolveStoreTheme(theme, settings).name}</strong><span>Catalogue fictif pour comparer les présentations</span></div><a href={"/themes?theme=" + theme}>Lien vers ce thème ↗</a></div>
+        <div className="theme-gallery-preview-label"><div><strong>{resolveStoreTheme(theme, settings).name}</strong><span>Catalogue fictif pour comparer les présentations</span></div><a href={"/themes/" + theme}>Lien vers ce thème ↗</a></div>
         <div onClickCapture={(event) => {
           const link = (event.target as Element).closest("a"); if (!link) return;
           if (link.getAttribute("href") === "#catalog") return;
           const url = new URL(link.href);
-          if (url.pathname !== "/themes") return;
-          event.preventDefault(); setProductSlug(url.searchParams.get("product")); window.history.replaceState(null, "", url);
+          if (url.pathname !== "/themes" && !url.pathname.startsWith("/themes/")) return;
+          const parts = url.pathname.split("/").filter(Boolean);
+          event.preventDefault(); setProductSlug(parts[2] === "p" ? parts[3] || null : url.searchParams.get("product")); window.history.replaceState(null, "", url);
         }}>
-          <StorefrontView storefront={storefront} language="fr" productSlug={productSlug} homeHref={"/themes?theme=" + theme} productHref={(product) => "/themes?theme=" + theme + "&product=" + product.slug} preview />
+          <StorefrontView storefront={storefront} language="fr" productSlug={productSlug} homeHref={"/themes/" + theme} productHref={(product) => "/themes/" + theme + "/p/" + product.slug} preview />
         </div>
       </section>
     </div>

@@ -79,7 +79,7 @@ try {
   await page.locator(".public-empty-catalog").waitFor();
   await checkPage(page, "empty catalog");
 
-  await page.goto(base + "/themes?theme=beauty-ecrin");
+  await page.goto(base + "/themes/beauty-ecrin");
   await page.locator(".theme-choice").first().waitFor();
   assert.equal(await page.locator(".theme-choice").count(), storeThemeIds.length);
   await page.getByLabel("Secteur d’activité").selectOption("sport");
@@ -91,7 +91,7 @@ try {
   await page.locator(".theme-spotlight-image").click();
   await page.locator(".product-detail-copy").waitFor();
   assert.equal(await page.locator(".public-wa-button").isDisabled(), true);
-  assert.ok(new URL(page.url()).searchParams.get("product"));
+  assert.ok(new URL(page.url()).pathname.includes("/p/"));
   await page.reload();
   await page.locator(".product-detail-copy").waitFor();
 

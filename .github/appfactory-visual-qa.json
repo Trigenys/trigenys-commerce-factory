@@ -7,37 +7,37 @@
       "expectedCtaHref": "/app"
     },
     {
-      "path": "/themes?theme=beauty-ecrin",
+      "path": "/themes/beauty-ecrin",
       "primaryCtaSelector": ".theme-gallery-create",
       "expectedCtaHref": "/app"
     },
     {
-      "path": "/themes?theme=fashion-editorial",
+      "path": "/themes/fashion-editorial",
       "primaryCtaSelector": ".theme-gallery-create",
       "expectedCtaHref": "/app"
     },
     {
-      "path": "/themes?theme=sport-club",
+      "path": "/themes/sport-club",
       "primaryCtaSelector": ".theme-gallery-create",
       "expectedCtaHref": "/app"
     },
     {
-      "path": "/themes?theme=home-habitat",
+      "path": "/themes/home-habitat",
       "primaryCtaSelector": ".theme-gallery-create",
       "expectedCtaHref": "/app"
     },
     {
-      "path": "/themes?theme=tech-precision",
+      "path": "/themes/tech-precision",
       "primaryCtaSelector": ".theme-gallery-create",
       "expectedCtaHref": "/app"
     },
     {
-      "path": "/themes?theme=food-menu",
+      "path": "/themes/food-menu",
       "primaryCtaSelector": ".theme-gallery-create",
       "expectedCtaHref": "/app"
     },
     {
-      "path": "/themes?theme=beauty-ecrin&product=sac-signature",
+      "path": "/themes/beauty-ecrin/p/sac-signature",
       "primaryCtaSelector": ".theme-gallery-create",
       "expectedCtaHref": "/app"
     }

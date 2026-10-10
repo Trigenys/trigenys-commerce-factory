@@ -14,7 +14,7 @@ const pathname = window.location.pathname;
 const isMerchantApp = pathname === "/app" || pathname.startsWith("/app/");
 const isStorefront = pathname.startsWith("/store/");
 const isDemoStorefront = pathname.startsWith("/demo/");
-const isThemeGallery = pathname === "/themes";
+const isThemeGallery = pathname === "/themes" || pathname.startsWith("/themes/");
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
