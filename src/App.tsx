@@ -496,7 +496,8 @@ export default function App() {
   const [language, setLanguage] = useState<Language>(() => {
     const saved = window.localStorage.getItem("commerce-factory-language");
     if (saved === "en" || saved === "fr") return saved;
-    return window.navigator.language.toLowerCase().startsWith("fr") ? "fr" : "en";
+    // Cameroon-first landing: French is the default; an explicit EN selection is preserved.
+    return "fr";
   });
 
   const t = copyByLanguage[language];
