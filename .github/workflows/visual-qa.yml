@@ -1,0 +1,37 @@
+name: Commerce Factory rendered visual QA
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: commerce-visual-qa-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  impact:
+    uses: EagleFox31/appfactory-project-automation/.github/workflows/reusable-impact-analysis.yml@01baea249aa271bab751a819aad255d9a101ad43
+    with:
+      appfactory_ref: 01baea249aa271bab751a819aad255d9a101ad43
+      config_path: .github/appfactory-impact.json
+      mode: auto
+
+  visual-qa:
+    needs: impact
+    if: ${{ contains(fromJSON(needs.impact.outputs.gates), 'visual-qa') }}
+    uses: EagleFox31/appfactory-project-automation/.github/workflows/reusable-visual-qa.yml@01baea249aa271bab751a819aad255d9a101ad43
+    permissions:
+      contents: read
+    with:
+      appfactory_ref: 01baea249aa271bab751a819aad255d9a101ad43
+      config_path: .github/appfactory-visual-qa.json
+      checkout_ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      install_command: npm install --ignore-scripts --no-audit --no-fund
+      build_command: npm run build
+      start_command: npm run preview -- --host 127.0.0.1 --port 4173 --strictPort
+      server_url: http://127.0.0.1:4173/

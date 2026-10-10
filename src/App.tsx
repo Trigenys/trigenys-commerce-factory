@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import CommerceJourney from "./components/CommerceJourney";
 
 const images = {
   earbuds: {
@@ -273,10 +274,10 @@ const copyByLanguage = {
     login: "Log in",
     createStore: "Create my store",
     languageLabel: "Language",
-    heroEyebrow: "Commerce infrastructure for modern businesses",
+    heroEyebrow: "A storefront made for WhatsApp commerce",
     heroTitleOne: "Your store.",
     heroTitleTwo: "Online in minutes.",
-    heroLead: "Publish products, prices and variants in a storefront customers can browse, then send ready-to-buy shoppers into WhatsApp with the product already identified.",
+    heroLead: "Turn your catalog into a mobile store. Shoppers pick a product, then open WhatsApp with its details ready.",
     demoStore: "See a demo store",
     principlesLabel: "Product principles",
     noCode: "No code",
@@ -367,10 +368,10 @@ const copyByLanguage = {
     login: "Connexion",
     createStore: "Créer ma boutique",
     languageLabel: "Langue",
-    heroEyebrow: "Infrastructure e-commerce pour les entreprises modernes",
+    heroEyebrow: "Le commerce pensé pour WhatsApp",
     heroTitleOne: "Votre boutique.",
     heroTitleTwo: "En ligne en quelques minutes.",
-    heroLead: "Publiez vos produits, prix et variantes dans une boutique claire, puis envoyez les clients prêts à acheter vers WhatsApp avec le produit déjà identifié.",
+    heroLead: "Transformez vos produits en boutique mobile. Vos clients choisissent un article, puis ouvrent WhatsApp avec les détails déjà prêts.",
     demoStore: "Voir une boutique démo",
     principlesLabel: "Principes du produit",
     noCode: "Sans code",
@@ -495,7 +496,8 @@ export default function App() {
   const [language, setLanguage] = useState<Language>(() => {
     const saved = window.localStorage.getItem("commerce-factory-language");
     if (saved === "en" || saved === "fr") return saved;
-    return window.navigator.language.toLowerCase().startsWith("fr") ? "fr" : "en";
+    // Cameroon-first landing: French is the default; an explicit EN selection is preserved.
+    return "fr";
   });
 
   const t = copyByLanguage[language];
@@ -692,6 +694,7 @@ export default function App() {
                         className="merchant-showcase-image"
                         pictureClassName="merchant-showcase-picture"
                         sizes="(max-width: 760px) 92vw, 31vw"
+                        loading="eager"
                       />
                       <span className="merchant-showcase-category">{item.title}</span>
                     </div>
@@ -721,40 +724,7 @@ export default function App() {
           <p className="showcase-disclaimer">{t.demoDisclaimer}</p>
         </section>
 
-        <section className="section section-tint whatsapp-section" id="whatsapp">
-          <div className="whatsapp-copy">
-            <span className="overline">{t.whatsappHandoff}</span>
-            <h2>{t.whatsappTitle}</h2>
-            <p>{t.whatsappBody}</p>
-            <ol className="flow-list">
-              <li><span>1</span><div><strong>{t.flow1Title}</strong><small>{t.flow1Body}</small></div></li>
-              <li><span>2</span><div><strong>{t.flow2Title}</strong><small>{t.flow2Body}</small></div></li>
-              <li><span>3</span><div><strong>{t.flow3Title}</strong><small>{t.flow3Body}</small></div></li>
-              <li><span>4</span><div><strong>{t.flow4Title}</strong><small>{t.flow4Body}</small></div></li>
-            </ol>
-          </div>
-
-          <div className="chat-card" role="group" aria-label={t.whatsappExample}>
-            <div className="chat-header">
-              <span className="chat-avatar">TP</span>
-              <span><strong>TechPulse</strong><small>WhatsApp Business</small></span>
-              <span className="chat-online">{t.online}</span>
-            </div>
-            <div className="chat-body">
-              <span className="chat-date">{t.today}</span>
-              <div className="message outgoing">
-                <strong>{t.productInquiry}</strong>
-                <p>{t.chatInquiry}</p>
-                <small>{t.productLabel}: commercefactory.shop/techpulse/sony-xm5</small>
-              </div>
-              <div className="message incoming">
-                <p>{t.chatReply}</p>
-                <small>14:33</small>
-              </div>
-            </div>
-            <div className="chat-input"><span>{t.typeMessage}</span><b>➤</b></div>
-          </div>
-        </section>
+        <CommerceJourney language={language} />
 
         <section className="section" id="social">
           <div className="roadmap-card">

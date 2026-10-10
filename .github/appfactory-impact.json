@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "fallback": "all",
+  "ignorePaths": [
+    "README.md",
+    "docs/**",
+    ".github/ISSUE_TEMPLATE/**"
+  ],
+  "surfaces": {
+    "frontend": {
+      "paths": [
+        "src/**",
+        "public/**",
+        "index.html",
+        "package.json",
+        "vite.config.*",
+        "tsconfig*.json",
+        ".github/appfactory-frontend.json",
+        ".github/appfactory-visual-qa.json",
+        ".github/workflows/visual-qa.yml"
+      ],
+      "gates": [
+        "visual-qa"
+      ]
+    },
+    "backend": {
+      "paths": [
+        "backend/**",
+        "db/**",
+        ".github/workflows/appfactory-infrastructure.yml"
+      ],
+      "gates": [
+        "backend-ci"
+      ]
+    }
+  }
+}
