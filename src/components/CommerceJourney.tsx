@@ -122,7 +122,7 @@ export default function CommerceJourney({ language }: { language: Language }) {
                 </div>
                 <p className="journey-catalog-label">{stage === 0 ? t.catalog : t.selected}</p>
                 <div className="journey-product-main">
-                  <img src={product.image} alt={name} width={512} height={279} loading="lazy" decoding="async" />
+                  <img src={product.image} alt={name} width={512} height={279} loading="eager" decoding="async" />
                   <div className="journey-product-info">
                     <span>{product.category[language]}</span>
                     <strong>{name}</strong>
