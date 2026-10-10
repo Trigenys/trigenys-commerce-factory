@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import CommerceJourney from "./components/CommerceJourney";
 
 const images = {
   earbuds: {
@@ -721,40 +722,7 @@ export default function App() {
           <p className="showcase-disclaimer">{t.demoDisclaimer}</p>
         </section>
 
-        <section className="section section-tint whatsapp-section" id="whatsapp">
-          <div className="whatsapp-copy">
-            <span className="overline">{t.whatsappHandoff}</span>
-            <h2>{t.whatsappTitle}</h2>
-            <p>{t.whatsappBody}</p>
-            <ol className="flow-list">
-              <li><span>1</span><div><strong>{t.flow1Title}</strong><small>{t.flow1Body}</small></div></li>
-              <li><span>2</span><div><strong>{t.flow2Title}</strong><small>{t.flow2Body}</small></div></li>
-              <li><span>3</span><div><strong>{t.flow3Title}</strong><small>{t.flow3Body}</small></div></li>
-              <li><span>4</span><div><strong>{t.flow4Title}</strong><small>{t.flow4Body}</small></div></li>
-            </ol>
-          </div>
-
-          <div className="chat-card" role="group" aria-label={t.whatsappExample}>
-            <div className="chat-header">
-              <span className="chat-avatar">TP</span>
-              <span><strong>TechPulse</strong><small>WhatsApp Business</small></span>
-              <span className="chat-online">{t.online}</span>
-            </div>
-            <div className="chat-body">
-              <span className="chat-date">{t.today}</span>
-              <div className="message outgoing">
-                <strong>{t.productInquiry}</strong>
-                <p>{t.chatInquiry}</p>
-                <small>{t.productLabel}: commercefactory.shop/techpulse/sony-xm5</small>
-              </div>
-              <div className="message incoming">
-                <p>{t.chatReply}</p>
-                <small>14:33</small>
-              </div>
-            </div>
-            <div className="chat-input"><span>{t.typeMessage}</span><b>➤</b></div>
-          </div>
-        </section>
+        <CommerceJourney language={language} />
 
         <section className="section" id="social">
           <div className="roadmap-card">
