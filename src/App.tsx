@@ -270,6 +270,7 @@ const copyByLanguage = {
     metaDescription: "Commerce Factory by Trigenys turns product catalogs into mobile-first storefronts with WhatsApp ordering.",
     navHow: "How it works",
     navShowcase: "Showcase",
+    navThemes: "Themes",
     navDashboard: "Dashboard",
     navPricing: "Pricing",
     login: "Log in",
@@ -364,6 +365,7 @@ const copyByLanguage = {
     metaDescription: "Commerce Factory par Trigenys transforme les catalogues produits en boutiques mobile-first avec commande via WhatsApp.",
     navHow: "Comment ça marche",
     navShowcase: "Exemples",
+    navThemes: "Thèmes",
     navDashboard: "Tableau de bord",
     navPricing: "Tarifs",
     login: "Connexion",
@@ -722,6 +724,7 @@ export default function App() {
         <div className="footer-links">
           <a href="#how">{t.navHow}</a>
           <a href="#showcase">{t.navShowcase}</a>
+          <a href="/themes">{t.navThemes}</a>
           <a href="#dashboard">{t.navDashboard}</a>
           <a href="#pricing">{t.navPricing}</a>
         </div>

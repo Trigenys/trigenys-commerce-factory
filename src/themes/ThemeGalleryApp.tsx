@@ -6,7 +6,7 @@ import ThemePicker from "./ThemePicker";
 import "./theme-gallery.css";
 
 const sampleProducts: PublicStorefront["products"] = [
-  { id: "sample-bag", name: "Sac Signature", slug: "sac-signature", description: "Une silhouette simple pour accompagner vos journées.", price: "18500", currencyCode: "XAF", category: "Mode", stockLabel: "Disponible", imageUrls: ["/landing/fashion-960.webp"], variants: [{ name: "Couleur", value: "Camel" }, { name: "Couleur", value: "Noir" }] },
+  { id: "sample-fashion", name: "Ensemble en lin", slug: "ensemble-lin", description: "Une silhouette légère pour accompagner vos journées.", price: "35000", currencyCode: "XAF", category: "Mode", stockLabel: "Disponible", imageUrls: ["/landing/fashion-960.webp"], variants: [{ name: "Taille", value: "M" }, { name: "Taille", value: "L" }] },
   { id: "sample-beauty", name: "Collection de soins", slug: "collection-soins", description: "Une sélection pour votre rituel quotidien.", price: "12500", currencyCode: "XAF", category: "Beauté", stockLabel: "Disponible", imageUrls: ["/landing/beauty-960.webp"], variants: [] },
   { id: "sample-headphones", name: "Casque Studio", slug: "casque-studio", description: "Un design enveloppant pour vos moments de musique.", price: "35000", currencyCode: "XAF", category: "Électronique", stockLabel: "Disponible", imageUrls: ["/landing/headphones-960.webp"], variants: [{ name: "Couleur", value: "Noir" }, { name: "Couleur", value: "Blanc" }] },
   { id: "sample-watch", name: "Montre Atelier", slug: "montre-atelier", description: "Un accessoire élégant pour chaque occasion.", price: "28000", currencyCode: "XAF", category: "Accessoires", stockLabel: "Disponible", imageUrls: ["/landing/watch-960.webp"], variants: [] },
@@ -29,7 +29,11 @@ export default function ThemeGalleryApp() {
   }, []);
   const storefront: PublicStorefront = {
     store: { name: "Atelier Commerce", slug: "atelier-commerce", description: "Des essentiels bien choisis. Des détails qui font la différence.", whatsappNumber: "", countryCode: "CM", currencyCode: "XAF", businessLocation: "Douala, Cameroun", theme, themeSettings: settings, logoUrl: null },
-    products: sampleProducts
+    products: (() => {
+      const sector = resolveStoreTheme(theme).sector;
+      const featured = sector === "beauty" ? "sample-beauty" : sector === "tech" ? "sample-headphones" : sector === "jewelry" ? "sample-watch" : "sample-fashion";
+      return [...sampleProducts.filter((product) => product.id === featured), ...sampleProducts.filter((product) => product.id !== featured)];
+    })()
   };
   function changeTheme(value: StoreTheme, nextSettings: ThemeSettings) {
     setTheme(value); setSettings(nextSettings); setProductSlug(null);

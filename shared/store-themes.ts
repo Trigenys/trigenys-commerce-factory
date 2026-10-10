@@ -38,11 +38,11 @@ type ThemeTokens = {
 const palettes = {
   clean: ["#f8faf9", "#ffffff", "#17211d", "#56645e", "#006948", "#eef4f0", "#17211d", "#56645e"],
   paper: ["#f4f0e9", "#fffdf8", "#23221f", "#615c55", "#7c3e2f", "#e7dfd1", "#23221f", "#615c55"],
-  clay: ["#f5eee9", "#fffaf6", "#372a25", "#706056", "#93452b", "#af5a3c", "#fffaf6", "#fff0e4"],
+  clay: ["#f5eee9", "#fffaf6", "#372a25", "#706056", "#93452b", "#af5a3c", "#fffaf6", "#fffdf8"],
   gold: ["#f3efe7", "#fffcf7", "#282218", "#6b6256", "#bd922f", "#292318", "#fffbef", "#d0c3a5"],
-  botanical: ["#edf0e6", "#fbfcf4", "#253b2c", "#50664f", "#57704b", "#d2ddc1", "#253b2c", "#50664f"],
+  botanical: ["#edf0e6", "#fbfcf4", "#253b2c", "#50664f", "#57704b", "#d2ddc1", "#253b2c", "#486043"],
   electric: ["#edf1f7", "#ffffff", "#12253c", "#50637b", "#2464db", "#112840", "#f4f8ff", "#b3c7e2"],
-  chrome: ["#e9eaed", "#f9fafc", "#20242e", "#5c626f", "#343dfa", "#c8ccd4", "#20242e", "#515766"],
+  chrome: ["#e9eaed", "#f9fafc", "#20242e", "#5c626f", "#343dfa", "#c8ccd4", "#20242e", "#4a505e"],
   stadium: ["#edf2e5", "#fbfff5", "#143c2b", "#50634d", "#e6c944", "#146c45", "#ffffff", "#d7ecd8"],
   club: ["#eff0f7", "#ffffff", "#161d40", "#576080", "#de5130", "#172757", "#ffffff", "#c2c9e2"],
   plum: ["#f4ecf1", "#fffafd", "#382332", "#705e6a", "#8e4269", "#522b42", "#fffafd", "#e3cbd8"],
@@ -50,8 +50,8 @@ const palettes = {
   blue: ["#eef1f4", "#ffffff", "#263e52", "#5a6c7c", "#295d79", "#d4e2e8", "#263e52", "#4c6275"],
   market: ["#f1f3e8", "#ffffff", "#30452e", "#5c6b50", "#42682e", "#dde5c4", "#30452e", "#526548"],
   tangerine: ["#fff2e6", "#fffdf8", "#482819", "#805d49", "#be4b16", "#f5ae64", "#482819", "#69442d"],
-  playful: ["#eef0fb", "#ffffff", "#34366a", "#65658b", "#6753ae", "#dcd8f5", "#34366a", "#65658b"],
-  rose: ["#fcf0ed", "#fffdf9", "#583935", "#826761", "#a65a57", "#efc8bd", "#583935", "#755650"],
+  playful: ["#eef0fb", "#ffffff", "#34366a", "#65658b", "#6753ae", "#dcd8f5", "#34366a", "#55547a"],
+  rose: ["#fcf0ed", "#fffdf9", "#583935", "#826761", "#a65a57", "#efc8bd", "#583935", "#6c4b45"],
   garage: ["#eef0f2", "#ffffff", "#252d33", "#5c686f", "#365a72", "#253944", "#ffffff", "#bccdd6"],
   performance: ["#eceff0", "#ffffff", "#24292c", "#5e666a", "#ff663f", "#202c32", "#ffffff", "#c3cdd1"]
 } as const;

@@ -316,7 +316,7 @@ function BrandPreview({
           <b>{input.currencyCode}</b>
         </div>
         <div className="merchant-preview-hero" style={{ background: theme.tokens.scene, color: theme.tokens.sceneInk }}>
-          <span>{t.fcfaReady}</span>
+          <span style={{ color: theme.tokens.sceneMuted }}>{t.fcfaReady}</span>
           <h3 style={{ fontFamily: themeFonts[theme.font] }}>{input.name || "Commerce Store"}</h3>
           <p style={{ color: theme.tokens.sceneMuted }}>{input.description || t.noDescription}</p>
         </div>

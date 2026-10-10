@@ -27,6 +27,16 @@ test("legacy stores and unknown future themes render with a safe default", () =>
   assert.equal(resolveStoreTheme("beauty-ecrin").imageFit, "contain");
 });
 
+test("theme palettes keep both primary and secondary scene text readable", () => {
+  for (const id of storeThemeIds) {
+    const tokens = resolveStoreTheme(id).tokens;
+    for (const [foreground, background] of [["ink", "background"], ["muted", "background"], ["sceneInk", "scene"], ["sceneMuted", "scene"]] as const) {
+      const values = [luminance(tokens[foreground]), luminance(tokens[background])].sort((a, b) => a - b);
+      assert.ok((values[1] + .05) / (values[0] + .05) >= 4.5, id + ": " + foreground);
+    }
+  }
+});
+
 test("database migration accepts exactly the same stable IDs as the runtime", async () => {
   const sql = await readFile(new URL("../../db/migrations/0006_store_theme_library.sql", import.meta.url), "utf8");
   const constraint = sql.match(/theme IN \(([\s\S]*?)\)\)/)?.[1] ?? "";

@@ -37,7 +37,7 @@
       "expectedCtaHref": "/app"
     },
     {
-      "path": "/themes/beauty-ecrin/p/sac-signature",
+      "path": "/themes/beauty-ecrin/p/collection-soins",
       "primaryCtaSelector": ".theme-gallery-create",
       "expectedCtaHref": "/app"
     }
