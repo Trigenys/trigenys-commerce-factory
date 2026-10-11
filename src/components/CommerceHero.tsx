@@ -7,6 +7,9 @@ type HeroProduct = {
   id: "fashion" | "tech" | "beauty";
   shop: string;
   image: string;
+  webp480: string;
+  avif480: string;
+  avif960: string;
   width: number;
   height: number;
   product: { fr: string; en: string };
@@ -20,6 +23,9 @@ const examples: readonly HeroProduct[] = [
     id: "fashion",
     shop: "Maison Noya",
     image: "/landing/fashion-960.webp",
+    webp480: "/landing/fashion-480.webp",
+    avif480: "/landing/fashion-480.avif",
+    avif960: "/landing/fashion-960.avif",
     width: 512, height: 286,
     product: { fr: "Ensemble deux pièces en lin", en: "Linen two-piece" },
     price: { fr: "35 000 FCFA", en: "35,000 FCFA" },
@@ -30,6 +36,9 @@ const examples: readonly HeroProduct[] = [
     id: "tech",
     shop: "TechPulse",
     image: "/landing/electronics-960.webp",
+    webp480: "/landing/electronics-480.webp",
+    avif480: "/landing/electronics-480.avif",
+    avif960: "/landing/electronics-960.avif",
     width: 512, height: 279,
     product: { fr: "Sony WH-1000XM5", en: "Sony WH-1000XM5" },
     price: { fr: "230 000 FCFA", en: "230,000 FCFA" },
@@ -40,6 +49,9 @@ const examples: readonly HeroProduct[] = [
     id: "beauty",
     shop: "Glow Room",
     image: "/landing/beauty-960.webp",
+    webp480: "/landing/beauty-480.webp",
+    avif480: "/landing/beauty-480.avif",
+    avif960: "/landing/beauty-960.avif",
     width: 512, height: 279,
     product: { fr: "Kit éclat hydratant", en: "Hydration glow kit" },
     price: { fr: "22 500 FCFA", en: "22,500 FCFA" },
@@ -138,17 +150,25 @@ export default function CommerceHero({ language }: { language: Language }) {
           </div>
           <div className="cfh-ghost" aria-hidden="true">SHOW / SELL</div>
           <div className="cfh-photo-wrap">
-            <img
-              key={example.id}
-              className="cfh-photo"
-              src={example.image}
-              width={example.width}
-              height={example.height}
-              alt={example.product[language]}
-              loading="eager"
-              fetchPriority="high"
-              decoding="async"
-            />
+            <picture className="cfh-photo-picture" key={example.id}>
+              <source
+                type="image/avif"
+                srcSet={`${example.avif480} 480w, ${example.avif960} ${example.width}w`}
+                sizes="(max-width: 600px) 85vw, (max-width: 850px) 61vw, 46vw"
+              />
+              <img
+                className="cfh-photo"
+                src={example.image}
+                srcSet={`${example.webp480} 480w, ${example.image} ${example.width}w`}
+                sizes="(max-width: 600px) 85vw, (max-width: 850px) 61vw, 46vw"
+                width={example.width}
+                height={example.height}
+                alt={example.product[language]}
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+              />
+            </picture>
             <span className="cfh-category-vertical">{example.category[language]} / 2026</span>
           </div>
 
