@@ -1,4 +1,6 @@
 import { registerJourneyRoutes } from "./journey-routes.ts";
+import { registerSocialRoutes } from "./social-routes.ts";
+import type { SocialAdapterFactory, SocialRepository } from "./social-types.ts";
 import type { JourneyRepository } from "./journey-types.ts";
 import { Hono } from "hono";
 import { isStoreTheme, parseThemeSettings } from "../../shared/store-themes.ts";
@@ -27,6 +29,8 @@ export type AppEnv = {
 };
 
 type AppDependencies = {
+  socialRepositoryFactory?: (env: WorkerBindings) => SocialRepository;
+  socialAdapterFactory?: SocialAdapterFactory;
   journeyRepositoryFactory?: (env: WorkerBindings) => JourneyRepository;
   verifyIdentity?: IdentityVerifier;
   repositoryFactory?: (env: WorkerBindings) => CommerceRepository;
@@ -591,7 +595,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.get("/v1/config", (c) => {
     const authBaseUrl =
       c.env.TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL?.trim() || null;
-    return c.json({ authBaseUrl });
+    return c.json({ authBaseUrl, googleSignInEnabled:c.env.TRIGENYS_COMMERCE_FACTORY_GOOGLE_SIGN_IN === "enabled" });
   });
 
   app.use("/v1/admin/*", async (c, next) => {
@@ -623,13 +627,14 @@ export function createApp(dependencies: AppDependencies = {}) {
       const role = await repository.getStoreRole(c.get("identity").subject, storeId);
       if (!role) return c.json({error:"STORE_NOT_FOUND"},404);
       const rest = c.req.path.split("/stores/"+storeId)[1] || "";
-      const ownerArea = rest.startsWith("/team") || rest.startsWith("/analytics") || rest.startsWith("/publish") || (rest === "" && c.req.method !== "GET");
+      const ownerArea = rest.startsWith("/team") || rest.startsWith("/analytics") || rest.startsWith("/publish") || rest.startsWith("/connections") || (rest === "" && c.req.method !== "GET");
       if (role !== "owner" && ownerArea) return c.json({error:"OWNER_REQUIRED"},403);
     }
     await next();
   });
 
   registerJourneyRoutes(app, repositoryFactory, dependencies.journeyRepositoryFactory);
+  registerSocialRoutes(app,repositoryFactory,dependencies.socialRepositoryFactory,dependencies.socialAdapterFactory);
   app.onError(() => new Response(JSON.stringify({error:"SERVICE_UNAVAILABLE"}),{status:503,headers:{"Content-Type":"application/json","Retry-After":"5","Cache-Control":"no-store"}}));
 
   app.get("/v1/admin/me/stores", async (c) => {

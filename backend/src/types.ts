@@ -30,6 +30,17 @@ export type WorkerBindings = {
   TRIGENYS_COMMERCE_FACTORY_DATABASE_URL?: string;
   TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL?: string;
   TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN?: string;
+  TRIGENYS_COMMERCE_FACTORY_GOOGLE_SIGN_IN?: string;
+  SOCIAL_APPROVED_PROVIDERS?: string;
+  SOCIAL_TOKENS_KEY?: string;
+  SOCIAL_META_APP_ID?: string;
+  SOCIAL_META_APP_SECRET?: string;
+  SOCIAL_META_GRAPH_VERSION?: string;
+  SOCIAL_FACEBOOK_CONFIG_ID?: string;
+  SOCIAL_INSTAGRAM_CONFIG_ID?: string;
+  SOCIAL_TIKTOK_CLIENT_KEY?: string;
+  SOCIAL_TIKTOK_CLIENT_SECRET?: string;
+  SOCIAL_RATE_LIMITER?: {limit(input:{key:string}):Promise<{success:boolean}>};
   MEDIA_BUCKET?: MediaBucket;
   ORDER_RATE_LIMITER?: {limit(input:{key:string}):Promise<{success:boolean}>};
   SUPPORT_RATE_LIMITER?: {limit(input:{key:string}):Promise<{success:boolean}>};

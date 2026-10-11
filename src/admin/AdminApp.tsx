@@ -8,7 +8,9 @@ import RecoveryState from "../components/RecoveryState";
 import { useDraft, useUnsavedChanges } from "../lib/drafts";
 import { FormEvent, useEffect, useId, useMemo, useState } from "react";
 import type { CommerceAuthClient } from "./auth";
-import { getAuthClient, getSessionSnapshot } from "./auth";
+import { canSignInWithGoogle, getAuthClient, getSessionSnapshot } from "./auth";
+import { finishGoogleReturn } from "./google-access";
+import { captureSocialReturn } from "./social-return";
 import {
   ApiError,
   createStore,
@@ -690,6 +692,7 @@ function StoreSettings({
 
   useEffect(() => {
     let cancelled = false;
+    captureSocialReturn();
     if (section === "appearance") listProducts(client, store.id).then(value => { if (!cancelled) setPreviewProducts(value); }).catch(() => { if (!cancelled) setServerError(t.genericError); });
     return () => { cancelled = true; };
   }, [client, store.id, section]);
@@ -952,6 +955,7 @@ export default function AdminApp() {
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
   const [fatalError, setFatalError] = useState<string | null>(null);
+  const [googleFeedback, setGoogleFeedback] = useState<"failed" | "missing-session" | null>(null);
 
   const t = copy[language];
 
@@ -963,6 +967,7 @@ export default function AdminApp() {
 
   async function hydrate(nextClient: CommerceAuthClient) {
     const session = await getSessionSnapshot(nextClient);
+    setGoogleFeedback(finishGoogleReturn(session.authenticated));
     setAuthenticated(session.authenticated);
     setSessionEmail(session.email);
     if (!session.authenticated) {
@@ -1077,6 +1082,8 @@ export default function AdminApp() {
         <AccountAccess
           client={client}
           language={language}
+          googleEnabled={canSignInWithGoogle()}
+          googleFeedback={googleFeedback}
           onAuthenticated={async () => {
             await hydrate(client);
           }}
