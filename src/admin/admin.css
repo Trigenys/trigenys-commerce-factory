@@ -247,7 +247,7 @@
 }
 
 .admin-form label > small {
-  color: #87928d;
+  color: #56645e;
   font-size: 10px;
   font-weight: 500;
 }
@@ -446,7 +446,7 @@
 
 .slug-field > small {
   padding-left: 13px;
-  color: #89958f;
+  color: #56645e;
   white-space: nowrap;
   font-size: 11px;
 }
