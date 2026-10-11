@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { CommerceAuthClient } from "./auth";
 import { getSessionSnapshot } from "./auth";
+import { signInWithGoogle } from "./google-access";
 
 type Mode = "signup" | "signin" | "forgot" | "reset" | "verify";
 const texts = {
@@ -8,9 +9,10 @@ const texts = {
   en: { title:"Build your store.", body:"Create an account or return to your merchant workspace.", signup:"Create an account", signin:"Log in", name:"Your name", email:"Email", password:"Password", confirm:"Confirm password", show:"Show password", hide:"Hide password", hint:"At least 8 characters", continue:"Continue", busy:"Please wait…", forgot:"Forgot password?", send:"Send a code", reset:"Reset password", code:"Code received by email", recoveryTitle:"Recover your account", recoveryBody:"If an account matches this email, a recovery code will be sent. Check your spam folder too.", resetTitle:"Choose a new password", resetBody:"Paste the code you received and enter your new password.", error:"This did not complete. Check your information and try again.", mismatch:"Both passwords must match.", resetDone:"Password updated. Log in to resume.", created:"Account created. Log in to continue.", expired:"This code is invalid or expired. Request another code.", resend:"Send another code", sent:"If the account exists, a new code has been sent.", verifyTitle:"Verify your email", verifyBody:"Verify this email using the code before joining a team.", verify:"Verify my email", verified:"Email verified. You can resume the invitation.", terms:"I accept the terms of use", privacy:"Privacy policy", generic:"Try again in a moment. Your saved drafts are safe." }
 };
 
-export default function AccountAccess({ client, language, onAuthenticated, verificationEmail, onVerified }: {
+export default function AccountAccess({ client, language, onAuthenticated, verificationEmail, onVerified, googleEnabled = false, googleFeedback }: {
   client: CommerceAuthClient; language:"fr"|"en"; onAuthenticated: () => Promise<void>;
   verificationEmail?: string; onVerified?: () => Promise<void>;
+  googleEnabled?: boolean; googleFeedback?: "failed" | "missing-session" | null;
 }) {
   const t = texts[language];
   const [mode, setMode] = useState<Mode>(verificationEmail ? "verify" : window.location.pathname.endsWith("/login") ? "signin" : "signup");
@@ -25,6 +27,9 @@ export default function AccountAccess({ client, language, onAuthenticated, verif
   const [message,setMessage] = useState("");
   const [resendAt,setResendAt] = useState(0);
   const [seconds,setSeconds]=useState(0);
+  const [consent,setConsent]=useState(false);
+  const [googleBusy,setGoogleBusy]=useState(false);
+  useEffect(()=>{if(googleFeedback)setError(language === "fr" ? "La connexion Google n’a pas abouti. Réessayez ou utilisez votre email." : "Google sign-in did not complete. Try again or use your email.");},[googleFeedback,language]);
   useEffect(()=>{const tick=()=>setSeconds(Math.max(0,Math.ceil((resendAt-Date.now())/1000)));tick();const timer=setInterval(tick,1000);return()=>clearInterval(timer);},[resendAt]);
   function change(next:Mode) { setMode(next);setError("");setMessage("");setPassword("");setConfirm("");setOtp(""); }
   async function sendCode() {
@@ -42,6 +47,8 @@ export default function AccountAccess({ client, language, onAuthenticated, verif
   }
   async function submit(event:FormEvent) {
     event.preventDefault();
+    if (busy || googleBusy) return;
+    if (mode === "signup" && !consent) { setError(t.terms); return; }
     if (mode === "forgot") { await sendCode(); return; }
     if (mode === "reset" && password !== confirm) { setError(t.mismatch); return; }
     setBusy(true);setError("");setMessage("");
@@ -66,6 +73,17 @@ export default function AccountAccess({ client, language, onAuthenticated, verif
     } catch {setError(t.generic);} finally {setBusy(false);}
   }
   const recovery = mode === "forgot" || mode === "reset" || mode === "verify";
+  async function google() {
+    if (busy || googleBusy) return;
+    if (mode === "signup" && !consent) {
+      setError(language === "fr" ? "Acceptez les conditions d’utilisation pour créer votre compte." : "Accept the terms of use to create your account.");
+      document.getElementById("account-consent")?.focus(); return;
+    }
+    setGoogleBusy(true);setError("");setMessage("");
+    try { await signInWithGoogle(client); }
+    catch { setError(language === "fr" ? "La connexion Google a été interrompue ou n’a pas pu démarrer. Réessayez ou utilisez votre email." : "Google sign-in was interrupted or could not start. Try again or use your email."); }
+    finally { setGoogleBusy(false); }
+  }
   return <main className="auth-layout" id="merchant-main" tabIndex={-1}>
     <section className="auth-copy"><span className="admin-eyebrow">Commerce Factory</span>
       <h1>{mode === "forgot" ? t.recoveryTitle : mode === "reset" ? t.resetTitle : mode === "verify" ? t.verifyTitle : t.title}</h1>
@@ -74,20 +92,29 @@ export default function AccountAccess({ client, language, onAuthenticated, verif
     </section>
     <section className="auth-card" aria-label={recovery ? t.recoveryTitle : t.signin}>
       {!recovery && <div className="auth-tabs" role="group" aria-label={language === "fr" ? "Accès au compte" : "Account access"}>
-        <button type="button" aria-pressed={mode === "signup"} className={mode === "signup" ? "active" : ""} onClick={()=>change("signup")}>{t.signup}</button>
-        <button type="button" aria-pressed={mode === "signin"} className={mode === "signin" ? "active" : ""} onClick={()=>change("signin")}>{t.signin}</button>
+        <button type="button" disabled={busy || googleBusy} aria-pressed={mode === "signup"} className={mode === "signup" ? "active" : ""} onClick={()=>change("signup")}>{t.signup}</button>
+        <button type="button" disabled={busy || googleBusy} aria-pressed={mode === "signin"} className={mode === "signin" ? "active" : ""} onClick={()=>change("signin")}>{t.signin}</button>
       </div>}
-      <form onSubmit={submit} className="admin-form" aria-busy={busy}>
+      {mode === "signup" && googleEnabled && <label className="consent-row"><input id="account-consent" form="commerce-account-form" type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} required /><span>{t.terms} (<a href="/terms" target="_blank" rel="noreferrer">{language === "fr" ? "Lire" : "Read"}</a>). <a href="/privacy" target="_blank" rel="noreferrer">{t.privacy}</a></span></label>}
+      {!recovery && googleEnabled && <div className="auth-social">
+        <button className="auth-google" type="button" onClick={google} disabled={busy || googleBusy} aria-busy={googleBusy}>
+          <svg aria-hidden="true" viewBox="0 0 48 48" width="22" height="22"><path fill="#4285f4" d="M43.6 24.5c0-1.5-.1-3-.4-4.5H24v8.5h11a9.5 9.5 0 0 1-4.1 6.2v5h6.6c3.9-3.6 6.1-8.9 6.1-15.2Z"/><path fill="#34a853" d="M24 44c5.5 0 10.2-1.8 13.5-4.9l-6.6-5A12.3 12.3 0 0 1 24 36c-5.3 0-9.8-3.6-11.4-8.4H5.8v5.2A20.4 20.4 0 0 0 24 44Z"/><path fill="#fbbc05" d="M12.6 27.6a12 12 0 0 1 0-7.2v-5.2H5.8a20 20 0 0 0 0 17.6l6.8-5.2Z"/><path fill="#ea4335" d="M24 12c3 0 5.6 1 7.7 3l5.8-5.8A19.7 19.7 0 0 0 24 4 20.4 20.4 0 0 0 5.8 15.2l6.8 5.2C14.2 15.6 18.7 12 24 12Z"/></svg>
+          {googleBusy ? (language === "fr" ? "Ouverture de Google…" : "Opening Google…") : (language === "fr" ? "Continuer avec Google" : "Continue with Google")}
+        </button>
+        {mode === "signin" && <small>{language === "fr" ? "En continuant avec Google, vous acceptez nos " : "By continuing with Google, you accept our "}<a href="/terms">{language === "fr" ? "conditions d’utilisation" : "terms of use"}</a>.</small>}
+        <div className="auth-divider"><span>{language === "fr" ? "ou avec votre email" : "or with your email"}</span></div>
+      </div>}
+      <form id="commerce-account-form" onSubmit={submit} className="admin-form" aria-busy={busy || googleBusy}>
         {mode === "signup" && <label><span>{t.name}</span><input autoComplete="name" value={name} onChange={e=>setName(e.target.value)} maxLength={120} required /></label>}
         <label><span>{t.email}</span><input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} readOnly={Boolean(verificationEmail)} maxLength={254} required /></label>
         {(mode === "reset" || mode === "verify") && <label><span>{t.code}</span><input value={otp} onChange={e=>setOtp(e.target.value)} autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required /></label>}
         {mode !== "forgot" && mode !== "verify" && <label><span>{t.password}</span><input aria-label={t.password} type={visible ? "text" : "password"} autoComplete={mode === "signin" ? "current-password" : "new-password"} value={password} onChange={e=>setPassword(e.target.value)} minLength={8} maxLength={128} required aria-describedby="password-hint" /><small id="password-hint">{t.hint}</small></label>}
         {mode === "reset" && <label><span>{t.confirm}</span><input type={visible ? "text" : "password"} autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)} minLength={8} maxLength={128} required /></label>}
         {mode !== "forgot" && mode !== "verify" && <button type="button" className="auth-switch" aria-pressed={visible} onClick={()=>setVisible(!visible)}>{visible ? t.hide : t.show}</button>}
-        {mode === "signup" && <label className="consent-row"><input type="checkbox" required /><span>{t.terms} (<a href="/terms" target="_blank" rel="noreferrer">{language === "fr" ? "Lire" : "Read"}</a>). <a href="/privacy" target="_blank" rel="noreferrer">{t.privacy}</a></span></label>}
+        {mode === "signup" && !googleEnabled && <label className="consent-row"><input id="account-consent" type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} required /><span>{t.terms} (<a href="/terms" target="_blank" rel="noreferrer">{language === "fr" ? "Lire" : "Read"}</a>). <a href="/privacy" target="_blank" rel="noreferrer">{t.privacy}</a></span></label>}
         {error && <p className="form-message error" role="alert">{error}</p>}
         {message && <p className="form-message success" role="status">{message}</p>}
-        <button className="admin-primary" type="submit" disabled={busy}>{busy ? t.busy : mode === "forgot" ? t.send : mode === "reset" ? t.reset : mode === "verify" ? t.verify : t.continue}</button>
+        <button className="admin-primary" type="submit" disabled={busy || googleBusy}>{busy ? t.busy : mode === "forgot" ? t.send : mode === "reset" ? t.reset : mode === "verify" ? t.verify : t.continue}</button>
       </form>
       {mode === "signin" && <button type="button" className="auth-switch" onClick={()=>change("forgot")}>{t.forgot}</button>}
       {(mode === "reset" || mode === "verify") && <button type="button" className="auth-switch" onClick={sendCode} disabled={busy || seconds>0}>{seconds>0 ? (language === "fr" ? "Nouveau code dans " : "New code in ")+seconds+" s" : resendAt ? t.resend : t.send}</button>}

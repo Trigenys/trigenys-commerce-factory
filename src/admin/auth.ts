@@ -15,15 +15,19 @@ function createCommerceAuthClient(authBaseUrl: string) {
 export type CommerceAuthClient = ReturnType<typeof createCommerceAuthClient>;
 
 let clientPromise: Promise<CommerceAuthClient> | null = null;
+let googleSignInEnabled = false;
 
 export function getAuthClient(): Promise<CommerceAuthClient> {
   if (!clientPromise) {
-    clientPromise = fetchRuntimeConfig().then(({ authBaseUrl }) =>
-      createCommerceAuthClient(authBaseUrl)
-    ).catch((error) => { clientPromise = null; throw error; });
+    clientPromise = fetchRuntimeConfig().then(({ authBaseUrl, googleSignInEnabled: enabled }) => {
+      googleSignInEnabled = enabled;
+      return createCommerceAuthClient(authBaseUrl);
+    }).catch((error) => { clientPromise = null; throw error; });
   }
   return clientPromise;
 }
+
+export function canSignInWithGoogle(): boolean { return googleSignInEnabled; }
 
 export async function getApiToken(
   client: CommerceAuthClient

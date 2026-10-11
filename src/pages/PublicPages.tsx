@@ -22,6 +22,7 @@ export function PublicLayout({children,language,onLanguage}: {children:ReactNode
 
 const help = {
   fr:[
+    ["Connecter mes comptes professionnels","Depuis Comptes connectés, le propriétaire peut autoriser les services disponibles, choisir la Page ou le profil de son activité et prévisualiser les champs à importer. Cochez seulement les champs utiles puis confirmez. Instagram demande un compte professionnel lié à une Page Facebook. Une connexion au profil ne donne pas accès au catalogue TikTok Shop."],
     ["Créer et publier ma boutique","Créez votre compte, renseignez votre activité et votre numéro WhatsApp, puis choisissez votre apparence. Ajoutez au moins un produit actif avant de publier. Le lien public devient disponible dans votre tableau de bord."],
     ["Modifier mon catalogue","Dans Produits, ajoutez les photos, prix, catégories et variantes. Un brouillon reste privé. Archiver retire un produit du catalogue public sans effacer l’historique des commandes."],
     ["Recevoir une commande","L’acheteur constitue son panier puis enregistre une demande. Les prix sont revérifiés par le serveur. Il ouvre ensuite WhatsApp pour convenir avec vous de la disponibilité, du paiement et de la remise."],
@@ -33,6 +34,7 @@ const help = {
     ["Une difficulté ou une demande sur mes données","Utilisez Contact. La réponse du support est consultable via le lien privé remis après l’envoi. Pour une disponibilité, une livraison ou un remboursement, contactez d’abord le vendeur sur WhatsApp."]
   ],
   en:[
+    ["Connect my business accounts","From Connected accounts, the owner can authorize available services, select their business Page or profile and preview fields to import. Select useful fields, then confirm. Instagram requires a professional account linked to a Facebook Page. Profile access does not grant access to a TikTok Shop catalog."],
     ["Create and publish my store","Create an account, enter your business and WhatsApp number, then choose an appearance. Add at least one active product before publishing. Your public link is available in the dashboard."],
     ["Update my catalog","In Products, add images, prices, categories and variants. Drafts stay private. Archiving removes a product from the public catalog without erasing order history."],
     ["Receive an order","The buyer builds a cart and saves a request. The server rechecks prices. They then open WhatsApp to agree availability, payment and handover with you."],
@@ -46,6 +48,7 @@ const help = {
 };
 const privacy = {
   fr:[
+    ["Comptes sociaux connectés","Si vous autorisez un service disponible, Commerce Factory lit les informations de la Page ou du profil professionnel choisi. Le propriétaire prévisualise les champs puis confirme leur import. Les accès au service sont chiffrés sur le serveur ; ils sont supprimés de Commerce Factory à la déconnexion. Les informations déjà importées restent modifiables dans votre boutique. Vous pouvez aussi retirer l’autorisation depuis le réseau social. Les aperçus expirent après dix minutes. Ceux qui sont expirés depuis plus de 24 heures sont supprimés lors des connexions suivantes."],
     ["Les données utilisées","Le compte marchand utilise un nom, un email et les données d’authentification gérées par Neon Auth. La boutique contient son identité, ses coordonnées commerciales et son catalogue. Une demande de commande peut contenir un nom, un téléphone et une note si l’acheteur les renseigne."],
     ["Pourquoi nous les utilisons","Ces informations servent à ouvrir l’espace marchand, publier les produits, gérer les accès, transmettre les demandes au vendeur et traiter les demandes d’aide. Les statistiques de consultation comptent des événements de boutique et de produits ; elles ne contiennent pas les messages WhatsApp ni les coordonnées des acheteurs."],
     ["Qui peut les consulter","Le propriétaire et les collaborateurs autorisés voient les commandes de leur boutique. Le support Trigenys voit les demandes d’aide et les métadonnées des boutiques ; sa console n’affiche pas les coordonnées des acheteurs. Cloudflare fournit l’hébergement et les médias, Neon la base et l’authentification. WhatsApp intervient lorsque vous ouvrez la conversation."],
@@ -54,6 +57,7 @@ const privacy = {
     ["Conservation","Les données restent disponibles pour le fonctionnement du compte, le traitement des commandes et l’historique du support. Toute demande de suppression est traitée avec les obligations de conservation applicables à la situation. Cette page décrit le fonctionnement du service ; les conditions de WhatsApp et des services de paiement restent distinctes."]
   ],
   en:[
+    ["Connected social accounts","When you authorize an available service, Commerce Factory reads information from the selected business Page or profile. The owner previews fields before confirming an import. Service credentials are encrypted on the server and removed from Commerce Factory when disconnected. Previously imported information remains editable in your store. You can also remove authorization on the social network. Previews expire after ten minutes. Those expired for over 24 hours are deleted during subsequent connections."],
     ["Data we use","Merchant accounts use a name, email and authentication data managed by Neon Auth. Stores contain their identity, business contact details and catalog. Order requests may contain a name, phone number and note if the buyer provides them."],
     ["Why we use it","This data provides merchant access, publishes products, manages permissions, sends requests to sellers and handles support. Visit statistics count store/product events; they do not contain WhatsApp messages or buyers’ contact details."],
     ["Who can see it","Owners and authorized staff see orders in their store. Trigenys support sees support requests and store metadata; its console does not display buyers’ contact details. Cloudflare provides hosting and media, Neon the database and authentication. WhatsApp is involved when you open the conversation."],

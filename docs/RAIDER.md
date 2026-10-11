@@ -83,3 +83,12 @@ When adding a feature, answer:
 4. What evidence will prove it worked?
 
 If those answers are weak, keep it out of the MVP.
+
+## Social account access and information imports (#59)
+
+- **Risks:** shared Google credentials must not become production login; social profile consent must not be confused with catalog access. Provider grants stay optional and encrypted, with browser/state binding and independent JWT owner confirmation.
+- **Assumptions:** Facebook Pages and professional Instagram accounts expose the reviewed fields for the configured Graph version; TikTok may omit profile scope. Actual approved applications and business consent still need verification.
+- **Issues:** Commerce Factory's own Google client and Meta/TikTok applications have not been supplied. Production social features remain unavailable until configured; existing email access works independently.
+- **Dependencies:** owned OAuth applications, approved minimal scopes/configurations, AES-GCM Worker secret and native social rate limit. No change of managed identity provider.
+- **Evidence:** root production build, 50 backend unit tests and 23 persisted checks pass locally. The browser harness tests the installed SDK against service fixtures and records screenshots/accessibility; CI and real-provider results are recorded on the PR separately.
+- **Results:** Google account flow plus owner-only connection/preview/confirmation boundaries are implemented. Imports never infer products, publish a store, overwrite newer selected-field changes or grant staff access. Disconnect purges credentials and pending access while preserving confirmed shop information. See `docs/integrations/social-account-imports.md`.

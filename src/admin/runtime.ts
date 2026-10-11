@@ -7,7 +7,7 @@ export const apiBaseUrl = (
   (import.meta.env.DEV ? "http://127.0.0.1:8787" : "")
 ).replace(/\/$/, "");
 
-export async function fetchRuntimeConfig(): Promise<{ authBaseUrl: string }> {
+export async function fetchRuntimeConfig(): Promise<{ authBaseUrl: string; googleSignInEnabled: boolean }> {
   if (!apiBaseUrl) {
     throw new Error("Commerce Factory API is not configured.");
   }
@@ -19,7 +19,7 @@ export async function fetchRuntimeConfig(): Promise<{ authBaseUrl: string }> {
     throw new Error("Unable to load Commerce Factory runtime configuration.");
   }
 
-  const body = await response.json() as { authBaseUrl?: unknown };
+  const body = await response.json() as { authBaseUrl?: unknown; googleSignInEnabled?: unknown };
   if (
     typeof body.authBaseUrl !== "string" ||
     !body.authBaseUrl.startsWith("https://")
@@ -27,5 +27,5 @@ export async function fetchRuntimeConfig(): Promise<{ authBaseUrl: string }> {
     throw new Error("Merchant authentication is not configured.");
   }
 
-  return { authBaseUrl: body.authBaseUrl };
+  return { authBaseUrl: body.authBaseUrl, googleSignInEnabled: body.googleSignInEnabled === true };
 }

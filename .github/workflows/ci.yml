@@ -45,6 +45,14 @@ jobs:
         run: node scripts/diagnose-runtime.mjs
       - name: Verify user journeys and accessibility
         run: npm run test:journeys
+      - name: Verify Google and merchant social imports
+        run: npm run test:social
+      - name: Retain social journey screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: commerce-social-journeys
+          path: artifacts/social/
       - name: Retain journey screenshots and report
         if: always()
         uses: actions/upload-artifact@v6
