@@ -7,6 +7,9 @@ type HeroProduct = {
   id: "fashion" | "tech" | "beauty";
   shop: string;
   image: string;
+  webp480: string;
+  avif480: string;
+  avif960: string;
   width: number;
   height: number;
   product: { fr: string; en: string };
@@ -20,6 +23,9 @@ const examples: readonly HeroProduct[] = [
     id: "fashion",
     shop: "Maison Noya",
     image: "/landing/fashion-960.webp",
+    webp480: "/landing/fashion-480.webp",
+    avif480: "/landing/fashion-480.avif",
+    avif960: "/landing/fashion-960.avif",
     width: 512, height: 286,
     product: { fr: "Ensemble deux pièces en lin", en: "Linen two-piece" },
     price: { fr: "35 000 FCFA", en: "35,000 FCFA" },
@@ -30,6 +36,9 @@ const examples: readonly HeroProduct[] = [
     id: "tech",
     shop: "TechPulse",
     image: "/landing/electronics-960.webp",
+    webp480: "/landing/electronics-480.webp",
+    avif480: "/landing/electronics-480.avif",
+    avif960: "/landing/electronics-960.avif",
     width: 512, height: 279,
     product: { fr: "Sony WH-1000XM5", en: "Sony WH-1000XM5" },
     price: { fr: "230 000 FCFA", en: "230,000 FCFA" },
@@ -40,6 +49,9 @@ const examples: readonly HeroProduct[] = [
     id: "beauty",
     shop: "Glow Room",
     image: "/landing/beauty-960.webp",
+    webp480: "/landing/beauty-480.webp",
+    avif480: "/landing/beauty-480.avif",
+    avif960: "/landing/beauty-960.avif",
     width: 512, height: 279,
     product: { fr: "Kit éclat hydratant", en: "Hydration glow kit" },
     price: { fr: "22 500 FCFA", en: "22,500 FCFA" },
@@ -56,7 +68,7 @@ const copy = {
     lead: "Une boutique mobile qui donne envie, des prix clairs et des demandes WhatsApp avec le bon produit déjà identifié. Vous gardez la relation client.",
     cta: "Créer ma boutique",
     secondary: "Voir comment ça fonctionne",
-    underneath: "Pas de code. Pas de paiement inventé. Votre boutique, votre WhatsApp.",
+    underneath: "Votre catalogue, vos prix, vos clients. La discussion continue sur WhatsApp.",
     screen: "Boutique fictive en démonstration",
     discover: "Découvrez une vitrine",
     choose: "Choisir une boutique fictive",
@@ -80,7 +92,7 @@ const copy = {
     lead: "An inviting mobile store, clear prices, and WhatsApp inquiries that already identify the product. You keep the customer relationship.",
     cta: "Create my store",
     secondary: "See how it works",
-    underneath: "No code. No imaginary checkout. Your store, your WhatsApp.",
+    underneath: "Your catalog, your prices, your customers. The conversation continues on WhatsApp.",
     screen: "Fictional demo storefront",
     discover: "Explore a storefront",
     choose: "Choose a fictional storefront",
@@ -101,6 +113,7 @@ const copy = {
 
 export default function CommerceHero({ language }: { language: Language }) {
   const [selected, setSelected] = useState<HeroProduct["id"]>("fashion");
+  const [hasInteracted, setHasInteracted] = useState(false);
   const t = copy[language];
   const example = examples.find((item) => item.id === selected) ?? examples[0];
   const message = t.inquiry + " « " + example.product[language] + " » (" +
@@ -138,17 +151,25 @@ export default function CommerceHero({ language }: { language: Language }) {
           </div>
           <div className="cfh-ghost" aria-hidden="true">SHOW / SELL</div>
           <div className="cfh-photo-wrap">
-            <img
-              key={example.id}
-              className="cfh-photo"
-              src={example.image}
-              width={example.width}
-              height={example.height}
-              alt={example.product[language]}
-              loading="eager"
-              fetchPriority="high"
-              decoding="async"
-            />
+            <picture className="cfh-photo-picture" key={example.id}>
+              <source
+                type="image/avif"
+                srcSet={`${example.avif480} 480w, ${example.avif960} ${example.width}w`}
+                sizes="(max-width: 600px) 85vw, (max-width: 850px) 61vw, 46vw"
+              />
+              <img
+                className={hasInteracted ? "cfh-photo cfh-photo-swap" : "cfh-photo"}
+                src={example.image}
+                srcSet={`${example.webp480} 480w, ${example.image} ${example.width}w`}
+                sizes="(max-width: 600px) 85vw, (max-width: 850px) 61vw, 46vw"
+                width={example.width}
+                height={example.height}
+                alt={example.product[language]}
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+              />
+            </picture>
             <span className="cfh-category-vertical">{example.category[language]} / 2026</span>
           </div>
 
@@ -177,7 +198,7 @@ export default function CommerceHero({ language }: { language: Language }) {
                 type="button"
                 className={"cfh-pick" + (selected === item.id ? " is-active" : "")}
                 aria-pressed={selected === item.id}
-                onClick={() => setSelected(item.id)}
+                onClick={() => { setSelected(item.id); setHasInteracted(true); }}
                 aria-label={item.shop + " — " + item.category[language]}
               >
                 <span>0{i + 1}</span><strong>{item.category[language]}</strong>

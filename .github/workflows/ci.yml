@@ -39,6 +39,14 @@ jobs:
       - run: npm run build
       - name: Install browser for storefront checks
         run: npx playwright install --with-deps chromium
+      - name: Verify interactive hero on desktop and mobile
+        run: npm run test:hero
+      - name: Retain hero interaction screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: commerce-hero-interactions
+          path: artifacts/hero/
       - name: Verify storefront themes and media transparency
         run: npm run test:themes
       - name: Read-only live runtime diagnostic
