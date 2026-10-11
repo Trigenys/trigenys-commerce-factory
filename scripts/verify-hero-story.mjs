@@ -45,9 +45,13 @@ try{
     assert.ok((await page.locator(".cfh-message p").innerText()).includes("35,000 FCFA"));
     await page.getByRole("button",{name:"FR",exact:true}).click();
     const metrics=await page.evaluate(()=>{
-      const rect=document.querySelector(".cfh-photo").getBoundingClientRect();
-      return {viewport:innerWidth,scrollWidth:document.documentElement.scrollWidth,photoTop:rect.top};
+      const photo=document.querySelector(".cfh-photo");
+      const rect=photo.getBoundingClientRect();
+      return {viewport:innerWidth,scrollWidth:document.documentElement.scrollWidth,photoTop:rect.top,
+        imageLoaded:photo.complete && photo.naturalWidth>0,source:photo.currentSrc};
     });
+    assert.ok(metrics.imageLoaded,"Hero photograph failed to load: "+JSON.stringify(metrics));
+    assert.ok(metrics.source.includes(".avif"),"Expected locally optimized AVIF: "+JSON.stringify(metrics));
     assert.ok(metrics.scrollWidth<=metrics.viewport+1,"Horizontal overflow: "+JSON.stringify(metrics));
     if(width===390)assert.ok(metrics.photoTop<730,"Product photo is still below first mobile fold: "+JSON.stringify(metrics));
     assert.deepEqual(errors,[],"Uncaught browser errors");
