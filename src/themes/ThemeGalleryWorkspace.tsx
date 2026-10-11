@@ -1,0 +1,53 @@
+import { merchantAppHref } from "../merchant-navigation";
+import { useState } from "react";
+import { isStoreTheme, resolveStoreTheme, type StoreTheme, type ThemeSettings } from "../../shared/store-themes";
+import { StorefrontView } from "../storefront/StorefrontApp";
+import type { PublicStorefront } from "../storefront/types";
+import ThemePicker from "./ThemePicker";
+import "./theme-gallery.css";
+
+const sampleProducts: PublicStorefront["products"] = [
+  { id: "sample-fashion", name: "Ensemble en lin", slug: "ensemble-lin", description: "Une silhouette légère pour accompagner vos journées.", price: "35000", currencyCode: "XAF", category: "Mode", stockLabel: "Disponible", imageUrls: ["/landing/fashion-960.webp"], variants: [{ name: "Taille", value: "M" }, { name: "Taille", value: "L" }] },
+  { id: "sample-beauty", name: "Collection de soins", slug: "collection-soins", description: "Une sélection pour votre rituel quotidien.", price: "12500", currencyCode: "XAF", category: "Beauté", stockLabel: "Disponible", imageUrls: ["/landing/beauty-960.webp"], variants: [] },
+  { id: "sample-headphones", name: "Casque Studio", slug: "casque-studio", description: "Un design enveloppant pour vos moments de musique.", price: "35000", currencyCode: "XAF", category: "Électronique", stockLabel: "Disponible", imageUrls: ["/landing/headphones-960.webp"], variants: [{ name: "Couleur", value: "Noir" }, { name: "Couleur", value: "Blanc" }] },
+  { id: "sample-watch", name: "Montre Atelier", slug: "montre-atelier", description: "Un accessoire élégant pour chaque occasion.", price: "28000", currencyCode: "XAF", category: "Accessoires", stockLabel: "Disponible", imageUrls: ["/landing/watch-960.webp"], variants: [] },
+  { id: "sample-earbuds", name: "Écouteurs Pocket", slug: "ecouteurs-pocket", description: "Le son vous accompagne partout.", price: "18000", currencyCode: "XAF", category: "Électronique", stockLabel: "Disponible", imageUrls: ["/landing/earbuds-960.webp"], variants: [] },
+  { id: "sample-tech", name: "Sélection connectée", slug: "selection-connectee", description: "Les essentiels d’un quotidien connecté.", price: "45000", currencyCode: "XAF", category: "Électronique", stockLabel: "Disponible", imageUrls: ["/landing/electronics-960.webp"], variants: [] }
+];
+
+export default function ThemeGalleryWorkspace() {
+  const params = new URLSearchParams(window.location.search);
+  const path = window.location.pathname.split("/").filter(Boolean);
+  const initial = path[1] || params.get("theme");
+  const [theme, setTheme] = useState<StoreTheme>(isStoreTheme(initial) ? initial : "beauty-ecrin");
+  const [settings, setSettings] = useState<ThemeSettings>({});
+  const [productSlug, setProductSlug] = useState<string | null>(path[2] === "p" ? path[3] || null : params.get("product"));
+  const storefront: PublicStorefront = {
+    store: { name: "Atelier Commerce", slug: "atelier-commerce", description: "Des essentiels bien choisis. Des détails qui font la différence.", whatsappNumber: "", countryCode: "CM", currencyCode: "XAF", businessLocation: "Douala, Cameroun", theme, themeSettings: settings, logoUrl: null },
+    products: (() => {
+      const sector = resolveStoreTheme(theme).sector;
+      const featured = sector === "beauty" ? "sample-beauty" : sector === "tech" ? "sample-headphones" : sector === "jewelry" ? "sample-watch" : "sample-fashion";
+      return [...sampleProducts.filter((product) => product.id === featured), ...sampleProducts.filter((product) => product.id !== featured)];
+    })()
+  };
+  function changeTheme(value: StoreTheme, nextSettings: ThemeSettings) {
+    setTheme(value); setSettings(nextSettings); setProductSlug(null);
+    const url = new URL(window.location.href); url.pathname = "/themes/" + value; url.search = ""; url.hash = ""; window.history.replaceState(null, "", url);
+  }
+  return <div className="theme-gallery-workspace">
+      <aside className="theme-gallery-controls"><ThemePicker value={theme} settings={settings} language="fr" onChange={changeTheme} /><a className="theme-gallery-cta" href={merchantAppHref()}>Créer ma boutique avec Commerce Factory ↗</a>{merchantAppHref() !== "/app" ? <p className="theme-gallery-merchant-note">Création et connexion sur le site principal. Ces nouveaux styles sont encore en aperçu.</p> : null}</aside>
+      <section className="theme-gallery-preview" aria-label="Aperçu du thème">
+        <div className="theme-gallery-preview-label"><div><strong>{resolveStoreTheme(theme, settings).name}</strong><span>Catalogue fictif pour comparer les présentations</span></div><a href={"/themes/" + theme}>Lien vers ce thème ↗</a></div>
+        <div onClickCapture={(event) => {
+          const link = (event.target as Element).closest("a"); if (!link) return;
+          if (link.getAttribute("href") === "#catalog") return;
+          const url = new URL(link.href);
+          if (url.pathname !== "/themes" && !url.pathname.startsWith("/themes/")) return;
+          const parts = url.pathname.split("/").filter(Boolean);
+          event.preventDefault(); setProductSlug(parts[2] === "p" ? parts[3] || null : url.searchParams.get("product")); window.history.replaceState(null, "", url);
+        }}>
+          <StorefrontView storefront={storefront} language="fr" productSlug={productSlug} homeHref={"/themes/" + theme} productHref={(product) => "/themes/" + theme + "/p/" + product.slug} preview />
+        </div>
+      </section>
+  </div>;
+}

@@ -1,3 +1,4 @@
+import { merchantAppHref } from "../merchant-navigation";
 import { useState } from "react";
 import "./commerce-journey.css";
 
@@ -165,7 +166,7 @@ export default function CommerceJourney({ language }: { language: Language }) {
         <div className="journey-bottom">
           <span><span aria-hidden="true">✧</span> {t.tagline}</span>
           <span>{t.footer}</span>
-          <a href="/app">{t.create} <span aria-hidden="true">↗</span></a>
+          <a href={merchantAppHref()}>{t.create} <span aria-hidden="true">↗</span></a>
         </div>
       </div>
     </section>

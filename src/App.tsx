@@ -1,3 +1,4 @@
+import { merchantAppHref } from "./merchant-navigation";
 import { useEffect, useState } from "react";
 import CommerceJourney from "./components/CommerceJourney";
 import CommerceHero from "./components/CommerceHero";
@@ -270,6 +271,7 @@ const copyByLanguage = {
     metaDescription: "Commerce Factory by Trigenys turns product catalogs into mobile-first storefronts with WhatsApp ordering.",
     navHow: "How it works",
     navShowcase: "Showcase",
+    navThemes: "Themes",
     navDashboard: "Dashboard",
     navPricing: "Pricing",
     login: "Log in",
@@ -364,6 +366,7 @@ const copyByLanguage = {
     metaDescription: "Commerce Factory par Trigenys transforme les catalogues produits en boutiques mobile-first avec commande via WhatsApp.",
     navHow: "Comment ça marche",
     navShowcase: "Exemples",
+    navThemes: "Thèmes",
     navDashboard: "Tableau de bord",
     navPricing: "Tarifs",
     login: "Connexion",
@@ -501,7 +504,7 @@ export default function App() {
         </nav>
 
         <div className="header-actions">
-          <a className="header-login" href="/app">{t.login}</a>
+          <a className="header-login" href={merchantAppHref()}>{t.login}</a>
           <div className="language-switch" role="group" aria-label={t.languageLabel}>
             <button
               type="button"
@@ -520,7 +523,7 @@ export default function App() {
               EN
             </button>
           </div>
-          <a className="button button-primary button-compact" href="/app">
+          <a className="button button-primary button-compact" href={merchantAppHref()}>
             {t.createStore}
           </a>
         </div>
@@ -688,7 +691,7 @@ export default function App() {
                 <ul>
                   {plan.features.map((feature) => <li key={feature}>✓ {feature}</li>)}
                 </ul>
-                <a href={plan.tier === "starter" ? "/app" : "#social"} className={plan.featured ? "button button-primary" : "button button-soft"}>
+                <a href={plan.tier === "starter" ? merchantAppHref() : "#social"} className={plan.featured ? "button button-primary" : "button button-soft"}>
                   {plan.cta}
                 </a>
               </article>
@@ -702,7 +705,7 @@ export default function App() {
             <span className="overline inverse">{t.launchOverline}</span>
             <h2>{t.launchTitle}</h2>
             <p>{t.launchBody}</p>
-            <a className="button button-primary launch-button" href="/app">{t.launchCta}</a>
+            <a className="button button-primary launch-button" href={merchantAppHref()}>{t.launchCta}</a>
             <small>{t.launchNote}</small>
           </div>
         </section>
@@ -722,6 +725,11 @@ export default function App() {
         <div className="footer-links">
           <a href="#how">{t.navHow}</a>
           <a href="#showcase">{t.navShowcase}</a>
+          <a href="/themes">{t.navThemes}</a>
+          <a href="/help">{language === "fr" ? "Aide" : "Help"}</a>
+          <a href="/contact">Contact</a>
+          <a href="/privacy">{language === "fr" ? "Confidentialité" : "Privacy"}</a>
+          <a href="/terms">{language === "fr" ? "Conditions" : "Terms"}</a>
           <a href="#dashboard">{t.navDashboard}</a>
           <a href="#pricing">{t.navPricing}</a>
         </div>

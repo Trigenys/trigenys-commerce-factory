@@ -5,6 +5,41 @@
       "path": "/",
       "primaryCtaSelector": "main .cfh-actions a.cfh-primary",
       "expectedCtaHref": "/app"
+    },
+    {
+      "path": "/themes/beauty-ecrin",
+      "primaryCtaSelector": ".theme-gallery-create",
+      "expectedCtaHref": "/app"
+    },
+    {
+      "path": "/themes/fashion-editorial",
+      "primaryCtaSelector": ".theme-gallery-create",
+      "expectedCtaHref": "/app"
+    },
+    {
+      "path": "/themes/sport-club",
+      "primaryCtaSelector": ".theme-gallery-create",
+      "expectedCtaHref": "/app"
+    },
+    {
+      "path": "/themes/home-habitat",
+      "primaryCtaSelector": ".theme-gallery-create",
+      "expectedCtaHref": "/app"
+    },
+    {
+      "path": "/themes/tech-precision",
+      "primaryCtaSelector": ".theme-gallery-create",
+      "expectedCtaHref": "/app"
+    },
+    {
+      "path": "/themes/food-menu",
+      "primaryCtaSelector": ".theme-gallery-create",
+      "expectedCtaHref": "/app"
+    },
+    {
+      "path": "/themes/beauty-ecrin/p/collection-soins",
+      "primaryCtaSelector": ".theme-gallery-create",
+      "expectedCtaHref": "/app"
     }
   ],
   "viewports": [

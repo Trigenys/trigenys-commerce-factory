@@ -1,6 +1,6 @@
 # RAIDER — Commerce Factory MVP
 
-Last reviewed: 2026-10-09
+Last reviewed: 2026-10-11
 
 RAIDER means **Risks, Assumptions, Issues, Dependencies, Evidence, Results**.
 
@@ -21,7 +21,7 @@ RAIDER means **Risks, Assumptions, Issues, Dependencies, Evidence, Results**.
 - Merchants accept manual payment/delivery coordination after WhatsApp handoff.
 - Mobile is the dominant merchant/customer experience.
 - FCFA and local commerce conventions should work from the first release.
-- One strong storefront theme is enough to validate the product.
+- Merchants need styles across multiple sectors; six shared compositions keep the 24 presets maintainable without fragmenting catalog behavior.
 
 ## Issues to resolve
 
@@ -42,6 +42,12 @@ RAIDER means **Risks, Assumptions, Issues, Dependencies, Evidence, Results**.
 - Meta platform APIs only for later integrations.
 
 ## Evidence
+
+- The installed Neon Auth 0.5 adapter routes `/token` through its session cache. JWT and fresh session calls use the adapter's force-fetch option; staging verifies sign-up, sign-in, sign-out, signed claims and protected Worker access with the actual provider.
+- The isolated Commerce staging branch verifies all 25 theme settings round trips and a persistent order through manual payment and fulfillment. Email delivery and usability studies remain separate verification items.
+- Browser checks require each merchant route’s expected heading, so a recovery or login screen cannot satisfy a functional route check. The launch path covers signup, store/product drafts, reload, theme saving and publication at desktop/mobile sizes. Support retries persist the original payload and private tracking identity; payload conflicts return 409.
+- Media inputs remain keyboard focusable, with visible focus on their controls. Private buyer receipts survive tab reload, and explicitly rejected form inputs become editable again.
+- Order and support request bursts use native Cloudflare limiters with separate staging namespaces. The PostgreSQL suite verifies that throttled requests cannot write and missing limiter configuration fails closed; these are approximate per-location limits.
 
 - Repository baseline: React 19, TypeScript, Vite and Node 24.
 - The product can deliver value without a payment gateway by improving product discovery and WhatsApp handoff.

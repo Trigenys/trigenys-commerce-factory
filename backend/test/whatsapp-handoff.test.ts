@@ -132,6 +132,23 @@ function requestBody(eventId = "11111111-1111-4111-8111-111111111111") {
   };
 }
 
+test("a styled storefront exposes its configuration and keeps product handoff URLs", async () => {
+  const repository = new HandoffRepository();
+  repository.publicStorefront!.store.theme = "tech-studio";
+  repository.publicStorefront!.store.themeSettings = { accent: "#112233", imageFit: "contain" };
+  const app = handoffApp(repository);
+  const page = await app.request("/v1/public/stores/" + storeSlug, {}, env);
+  assert.equal(page.status, 200);
+  const data = await page.json() as PublicStorefront;
+  assert.equal(data.store.theme, "tech-studio");
+  assert.deepEqual(data.store.themeSettings, { accent: "#112233", imageFit: "contain" });
+  assert.equal(data.products[0].slug, productSlug);
+  const handoff = await app.request("/v1/public/stores/" + storeSlug + "/products/" + productSlug + "/whatsapp", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody())
+  }, env);
+  assert.equal(handoff.status, 200);
+});
+
 test("WhatsApp handoff is generated from trusted store/product data", async () => {
   const repository = new HandoffRepository();
   const app = handoffApp(repository);

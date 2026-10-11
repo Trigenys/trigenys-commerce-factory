@@ -1,6 +1,6 @@
 # Deployment, environments and custom-domain path
 
-Status: MVP production baseline  
+Status: Commerce Factory beta — theme and journey rollout  
 Related: #13, ADR-001
 
 ## Current production topology
@@ -47,7 +47,11 @@ Cloudflare Pages preview deployments are created from non-main branches.
 
 Preview is intentionally read-only with respect to production infrastructure provisioning. Pull requests do not receive permission to create/reconcile Neon targets through AppFactory.
 
-When isolated API/database previews become necessary, use AppFactory's existing `staging` Worker/Hyperdrive identity instead of sharing production credentials with PR builds.
+Merchant creation/login links on this project's Pages preview hosts point to the canonical production `/app` origin. Direct visits to a preview `/app` also redirect there before loading the merchant client. The preview origin is not added to production API CORS or Managed Auth trusted domains. Local development and the canonical site retain relative `/app` navigation.
+
+The theme showroom uses the shared storefront renderer with a fictional catalog. Theme choices become operational in the canonical merchant settings only after the reviewed migration and API/frontend rollout. Project preview hosts keep account creation and login on the canonical origin.
+
+An isolated journey validation environment uses its own Worker, private media bucket and Neon branch. Its Auth trusted domain belongs only to that branch; production credentials and trusted origins are never shared with PR builds.
 
 ### Production
 
@@ -69,6 +73,7 @@ Frontend:
 - Cloudflare Pages production branch: `main`.
 
 API:
+- native order/support rate limit bindings are declared in `backend/wrangler.production.jsonc`; a missing binding fails closed;
 - source root: `/backend`;
 - Node: 24;
 - validation: `npm install --ignore-scripts --no-audit --no-fund && npm run check`;
@@ -82,6 +87,10 @@ Database/Auth:
 - connection URL and Auth base URL are written directly to the Worker as secret bindings.
 
 The initial SQL schema is versioned under `db/migrations/`. The current MVP applies reviewed migrations to the dedicated Commerce Factory database after infrastructure provisioning. A reusable Node/Postgres migration gate can be added to AppFactory when schema cadence justifies it.
+
+For the theme/journey release, apply `0006_store_theme_library.sql` and `0007_user_journeys.sql` to the dedicated `commerce_factory` database before deploying the Worker and web application. They preserve store/product identities and existing owner memberships. Deploy the `ORDER_RATE_LIMITER` and `SUPPORT_RATE_LIMITER` bindings with the Worker; never replace the existing production database/Auth secrets with staging values.
+
+The isolated validation environment is `commerce-factory-journeys.pages.dev`, with its own API Worker, private R2 bucket, and Neon branch `commerce-journeys-57-staging` under the Commerce Factory branch. Its trusted Auth origin belongs only to that branch. `scripts/verify-live-staging.mjs` and `scripts/verify-live-access.mjs` are fixed to these isolated targets; they must not be repointed to production. Access tests use reserved fixture accounts and an explicitly provisioned test-only verified-email flag and platform grant. They do not prove email delivery.
 
 ## Production evidence
 

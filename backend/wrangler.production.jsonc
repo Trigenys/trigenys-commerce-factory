@@ -4,6 +4,10 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-08",
   "compatibility_flags": ["nodejs_compat"],
+  "ratelimits": [
+    {"name":"ORDER_RATE_LIMITER","namespace_id":"5701","simple":{"limit":30,"period":60}},
+    {"name":"SUPPORT_RATE_LIMITER","namespace_id":"5702","simple":{"limit":8,"period":60}}
+  ],
   "r2_buckets": [
     {
       "binding": "MEDIA_BUCKET",

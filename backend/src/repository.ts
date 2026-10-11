@@ -1,3 +1,4 @@
+import { parseThemeSettings } from "../../shared/store-themes.ts";
 import { neon } from "@neondatabase/serverless";
 import type {
   CommerceRepository,
@@ -19,6 +20,7 @@ import type {
 } from "./types.ts";
 
 type StoreRow = {
+  role?: "owner" | "staff";
   id: string;
   name: string;
   slug: string;
@@ -30,6 +32,7 @@ type StoreRow = {
   business_location: string | null;
   contact_email: string | null;
   theme: StoreTheme;
+  theme_settings: unknown;
   logo_url: string | null;
 };
 
@@ -77,6 +80,7 @@ type ProductRow = {
 function mapStore(row: StoreRow): StoreSummary {
   return {
     id: row.id,
+    role: row.role ?? "owner",
     name: row.name,
     slug: row.slug,
     status: row.status,
@@ -87,6 +91,7 @@ function mapStore(row: StoreRow): StoreSummary {
     businessLocation: row.business_location,
     contactEmail: row.contact_email,
     theme: row.theme,
+    themeSettings: parseThemeSettings(row.theme_settings) ?? {},
     logoUrl: row.logo_url
   };
 }
@@ -144,10 +149,14 @@ function productJson(input: ProductInput) {
   };
 }
 
-export function createNeonRepository(connectionString: string): CommerceRepository {
-  const sql = neon(connectionString);
+export function createNeonRepository(connectionString: string, client?: ReturnType<typeof neon>): CommerceRepository {
+  const sql = client || neon(connectionString);
 
   return {
+    async getStoreRole(authSubject, storeId) {
+      const rows = await sql`SELECT role FROM store_members WHERE store_id=${storeId}::uuid AND auth_subject=${authSubject} AND role IN ('owner','staff')` as Array<{role:"owner"|"staff"}>;
+      return rows[0]?.role ?? null;
+    },
     async listOwnedStores(authSubject) {
       const rows = await sql`
         SELECT
@@ -162,11 +171,13 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           s.business_location,
           s.contact_email,
           s.theme,
-          s.logo_url
+          s.theme_settings,
+          s.logo_url,
+          sm.role
         FROM stores s
         INNER JOIN store_members sm ON sm.store_id = s.id
         WHERE sm.auth_subject = ${authSubject}
-          AND sm.role = 'owner'
+          AND sm.role IN ('owner', 'staff')
         ORDER BY s.created_at ASC
       ` as StoreRow[];
       return rows.map(mapStore);
@@ -197,6 +208,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
               business_location,
               contact_email,
               theme,
+              theme_settings,
               logo_url
             )
             SELECT
@@ -211,6 +223,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
               ${input.businessLocation},
               ${input.contactEmail},
               ${input.theme},
+              ${JSON.stringify(input.themeSettings ?? {})}::jsonb,
               ${input.logoUrl}
             FROM new_merchant
             RETURNING
@@ -225,6 +238,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
               business_location,
               contact_email,
               theme,
+              theme_settings,
               logo_url
           ),
           new_membership AS (
@@ -269,12 +283,14 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           s.business_location,
           s.contact_email,
           s.theme,
-          s.logo_url
+          s.theme_settings,
+          s.logo_url,
+          sm.role
         FROM stores s
         INNER JOIN store_members sm ON sm.store_id = s.id
         WHERE s.id = ${storeId}
           AND sm.auth_subject = ${authSubject}
-          AND sm.role = 'owner'
+          AND sm.role IN ('owner', 'staff')
         LIMIT 1
       ` as StoreRow[];
       return rows[0] ? mapStore(rows[0]) : null;
@@ -292,6 +308,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
       const contactEmail =
         patch.contactEmail === undefined ? null : patch.contactEmail;
       const theme = patch.theme ?? null;
+      const themeSettings = JSON.stringify(patch.themeSettings ?? {});
       const logoUrl = patch.logoUrl === undefined ? null : patch.logoUrl;
 
       try {
@@ -316,6 +333,10 @@ export function createNeonRepository(connectionString: string): CommerceReposito
               ELSE s.contact_email
             END,
             theme = COALESCE(${theme}, s.theme),
+            theme_settings = CASE
+              WHEN ${patch.themeSettings !== undefined} THEN ${themeSettings}::jsonb
+              ELSE s.theme_settings
+            END,
             logo_url = CASE
               WHEN ${patch.logoUrl !== undefined} THEN ${logoUrl}
               ELSE s.logo_url
@@ -338,6 +359,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
             s.business_location,
             s.contact_email,
             s.theme,
+            s.theme_settings,
             s.logo_url
         ` as StoreRow[];
         return rows[0]
@@ -368,6 +390,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           s.business_location,
           s.contact_email,
           s.theme,
+          s.theme_settings,
           s.logo_url
         FROM stores s
         INNER JOIN store_members sm ON sm.store_id = s.id
@@ -408,6 +431,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           business_location,
           contact_email,
           theme,
+          theme_settings,
           logo_url
       ` as StoreRow[];
 
@@ -427,6 +451,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           description,
           business_location,
           theme,
+          theme_settings,
           logo_url
         FROM stores
         WHERE slug = ${slug}
@@ -441,6 +466,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
         description: string | null;
         business_location: string | null;
         theme: StoreTheme;
+        theme_settings: unknown;
         logo_url: string | null;
       }>;
 
@@ -488,6 +514,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           description: store.description,
           businessLocation: store.business_location,
           theme: store.theme,
+          themeSettings: parseThemeSettings(store.theme_settings) ?? {},
           logoUrl: store.logo_url
         },
         products: products.map((product) => ({
@@ -525,7 +552,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
         INNER JOIN store_members sm ON sm.store_id = p.store_id
         WHERE p.store_id = ${storeId}
           AND sm.auth_subject = ${authSubject}
-          AND sm.role = 'owner'
+          AND sm.role IN ('owner', 'staff')
         ORDER BY
           CASE WHEN p.status = 'archived' THEN 1 ELSE 0 END,
           p.sort_order ASC,
@@ -573,7 +600,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           INNER JOIN store_members sm ON sm.store_id = s.id
           WHERE s.id = ${storeId}
             AND sm.auth_subject = ${authSubject}
-            AND sm.role = 'owner'
+            AND sm.role IN ('owner', 'staff')
           RETURNING
             id,
             store_id,
@@ -627,7 +654,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
             AND p.store_id = ${storeId}
             AND sm.store_id = p.store_id
             AND sm.auth_subject = ${authSubject}
-            AND sm.role = 'owner'
+            AND sm.role IN ('owner', 'staff')
             AND p.status <> 'archived'
           RETURNING
             p.id,
@@ -667,7 +694,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           AND p.store_id = ${storeId}
           AND sm.store_id = p.store_id
           AND sm.auth_subject = ${authSubject}
-          AND sm.role = 'owner'
+          AND sm.role IN ('owner', 'staff')
         RETURNING p.id
       ` as Array<{ id: string }>;
       return Boolean(rows[0]);
@@ -713,7 +740,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
         WHERE p.id = ${productId}
           AND p.store_id = ${storeId}
           AND sm.auth_subject = ${authSubject}
-          AND sm.role = 'owner'
+          AND sm.role IN ('owner', 'staff')
           AND p.status <> 'archived'
         RETURNING
           id,
@@ -904,7 +931,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
          AND p.store_id = s.id
         WHERE s.id = ${input.storeId}
           AND sm.auth_subject = ${authSubject}
-          AND sm.role = 'owner'
+          AND (sm.role='owner' OR (sm.role='staff' AND ${input.kind}='product'))
           AND (
             (${input.kind} = 'logo' AND ${input.productId}::uuid IS NULL)
             OR
@@ -940,7 +967,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
         WHERE m.id = ${mediaId}
           AND m.store_id = ${storeId}
           AND sm.auth_subject = ${authSubject}
-          AND sm.role = 'owner'
+          AND (sm.role='owner' OR (sm.role='staff' AND m.kind='product'))
         LIMIT 1
       ` as MediaRow[];
 
@@ -963,7 +990,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
         WHERE m.public_id = ${publicId}::uuid
           AND m.store_id = ${storeId}
           AND sm.auth_subject = ${authSubject}
-          AND sm.role = 'owner'
+          AND (sm.role='owner' OR (sm.role='staff' AND m.kind='product'))
         LIMIT 1
       ` as MediaRow[];
 
@@ -978,7 +1005,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           AND m.store_id = ${storeId}
           AND sm.store_id = m.store_id
           AND sm.auth_subject = ${authSubject}
-          AND sm.role = 'owner'
+          AND (sm.role='owner' OR (sm.role='staff' AND m.kind='product'))
         RETURNING m.id
       ` as Array<{ id: string }>;
 
@@ -993,7 +1020,7 @@ export function createNeonRepository(connectionString: string): CommerceReposito
           AND m.store_id = ${storeId}
           AND sm.store_id = m.store_id
           AND sm.auth_subject = ${authSubject}
-          AND sm.role = 'owner'
+          AND (sm.role='owner' OR (sm.role='staff' AND m.kind='product'))
         RETURNING m.id
       ` as Array<{ id: string }>;
 

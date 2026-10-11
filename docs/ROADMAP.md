@@ -19,9 +19,12 @@ The backlog is tracked in GitHub issues under epic #1.
 - #4 Merchant onboarding/store settings.
 - #5 Product catalog.
 - #6 Public storefront.
+- #55 Multi-sector theme library: 24 presets, six shared compositions, merchant customization and live storefront previews.
 - #7 WhatsApp handoff.
 
 A merchant should be able to complete the full value loop at the end of this phase.
+
+The initial single-theme storefront is the compatibility baseline. Theme expansion now belongs to #55 and uses the existing multi-tenant renderer, rather than a separate application per merchant. See `architecture/ADR-002-store-theme-library.md` for the contract and rollout order.
 
 ## Phase 3 — measurement and launch
 

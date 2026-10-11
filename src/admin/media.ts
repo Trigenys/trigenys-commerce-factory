@@ -39,7 +39,7 @@ function canvasBlob(
   canvas.width = size.width;
   canvas.height = size.height;
 
-  const context = canvas.getContext("2d", { alpha: false });
+  const context = canvas.getContext("2d", { alpha: true });
   if (!context) {
     throw new MediaPreparationError("MEDIA_CANVAS_UNAVAILABLE");
   }

@@ -1,8 +1,11 @@
+import { timedFetch } from "../lib/requests";
 import type { CommerceAuthClient } from "./auth";
+import type { StoreTheme, ThemeSettings } from "../../shared/store-themes";
 import { getApiToken } from "./auth";
 import { apiBaseUrl } from "./runtime";
 
 export type Store = {
+  role?: "owner" | "staff";
   id: string;
   name: string;
   slug: string;
@@ -13,7 +16,8 @@ export type Store = {
   description: string | null;
   businessLocation: string | null;
   contactEmail: string | null;
-  theme: "clean";
+  theme: StoreTheme;
+  themeSettings?: ThemeSettings;
   logoUrl: string | null;
 };
 
@@ -26,7 +30,8 @@ export type StoreInput = {
   description: string;
   businessLocation: string;
   contactEmail: string;
-  theme: "clean";
+  theme: StoreTheme;
+  themeSettings: ThemeSettings;
 };
 
 type ErrorBody = { error?: string };
@@ -40,13 +45,15 @@ export class ApiError extends Error {
   }
 }
 
-async function merchantRequest<T>(
+export async function merchantRequest<T>(
   client: CommerceAuthClient,
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
-  const token = await getApiToken(client);
-  const response = await fetch(apiBaseUrl + path, {
+  let token: string;
+  try { token = await getApiToken(client); }
+  catch { window.dispatchEvent(new Event("merchant-session-expired")); throw new ApiError(401,"AUTH_REQUIRED"); }
+  const response = await timedFetch(apiBaseUrl + path, {
     ...init,
     headers: {
       Accept: "application/json",
@@ -59,6 +66,7 @@ async function merchantRequest<T>(
   });
 
   if (!response.ok) {
+    if (response.status === 401) window.dispatchEvent(new Event("merchant-session-expired"));
     let code = "REQUEST_FAILED";
     try {
       const body = await response.json() as ErrorBody;

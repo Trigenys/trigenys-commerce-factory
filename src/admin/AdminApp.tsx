@@ -1,4 +1,12 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import MerchantWorkspace from "./MerchantWorkspace";
+import InvitationAccept from "./InvitationAccept";
+import PlatformPanel from "./PlatformPanel";
+import { preferredLanguage, rememberLanguage } from "../lib/language";
+import "../pages/public-pages.css";
+import AccountAccess from "./AccountAccess";
+import RecoveryState from "../components/RecoveryState";
+import { useDraft, useUnsavedChanges } from "../lib/drafts";
+import { FormEvent, useEffect, useId, useMemo, useState } from "react";
 import type { CommerceAuthClient } from "./auth";
 import { getAuthClient, getSessionSnapshot } from "./auth";
 import {
@@ -6,21 +14,24 @@ import {
   createStore,
   deleteMediaByPublicId,
   listStores,
+  listProducts,
   managedMediaPublicId,
   publishStore,
   updateStore,
   updateStoreLogo,
   uploadMedia,
   type Store,
-  type StoreInput
+  type StoreInput,
+  type Product
 } from "./api";
-import AnalyticsPanel from "./AnalyticsPanel";
 import { MediaPreparationError, prepareImageForUpload } from "./media";
-import ProductCatalog from "./ProductCatalog";
 import "./admin.css";
+import { isStoreTheme, parseThemeSettings, resolveStoreTheme, themeFonts } from "../../shared/store-themes";
+import { themeShellProps } from "../storefront/theme-style";
+import ThemePicker from "../themes/ThemePicker";
+import LiveThemePreview from "../themes/LiveThemePreview";
 
 type Language = "fr" | "en";
-type AuthMode = "signin" | "signup";
 type OnboardingStep = 0 | 1 | 2 | 3;
 
 const steps = {
@@ -61,13 +72,12 @@ const copy = {
     country: "Pays",
     currency: "Devise",
     whatsappTitle: "Où vos clients vous écrivent-ils ?",
-    whatsappBody: "Nous normalisons le numéro au format international avant de l’enregistrer.",
+    whatsappBody: "Indiquez le numéro où vos clients pourront vous joindre sur WhatsApp.",
     whatsapp: "Numéro WhatsApp",
     whatsappHint: "Ex. 670 00 00 01 ou +237 670 00 00 01",
-    appearanceTitle: "Une identité simple pour commencer",
-    appearanceBody: "Le MVP démarre avec un seul thème solide. Vous pourrez ajouter votre logo dès que la boutique est créée.",
+    appearanceTitle: "Un univers pour votre boutique",
+    appearanceBody: "Choisissez une présentation adaptée à votre activité, puis personnalisez son style. Vous pourrez ajouter votre logo après la création.",
     theme: "Thème",
-    cleanTheme: "Clean — mobile-first",
     logoSoon: "Logo",
     logoSoonBody: "Créez d’abord la boutique, puis ajoutez un logo optimisé depuis les paramètres.",
     reviewTitle: "Vérifiez avant de créer",
@@ -86,7 +96,7 @@ const copy = {
     invalidSlug: "Utilisez au moins 3 caractères avec lettres, chiffres et tirets.",
     settingsEyebrow: "Ma boutique",
     settingsTitle: "Paramètres de la boutique",
-    settingsBody: "Modifiez les informations de base. Les changements sont enregistrés côté serveur dans votre tenant.",
+    settingsBody: "Actualisez les coordonnées de votre boutique, puis enregistrez vos modifications.",
     save: "Enregistrer",
     saving: "Enregistrement…",
     saved: "Modifications enregistrées.",
@@ -147,13 +157,12 @@ const copy = {
     country: "Country",
     currency: "Currency",
     whatsappTitle: "Where should customers message you?",
-    whatsappBody: "We normalize the number to international format before saving it.",
+    whatsappBody: "Enter the number customers can use to reach you on WhatsApp.",
     whatsapp: "WhatsApp number",
     whatsappHint: "E.g. 670 00 00 01 or +237 670 00 00 01",
-    appearanceTitle: "A simple identity to start",
-    appearanceBody: "The MVP starts with one strong theme. You can add your logo as soon as the store is created.",
+    appearanceTitle: "A style for your storefront",
+    appearanceBody: "Choose a presentation for your business and customize its style. You can add your logo after creating the store.",
     theme: "Theme",
-    cleanTheme: "Clean — mobile-first",
     logoSoon: "Logo",
     logoSoonBody: "Create the store first, then add an optimized logo from store settings.",
     reviewTitle: "Review before creation",
@@ -172,7 +181,7 @@ const copy = {
     invalidSlug: "Use at least 3 characters with letters, numbers and hyphens.",
     settingsEyebrow: "My store",
     settingsTitle: "Store settings",
-    settingsBody: "Edit the essentials. Changes are persisted server-side inside your tenant.",
+    settingsBody: "Update your store contact details, then save your changes.",
     save: "Save changes",
     saving: "Saving…",
     saved: "Changes saved.",
@@ -203,11 +212,7 @@ const copy = {
   }
 } as const;
 
-function languageFromPreference(): Language {
-  const saved = window.localStorage.getItem("commerce-factory-language");
-  if (saved === "fr" || saved === "en") return saved;
-  return window.navigator.language.toLowerCase().startsWith("fr") ? "fr" : "en";
-}
+function languageFromPreference(): Language { return preferredLanguage(); }
 
 function slugify(value: string): string {
   return value
@@ -236,8 +241,15 @@ function emptyInput(email = ""): StoreInput {
     description: "",
     businessLocation: "",
     contactEmail: email,
-    theme: "clean"
+    theme: "clean",
+    themeSettings: {}
   };
+}
+
+function validStoreDraft(value: unknown): value is StoreInput {
+  if (!value || typeof value !== "object") return false;
+  const input = value as StoreInput;
+  return [input.name, input.slug, input.whatsappNumber, input.countryCode, input.currencyCode, input.description, input.businessLocation, input.contactEmail].every(field => typeof field === "string" && field.length <= 280) && isStoreTheme(input.theme) && parseThemeSettings(input.themeSettings) !== null;
 }
 
 function storeToInput(store: Store): StoreInput {
@@ -250,7 +262,8 @@ function storeToInput(store: Store): StoreInput {
     description: store.description || "",
     businessLocation: store.businessLocation || "",
     contactEmail: store.contactEmail || "",
-    theme: store.theme
+    theme: store.theme,
+    themeSettings: store.themeSettings ?? {}
   };
 }
 
@@ -297,10 +310,11 @@ function BrandPreview({
   language: Language;
 }) {
   const t = copy[language];
+  const theme = resolveStoreTheme(input.theme, input.themeSettings);
   return (
     <aside className="merchant-preview" aria-label={t.preview}>
       <span className="merchant-preview-label">{t.preview}</span>
-      <div className="merchant-preview-phone">
+      <div className="merchant-preview-phone" style={{ ...themeShellProps(input).style, background: theme.tokens.background, color: theme.tokens.ink }}>
         <div className="merchant-preview-top">
           <span className="merchant-preview-logo">{initials(input.name).toUpperCase()}</span>
           <div>
@@ -309,164 +323,19 @@ function BrandPreview({
           </div>
           <b>{input.currencyCode}</b>
         </div>
-        <div className="merchant-preview-hero">
-          <span>{t.fcfaReady}</span>
-          <h3>{input.name || "Commerce Store"}</h3>
-          <p>{input.description || t.noDescription}</p>
+        <div className="merchant-preview-hero" style={{ background: theme.tokens.scene, color: theme.tokens.sceneInk }}>
+          <span style={{ color: theme.tokens.sceneMuted }}>{t.fcfaReady}</span>
+          <h3 style={{ fontFamily: themeFonts[theme.font] }}>{input.name || "Commerce Store"}</h3>
+          <p style={{ color: theme.tokens.sceneMuted }}>{input.description || t.noDescription}</p>
         </div>
         <div className="merchant-preview-product">
           <i />
-          <div><strong>Votre premier produit</strong><small>Prix • {input.currencyCode}</small></div>
+          <div><strong>{language === "fr" ? "Votre premier produit" : "Your first product"}</strong><small>{language === "fr" ? "Prix" : "Price"} • {input.currencyCode}</small></div>
         </div>
         <div className="merchant-preview-wa">WA · WhatsApp</div>
       </div>
       <small className="merchant-secure-note">✓ {t.secure}</small>
     </aside>
-  );
-}
-
-function AuthScreen({
-  client,
-  language,
-  onAuthenticated
-}: {
-  client: CommerceAuthClient;
-  language: Language;
-  onAuthenticated: () => Promise<void>;
-}) {
-  const t = copy[language];
-  const [mode, setMode] = useState<AuthMode>("signup");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const result = mode === "signup"
-        ? await client.signUp.email({
-            name: name.trim() || email.split("@")[0] || "Merchant",
-            email: email.trim(),
-            password
-          })
-        : await client.signIn.email({
-            email: email.trim(),
-            password
-          });
-
-      if (result.error) {
-        setError(result.error.message || t.authError);
-        return;
-      }
-
-      const session = await getSessionSnapshot(client);
-      if (!session.authenticated) {
-        setMode("signin");
-        setMessage(t.accountCreated);
-        return;
-      }
-
-      await onAuthenticated();
-    } catch {
-      setError(t.authError);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <main className="auth-layout">
-      <section className="auth-copy">
-        <span className="admin-eyebrow">Commerce Factory</span>
-        <h1>{t.authTitle}</h1>
-        <p>{t.authBody}</p>
-        <div className="auth-benefits">
-          <span>✓ WhatsApp-first</span>
-          <span>✓ XAF / FCFA</span>
-          <span>✓ Mobile-first</span>
-        </div>
-      </section>
-
-      <section className="auth-card">
-        <div className="auth-tabs" role="tablist">
-          <button
-            type="button"
-            className={mode === "signup" ? "active" : ""}
-            onClick={() => { setMode("signup"); setError(null); }}
-          >
-            {t.signUp}
-          </button>
-          <button
-            type="button"
-            className={mode === "signin" ? "active" : ""}
-            onClick={() => { setMode("signin"); setError(null); }}
-          >
-            {t.signIn}
-          </button>
-        </div>
-
-        <form onSubmit={submit} className="admin-form">
-          {mode === "signup" ? (
-            <label>
-              <span>{t.name}</span>
-              <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                autoComplete="name"
-                required
-              />
-            </label>
-          ) : null}
-
-          <label>
-            <span>{t.email}</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
-              required
-            />
-          </label>
-
-          <label>
-            <span>{t.password}</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              minLength={8}
-              required
-            />
-            <small>{t.passwordHint}</small>
-          </label>
-
-          {error ? <p className="form-message error" role="alert">{error}</p> : null}
-          {message ? <p className="form-message success">{message}</p> : null}
-
-          <button className="admin-primary" type="submit" disabled={busy}>
-            {busy
-              ? mode === "signup" ? t.creatingAccount : t.signingIn
-              : t.continue}
-          </button>
-        </form>
-
-        <button
-          type="button"
-          className="auth-switch"
-          onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
-        >
-          {mode === "signup" ? t.haveAccount : t.needAccount}
-        </button>
-      </section>
-    </main>
   );
 }
 
@@ -485,11 +354,14 @@ function BusinessFields({
   slugTouched: boolean;
   setSlugTouched: (value: boolean) => void;
 }) {
+  const id = useId();
   return (
     <div className="admin-form admin-form-grid">
       <label className="span-2">
         <span>{t.storeName}</span>
         <input
+          aria-label={t.storeName}
+            aria-describedby={errors.name ? id+"-name-error" : undefined}
           value={input.name}
           onChange={(event) => {
             const name = event.target.value;
@@ -501,14 +373,16 @@ function BusinessFields({
           }}
           aria-invalid={Boolean(errors.name)}
         />
-        {errors.name ? <small className="field-error">{errors.name}</small> : null}
+        {errors.name ? <small id={id+"-name-error"} className="field-error">{errors.name}</small> : null}
       </label>
 
       <label className="span-2">
         <span>{t.slug}</span>
         <div className="slug-field">
-          <small>commercefactory.shop/</small>
+          <small>/store/</small>
           <input
+            aria-label={t.slug}
+            aria-describedby={errors.slug ? id+"-slug-error" : undefined}
             value={input.slug}
             onChange={(event) => {
               setSlugTouched(true);
@@ -517,12 +391,13 @@ function BusinessFields({
             aria-invalid={Boolean(errors.slug)}
           />
         </div>
-        {errors.slug ? <small className="field-error">{errors.slug}</small> : null}
+        {errors.slug ? <small id={id+"-slug-error"} className="field-error">{errors.slug}</small> : null}
       </label>
 
       <label className="span-2">
         <span>{t.description}</span>
         <textarea
+          aria-label={t.description}
           value={input.description}
           maxLength={280}
           rows={3}
@@ -534,6 +409,7 @@ function BusinessFields({
       <label>
         <span>{t.location}</span>
         <input
+          aria-label={t.location}
           value={input.businessLocation}
           onChange={(event) => setInput({ ...input, businessLocation: event.target.value })}
           placeholder="Douala, Bonapriso"
@@ -544,16 +420,19 @@ function BusinessFields({
         <span>{t.contactEmail}</span>
         <input
           type="email"
+          aria-label={t.contactEmail}
+            aria-describedby={errors.contactEmail ? id+"-contactEmail-error" : undefined}
           value={input.contactEmail}
           onChange={(event) => setInput({ ...input, contactEmail: event.target.value })}
           aria-invalid={Boolean(errors.contactEmail)}
         />
-        {errors.contactEmail ? <small className="field-error">{errors.contactEmail}</small> : null}
+        {errors.contactEmail ? <small id={id+"-contactEmail-error"} className="field-error">{errors.contactEmail}</small> : null}
       </label>
 
       <label>
         <span>{t.country}</span>
         <select
+          aria-label={t.country}
           value={input.countryCode}
           onChange={(event) => setInput({ ...input, countryCode: event.target.value })}
         >
@@ -568,6 +447,7 @@ function BusinessFields({
       <label>
         <span>{t.currency}</span>
         <select
+          aria-label={t.currency}
           value={input.currencyCode}
           onChange={(event) => setInput({ ...input, currencyCode: event.target.value })}
         >
@@ -594,7 +474,10 @@ function Onboarding({
 }) {
   const t = copy[language];
   const [step, setStep] = useState<OnboardingStep>(0);
-  const [input, setInput] = useState<StoreInput>(() => emptyInput(email));
+  const draft = useDraft("commerce-onboarding:"+email, emptyInput(email), validStoreDraft);
+  const input = draft.value;
+  const setInput = draft.setValue;
+  useUnsavedChanges(Boolean(input.name));
   const [slugTouched, setSlugTouched] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -603,9 +486,13 @@ function Onboarding({
   function next() {
     const found = fieldError(input, step, language);
     setErrors(found);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) {
+      window.requestAnimationFrame(() => document.querySelector<HTMLElement>('.merchant-form-card [aria-invalid="true"]')?.focus());
+      return;
+    }
     setServerError(null);
     setStep((Math.min(3, step + 1)) as OnboardingStep);
+    window.requestAnimationFrame(() => document.getElementById("onboarding-step")?.focus());
   }
 
   async function submit() {
@@ -617,6 +504,7 @@ function Onboarding({
     setServerError(null);
     try {
       const store = await createStore(client, input);
+      draft.discard();
       onCreated(store);
     } catch (error) {
       if (error instanceof ApiError) {
@@ -646,7 +534,7 @@ function Onboarding({
   ][step];
 
   return (
-    <main className="merchant-layout">
+    <main className="merchant-layout" id="merchant-main" tabIndex={-1}>
       <aside className="merchant-progress">
         <span className="admin-eyebrow">{t.onboardingEyebrow}</span>
         <h1>{t.onboardingTitle}</h1>
@@ -669,11 +557,12 @@ function Onboarding({
       </aside>
 
       <section className="merchant-workspace">
+        <p role="status" className="draft-note">{language === "fr" ? (draft.available ? "Votre brouillon est conservé dans cet onglet." : "Cet appareil ne permet pas de conserver le brouillon. Gardez cette page ouverte.") : (draft.available ? "Your draft is saved in this tab." : "This device cannot save drafts. Keep this page open.")}</p>
         <div className="merchant-form-card">
           <div className="merchant-form-head">
             <span>0{step + 1}</span>
             <div>
-              <h2>{title}</h2>
+              <h2 tabIndex={-1} id="onboarding-step">{title}</h2>
               <p>{body}</p>
             </div>
           </div>
@@ -696,6 +585,7 @@ function Onboarding({
                 <div className="whatsapp-field">
                   <b>WA</b>
                   <input
+                    aria-label={t.whatsapp}
                     value={input.whatsappNumber}
                     onChange={(event) =>
                       setInput({ ...input, whatsappNumber: event.target.value })
@@ -716,15 +606,7 @@ function Onboarding({
           {step === 2 ? (
             <div className="appearance-grid">
               <div className="admin-form">
-                <label>
-                  <span>{t.theme}</span>
-                  <select
-                    value={input.theme}
-                    onChange={() => setInput({ ...input, theme: "clean" })}
-                  >
-                    <option value="clean">{t.cleanTheme}</option>
-                  </select>
-                </label>
+                <ThemePicker value={input.theme} settings={input.themeSettings} language={language} onChange={(theme, themeSettings) => setInput({ ...input, theme, themeSettings })} />
                 <div className="logo-pending">
                   <span className="merchant-preview-logo">{initials(input.name).toUpperCase()}</span>
                   <div>
@@ -745,7 +627,7 @@ function Onboarding({
                 <div><span>{t.whatsapp}</span><strong>{input.whatsappNumber}</strong></div>
                 <div><span>{t.location}</span><strong>{input.businessLocation || "—"}</strong></div>
                 <div><span>{t.currency}</span><strong>{input.currencyCode}</strong></div>
-                <div><span>{t.theme}</span><strong>{t.cleanTheme}</strong></div>
+                <div><span>{t.theme}</span><strong>{resolveStoreTheme(input.theme).name}</strong></div>
               </div>
               <BrandPreview input={input} language={language} />
             </div>
@@ -782,15 +664,21 @@ function StoreSettings({
   client,
   store,
   language,
-  onUpdated
+  onUpdated,
+  section = "settings"
 }: {
   client: CommerceAuthClient;
   store: Store;
   language: Language;
   onUpdated: (store: Store) => void;
+  section?: "settings" | "appearance";
 }) {
   const t = copy[language];
-  const [input, setInput] = useState<StoreInput>(() => storeToInput(store));
+  const draft = useDraft("commerce-settings:"+store.id, storeToInput(store), validStoreDraft);
+  const input = draft.value;
+  const setInput = draft.setValue;
+  const dirty = JSON.stringify(input) !== JSON.stringify(storeToInput(store));
+  useUnsavedChanges(dirty);
   const [slugTouched, setSlugTouched] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
@@ -798,6 +686,13 @@ function StoreSettings({
   const [busy, setBusy] = useState(false);
   const [publishBusy, setPublishBusy] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
+  const [previewProducts, setPreviewProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (section === "appearance") listProducts(client, store.id).then(value => { if (!cancelled) setPreviewProducts(value); }).catch(() => { if (!cancelled) setServerError(t.genericError); });
+    return () => { cancelled = true; };
+  }, [client, store.id, section]);
 
   async function publishCurrentStore() {
     setPublishBusy(true);
@@ -901,6 +796,8 @@ function StoreSettings({
     try {
       const updated = await updateStore(client, store.id, input);
       onUpdated(updated);
+      setInput(storeToInput(updated));
+      draft.discard();
       setMessage(t.saved);
     } catch (error) {
       if (error instanceof ApiError && error.code === "SLUG_TAKEN") {
@@ -914,13 +811,13 @@ function StoreSettings({
   }
 
   return (
-    <main className="settings-layout">
+    <div className="settings-layout">
       <section className="settings-main">
         <span className="admin-eyebrow">{t.settingsEyebrow}</span>
         <div className="settings-title-row">
           <div>
-            <h1>{t.settingsTitle}</h1>
-            <p>{t.settingsBody}</p>
+            <h1>{section === "appearance" ? (language === "fr" ? "L’apparence de votre boutique" : "Your store appearance") : t.settingsTitle}</h1>
+            <p>{section === "appearance" ? (language === "fr" ? "Choisissez un thème, personnalisez son style et vérifiez l’aperçu de votre boutique." : "Choose a theme, customize its style and check your store preview.") : t.settingsBody}</p>
           </div>
           <div className="store-status-actions">
             <span className={"draft-pill " + store.status}>
@@ -949,6 +846,7 @@ function StoreSettings({
         </div>
 
         <form className="merchant-form-card settings-card" onSubmit={save}>
+          <div hidden={section === "appearance"}>
           <BusinessFields
             input={input}
             setInput={setInput}
@@ -958,26 +856,21 @@ function StoreSettings({
             setSlugTouched={setSlugTouched}
           />
 
+          </div>
           <div className="settings-divider" />
 
           <div className="admin-form admin-form-grid">
-            <label>
+            <label hidden={section === "appearance"}>
               <span>{t.whatsapp}</span>
               <input
+                aria-label={t.whatsapp}
                 value={input.whatsappNumber}
                 onChange={(event) => setInput({ ...input, whatsappNumber: event.target.value })}
                 aria-invalid={Boolean(errors.whatsappNumber)}
               />
               {errors.whatsappNumber ? <small className="field-error">{errors.whatsappNumber}</small> : null}
             </label>
-            <label>
-              <span>{t.theme}</span>
-              <select value={input.theme} onChange={() => setInput({ ...input, theme: "clean" })}>
-                <option value="clean">{t.cleanTheme}</option>
-              </select>
-            </label>
-
-            <div className="span-2 store-logo-field">
+            <div className="span-2 store-logo-field" hidden={section !== "appearance"}>
               <span>{t.logoUpload}</span>
               <div className="store-logo-row">
                 <div className="store-logo-preview">
@@ -992,6 +885,7 @@ function StoreSettings({
                     <span>{logoBusy ? t.logoUploading : t.chooseLogo}</span>
                     <input
                       type="file"
+                      aria-label={t.chooseLogo}
                       accept="image/jpeg,image/png,image/webp"
                       disabled={logoBusy}
                       onChange={(event) => {
@@ -1016,8 +910,14 @@ function StoreSettings({
             </div>
           </div>
 
-          {serverError ? <p className="form-message error">{serverError}</p> : null}
-          {message ? <p className="form-message success">{message}</p> : null}
+          <div className="settings-divider" />
+          <div hidden={section !== "appearance"}>
+          <ThemePicker value={input.theme} settings={input.themeSettings} language={language} imageUrl={previewProducts.find((product) => product.status === "active")?.imageUrls[0]} onChange={(theme, themeSettings) => setInput({ ...input, theme, themeSettings })} />
+
+          </div>
+          <p className="draft-note" role="status">{dirty ? (language === "fr" ? "Modifications non enregistrées · brouillon conservé dans cet onglet." : "Unsaved changes · draft kept in this tab.") : (language === "fr" ? "Vos réglages sont enregistrés." : "Your settings are saved.")}</p>
+          {serverError ? <p className="form-message error" role="alert">{serverError}</p> : null}
+          {message ? <p className="form-message success" role="status">{message}</p> : null}
 
           <div className="settings-actions">
             <span>
@@ -1030,21 +930,15 @@ function StoreSettings({
           </div>
         </form>
 
-        <ProductCatalog
-          client={client}
-          store={store}
-          language={language}
-        />
+        {section === "appearance" && <LiveThemePreview language={language} storefront={{
+          store: { ...store, ...input, logoUrl: store.logoUrl },
+          products: previewProducts.filter((product) => product.status === "active").sort((a, b) => a.sortOrder - b.sortOrder)
+        }} />}
 
-        <AnalyticsPanel
-          client={client}
-          store={store}
-          language={language}
-        />
       </section>
 
       <BrandPreview input={input} language={language} />
-    </main>
+    </div>
   );
 }
 
@@ -1054,7 +948,9 @@ export default function AdminApp() {
   const [sessionEmail, setSessionEmail] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [store, setStore] = useState<Store | null>(null);
+  const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
+  const [attempt, setAttempt] = useState(0);
   const [fatalError, setFatalError] = useState<string | null>(null);
 
   const t = copy[language];
@@ -1062,7 +958,7 @@ export default function AdminApp() {
   useEffect(() => {
     document.documentElement.lang = language;
     document.title = "Commerce Factory — Merchant";
-    window.localStorage.setItem("commerce-factory-language", language);
+    rememberLanguage(language);
   }, [language]);
 
   async function hydrate(nextClient: CommerceAuthClient) {
@@ -1074,8 +970,10 @@ export default function AdminApp() {
       return;
     }
 
-    const stores = await listStores(nextClient);
-    setStore(stores[0] || null);
+    const nextStores = await listStores(nextClient);
+    setStores(nextStores);
+    const wanted = new URLSearchParams(window.location.search).get("store");
+    setStore(nextStores.find(item => item.id === wanted) || nextStores[0] || null);
   }
 
   useEffect(() => {
@@ -1084,7 +982,8 @@ export default function AdminApp() {
       try {
         const nextClient = await getAuthClient();
         if (cancelled) return;
-        setClient(nextClient);
+        // Better Auth exposes a callable proxy; React must store it as a value.
+        setClient(() => nextClient);
         await hydrate(nextClient);
       } catch {
         if (!cancelled) {
@@ -1099,23 +998,33 @@ export default function AdminApp() {
       }
     })();
     return () => { cancelled = true; };
+  }, [attempt]);
+
+  useEffect(() => {
+    const expire = () => { setAuthenticated(false); setSessionEmail(""); };
+    window.addEventListener("merchant-session-expired", expire);
+    return () => window.removeEventListener("merchant-session-expired", expire);
   }, []);
 
   const header = useMemo(() => (
     <header className="admin-header">
+      <a className="skip-link" href="#merchant-main">{language === "fr" ? "Aller au contenu" : "Skip to content"}</a>
       <a href="/" className="admin-brand">
         <img src="/commerce-factory-logo-v3.png?v=3" alt="Commerce Factory" />
       </a>
       <div className="admin-header-actions">
+        <a className="admin-back" href="/help">{language === "fr" ? "Aide" : "Help"}</a>
         <div className="admin-language">
           <button
             type="button"
             className={language === "fr" ? "active" : ""}
+            aria-pressed={language === "fr"}
             onClick={() => setLanguage("fr")}
           >FR</button>
           <button
             type="button"
             className={language === "en" ? "active" : ""}
+            aria-pressed={language === "en"}
             onClick={() => setLanguage("en")}
           >EN</button>
         </div>
@@ -1124,7 +1033,8 @@ export default function AdminApp() {
             type="button"
             className="admin-signout"
             onClick={async () => {
-              await client.signOut();
+              try { const result=await client.signOut();if(result.error)throw new Error("SIGN_OUT_FAILED"); } catch { setFatalError(language === "fr" ? "La déconnexion n’a pas abouti. Réessayez." : "Sign out did not complete. Try again.");return; }
+              try { for (const key of Object.keys(sessionStorage)) if (/^commerce-(onboarding|settings|product):/.test(key)) sessionStorage.removeItem(key); } catch { /* Optional storage. */ }
               setAuthenticated(false);
               setStore(null);
               setSessionEmail("");
@@ -1143,9 +1053,9 @@ export default function AdminApp() {
     return (
       <div className="admin-shell">
         {header}
-        <main className="admin-loading">
-          <span className="admin-loader" />
-          <p>{t.loading}</p>
+        <main className="admin-loading" id="merchant-main" tabIndex={-1}>
+          <span className="admin-loader" aria-hidden="true" />
+          <p role="status">{t.loading}</p>
         </main>
       </div>
     );
@@ -1155,10 +1065,7 @@ export default function AdminApp() {
     return (
       <div className="admin-shell">
         {header}
-        <main className="admin-loading">
-          <p className="form-message error">{fatalError || t.genericError}</p>
-          <a className="admin-primary" href="/">{t.back}</a>
-        </main>
+        <RecoveryState language={language} title={language === "fr" ? "Votre espace est temporairement indisponible" : "Your workspace is temporarily unavailable"} message={language === "fr" ? "Vérifiez votre connexion puis réessayez. Vos données enregistrées sont conservées." : "Check your connection and try again. Your saved data is safe."} retry={() => { setFatalError(null);setLoading(true);setAttempt(value=>value+1); }} />
       </div>
     );
   }
@@ -1167,26 +1074,26 @@ export default function AdminApp() {
     <div className="admin-shell">
       {header}
       {!authenticated ? (
-        <AuthScreen
+        <AccountAccess
           client={client}
           language={language}
           onAuthenticated={async () => {
             await hydrate(client);
           }}
         />
+      ) : window.location.pathname === "/app/accept-invitation" ? (
+        <InvitationAccept client={client} language={language} />
+      ) : window.location.pathname === "/app/platform" && !store ? (
+        <main id="merchant-main" tabIndex={-1}><PlatformPanel client={client} language={language} /></main>
       ) : store ? (
-        <StoreSettings
-          client={client}
-          store={store}
-          language={language}
-          onUpdated={setStore}
-        />
+        <MerchantWorkspace client={client} store={store} stores={stores.length ? stores : [store]} language={language} onUpdated={setStore}
+          renderSettings={(section) => <StoreSettings key={store.id+section} client={client} store={store} language={language} section={section} onUpdated={setStore} />} />
       ) : (
         <Onboarding
           client={client}
           language={language}
           email={sessionEmail}
-          onCreated={setStore}
+          onCreated={(created) => { setStore(created);setStores([created]); }}
         />
       )}
     </div>

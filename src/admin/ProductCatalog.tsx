@@ -1,3 +1,4 @@
+import { useDraft, useUnsavedChanges } from "../lib/drafts";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { CommerceAuthClient } from "./auth";
 import {
@@ -133,6 +134,13 @@ type EditorState = {
   variantText: string;
   sortOrder: number;
 };
+
+function validEditorDraft(value: unknown): value is EditorState | null {
+  if (value === null) return true;
+  if (!value || typeof value !== "object") return false;
+  const editor = value as EditorState;
+  return (editor.id === null || typeof editor.id === "string") && [editor.name, editor.slug, editor.description, editor.price, editor.currencyCode, editor.category, editor.stockLabel, editor.imageText, editor.variantText].every(field => typeof field === "string" && field.length <= 10000) && ["draft", "active"].includes(editor.status) && Number.isSafeInteger(editor.sortOrder) && editor.sortOrder >= 0;
+}
 
 function slugify(value: string): string {
   return value
@@ -290,15 +298,20 @@ function formatMoney(value: string, currencyCode: string, language: Language) {
 export default function ProductCatalog({
   client,
   store,
-  language
+  language,
+  onProductsChange
 }: {
   client: CommerceAuthClient;
   store: Store;
   language: Language;
+  onProductsChange?: (products: Product[]) => void;
 }) {
   const t = copy[language];
   const [products, setProducts] = useState<Product[]>([]);
-  const [editor, setEditor] = useState<EditorState | null>(null);
+  const draft = useDraft<EditorState | null>("commerce-product:"+store.id, null, validEditorDraft);
+  const editor = draft.value;
+  const setEditor = draft.setValue;
+  useUnsavedChanges(Boolean(editor));
   const [slugTouched, setSlugTouched] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -319,6 +332,7 @@ export default function ProductCatalog({
   async function reload() {
     const next = await listProducts(client, store.id);
     setProducts(next);
+    onProductsChange?.(next);
   }
 
   useEffect(() => {
@@ -326,7 +340,7 @@ export default function ProductCatalog({
     (async () => {
       try {
         const next = await listProducts(client, store.id);
-        if (!cancelled) setProducts(next);
+        if (!cancelled) { setProducts(next); onProductsChange?.(next); }
       } catch {
         if (!cancelled) setError(t.loadError);
       } finally {
@@ -334,9 +348,10 @@ export default function ProductCatalog({
       }
     })();
     return () => { cancelled = true; };
-  }, [client, store.id, language]);
+  }, [client, store.id, language, onProductsChange]);
 
   function startCreate() {
+    if (editor && !window.confirm(language === "fr" ? "Remplacer le brouillon en cours ?" : "Replace the current draft?")) return;
     const maxOrder = products.reduce(
       (max, product) => Math.max(max, product.sortOrder),
       0
@@ -349,6 +364,7 @@ export default function ProductCatalog({
   }
 
   function startEdit(product: Product) {
+    if (editor && !window.confirm(language === "fr" ? "Remplacer le brouillon en cours ?" : "Replace the current draft?")) return;
     if (product.status === "archived") return;
     setEditor(editorFromProduct(product));
     setSlugTouched(true);
@@ -441,6 +457,7 @@ export default function ProductCatalog({
         }
         await reload();
         setEditor(null);
+        draft.discard();
         setPendingDeleteUrls([]);
         setMessage(t.saved);
       } else {
@@ -482,7 +499,7 @@ export default function ProductCatalog({
     try {
       await archiveProduct(client, store.id, product.id);
       await reload();
-      if (editor?.id === product.id) setEditor(null);
+      if (editor?.id === product.id) {setEditor(null);draft.discard();}
     } catch {
       setError(t.genericError);
     } finally {
@@ -541,7 +558,8 @@ export default function ProductCatalog({
         </button>
       </div>
 
-      {message ? <p className="form-message success">{message}</p> : null}
+      {message ? <p role="status" className="form-message success">{message}</p> : null}
+      {editor ? <p className="draft-note" role="status">{language === "fr" ? "Brouillon conservé dans cet onglet. Enregistrez pour appliquer vos modifications." : "Draft kept in this tab. Save to apply changes."}</p> : null}
       {error ? <p className="form-message error" role="alert">{error}</p> : null}
 
       {editor ? (
@@ -550,6 +568,7 @@ export default function ProductCatalog({
             <label className="span-2">
               <span>{t.name}</span>
               <input
+                aria-label={t.name}
                 value={editor.name}
                 maxLength={180}
                 onChange={(event) => {
@@ -569,6 +588,7 @@ export default function ProductCatalog({
               <div className="slug-field">
                 <small>{store.slug}/</small>
                 <input
+                  aria-label={t.slug}
                   value={editor.slug}
                   onChange={(event) => {
                     setSlugTouched(true);
@@ -587,6 +607,7 @@ export default function ProductCatalog({
               <div className="catalog-price-field">
                 <input
                   inputMode="decimal"
+                  aria-label={t.price}
                   value={editor.price}
                   onChange={(event) =>
                     setEditor({ ...editor, price: event.target.value })
@@ -601,6 +622,7 @@ export default function ProductCatalog({
             <label>
               <span>{t.status}</span>
               <select
+                aria-label={t.status}
                 value={editor.status}
                 onChange={(event) =>
                   setEditor({
@@ -617,6 +639,7 @@ export default function ProductCatalog({
             <label>
               <span>{t.category}</span>
               <input
+                aria-label={t.category}
                 value={editor.category}
                 maxLength={80}
                 onChange={(event) =>
@@ -629,6 +652,7 @@ export default function ProductCatalog({
             <label>
               <span>{t.stock}</span>
               <input
+                aria-label={t.stock}
                 value={editor.stockLabel}
                 maxLength={80}
                 onChange={(event) =>
@@ -643,6 +667,7 @@ export default function ProductCatalog({
               <textarea
                 rows={4}
                 maxLength={2000}
+                aria-label={t.description}
                 value={editor.description}
                 onChange={(event) =>
                   setEditor({ ...editor, description: event.target.value })
@@ -674,6 +699,7 @@ export default function ProductCatalog({
                 <span>{mediaBusy ? t.uploading : t.uploadImages}</span>
                 <input
                   type="file"
+                  aria-label={t.uploadImages}
                   accept="image/jpeg,image/png,image/webp"
                   multiple
                   disabled={!editor.id || busy || mediaBusy}
@@ -683,13 +709,14 @@ export default function ProductCatalog({
                   }}
                 />
               </label>
-              <small>{t.imagesHint}</small>
+              <small>{!editor.id ? (language === "fr" ? "Créez le produit pour activer l’ajout des images. " : "Create the product to enable image uploads. ") : ""}{t.imagesHint}</small>
             </div>
 
             <label className="span-2">
               <span>{t.variants}</span>
               <textarea
                 rows={3}
+                aria-label={t.variants}
                 value={editor.variantText}
                 onChange={(event) =>
                   setEditor({ ...editor, variantText: event.target.value })
@@ -705,7 +732,9 @@ export default function ProductCatalog({
               type="button"
               className="admin-secondary"
               onClick={() => {
+                if(!window.confirm(language === "fr" ? "Abandonner ce brouillon ?" : "Discard this draft?"))return;
                 setEditor(null);
+        draft.discard();
                 setPendingDeleteUrls([]);
               }}
               disabled={busy || mediaBusy}

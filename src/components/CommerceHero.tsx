@@ -1,3 +1,4 @@
+import { merchantAppHref } from "../merchant-navigation";
 import { useState } from "react";
 import "./commerce-hero.css";
 
@@ -119,7 +120,7 @@ export default function CommerceHero({ language }: { language: Language }) {
           </h1>
           <p className="cfh-lead">{t.lead}</p>
           <div className="cfh-actions">
-            <a href="/app" className="cfh-primary">{t.cta}<span aria-hidden="true">↗</span></a>
+            <a href={merchantAppHref()} className="cfh-primary">{t.cta}<span aria-hidden="true">↗</span></a>
             <a href="#whatsapp" className="cfh-secondary">{t.secondary}<span aria-hidden="true">↘</span></a>
           </div>
           <p className="cfh-honesty"><span aria-hidden="true">✓</span>{t.underneath}</p>

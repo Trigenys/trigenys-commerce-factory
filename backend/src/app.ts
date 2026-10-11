@@ -1,4 +1,7 @@
+import { registerJourneyRoutes } from "./journey-routes.ts";
+import type { JourneyRepository } from "./journey-types.ts";
 import { Hono } from "hono";
+import { isStoreTheme, parseThemeSettings } from "../../shared/store-themes.ts";
 import { cors } from "hono/cors";
 import { bearerToken, verifyNeonIdentity, type IdentityVerifier } from "./auth.ts";
 import { createNeonRepository } from "./repository.ts";
@@ -11,7 +14,6 @@ import type {
   PublicStorefront,
   StoreCreateInput,
   StorePatch,
-  StoreTheme,
   WorkerBindings
 } from "./types.ts";
 
@@ -19,17 +21,17 @@ type Variables = {
   identity: Identity;
 };
 
-type AppEnv = {
+export type AppEnv = {
   Bindings: WorkerBindings;
   Variables: Variables;
 };
 
 type AppDependencies = {
+  journeyRepositoryFactory?: (env: WorkerBindings) => JourneyRepository;
   verifyIdentity?: IdentityVerifier;
   repositoryFactory?: (env: WorkerBindings) => CommerceRepository;
 };
 
-const STORE_THEMES = new Set<StoreTheme>(["clean"]);
 const MAX_MEDIA_BYTES = 2 * 1024 * 1024;
 
 function validUuid(value: string): boolean {
@@ -152,7 +154,8 @@ function safeCreate(value: unknown): StoreCreateInput | null {
     "description",
     "businessLocation",
     "contactEmail",
-    "theme"
+    "theme",
+    "themeSettings"
   ]);
   if (Object.keys(input).some((key) => !allowed.has(key))) return null;
 
@@ -203,10 +206,9 @@ function safeCreate(value: unknown): StoreCreateInput | null {
 
   const theme =
     input.theme === undefined ? "clean" : input.theme;
-  if (
-    typeof theme !== "string" ||
-    !STORE_THEMES.has(theme as StoreTheme)
-  ) return null;
+  if (!isStoreTheme(theme)) return null;
+  const themeSettings = parseThemeSettings(input.themeSettings === undefined ? {} : input.themeSettings);
+  if (!themeSettings) return null;
 
   return {
     name,
@@ -217,7 +219,8 @@ function safeCreate(value: unknown): StoreCreateInput | null {
     description,
     businessLocation,
     contactEmail,
-    theme: theme as StoreTheme,
+    theme,
+    themeSettings,
     logoUrl: null
   };
 }
@@ -235,6 +238,7 @@ function safePatch(value: unknown): StorePatch | null {
     "businessLocation",
     "contactEmail",
     "theme",
+    "themeSettings",
     "logoUrl"
   ]);
   if (Object.keys(input).some((key) => !allowed.has(key))) return null;
@@ -298,11 +302,14 @@ function safePatch(value: unknown): StorePatch | null {
   }
 
   if (input.theme !== undefined) {
-    if (
-      typeof input.theme !== "string" ||
-      !STORE_THEMES.has(input.theme as StoreTheme)
-    ) return null;
-    patch.theme = input.theme as StoreTheme;
+    if (!isStoreTheme(input.theme)) return null;
+    patch.theme = input.theme;
+  }
+
+  if (input.themeSettings !== undefined) {
+    const settings = parseThemeSettings(input.themeSettings);
+    if (!settings) return null;
+    patch.themeSettings = settings;
   }
 
   if (input.logoUrl !== undefined) {
@@ -566,7 +573,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use("/v1/*", cors({
     origin: (origin, c) => allowedOrigin(origin, c.env) || "",
     allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allowHeaders: ["Authorization", "Content-Type"],
+    allowHeaders: ["Authorization", "Content-Type", "X-Order-Token", "X-Support-Token"],
     maxAge: 600
   }));
 
@@ -602,11 +609,28 @@ export function createApp(dependencies: AppDependencies = {}) {
     try {
       const identity = await verifyIdentity(token, authBaseUrl);
       c.set("identity", identity);
-      await next();
     } catch {
       return c.json({ error: "AUTH_INVALID" }, 401);
     }
+    await next();
   });
+
+  app.use("/v1/admin/stores/:storeId/*", async (c, next) => {
+    const repository = repositoryFactory(c.env);
+    if (repository.getStoreRole) {
+      const storeId = c.req.param("storeId")!;
+      if (!validUuid(storeId)) return c.json({error:"STORE_NOT_FOUND"},404);
+      const role = await repository.getStoreRole(c.get("identity").subject, storeId);
+      if (!role) return c.json({error:"STORE_NOT_FOUND"},404);
+      const rest = c.req.path.split("/stores/"+storeId)[1] || "";
+      const ownerArea = rest.startsWith("/team") || rest.startsWith("/analytics") || rest.startsWith("/publish") || (rest === "" && c.req.method !== "GET");
+      if (role !== "owner" && ownerArea) return c.json({error:"OWNER_REQUIRED"},403);
+    }
+    await next();
+  });
+
+  registerJourneyRoutes(app, repositoryFactory, dependencies.journeyRepositoryFactory);
+  app.onError(() => new Response(JSON.stringify({error:"SERVICE_UNAVAILABLE"}),{status:503,headers:{"Content-Type":"application/json","Retry-After":"5","Cache-Control":"no-store"}}));
 
   app.get("/v1/admin/me/stores", async (c) => {
     const repository = repositoryFactory(c.env);
