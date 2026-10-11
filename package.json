@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "test:themes": "node --experimental-strip-types scripts/verify-store-themes.mjs",
     "test:journeys": "node scripts/verify-user-journeys.mjs",
-    "test:social": "node scripts/verify-social-journeys.mjs"
+    "test:social": "node scripts/verify-social-journeys.mjs",
+    "test:hero": "node scripts/verify-hero-story.mjs"
   },
   "dependencies": {
     "@neondatabase/neon-js": "^0.7.0-beta",
