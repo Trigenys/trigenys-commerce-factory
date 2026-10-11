@@ -227,6 +227,7 @@
   transition:transform .5s cubic-bezier(.2,.75,.25,1);
 }
 .cfh-stage:hover .cfh-photo-wrap { transform:rotate(1deg) translateY(-5px); }
+.cfh-photo-picture { display:block;width:100%;height:100%; }
 .cfh-photo {
   display:block;
   width:100%;
