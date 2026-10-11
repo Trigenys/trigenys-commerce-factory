@@ -89,7 +89,7 @@ try{
     for(const route of ["/help","/contact","/privacy","/terms","/missing-page","/app","/app/products","/app/orders","/app/appearance","/app/settings","/app/analytics","/app/team","/store/atelier","/store/atelier/p/sac-signature","/store/atelier/cart","/orders/"+orderId+"#token="+token,"/app/accept-invitation#token="+token]){
       await page.goto(base+route);
       const headings={"/app":"Votre boutique, étape par étape","/app/products":"Vos produits","/app/orders":"Commandes","/app/appearance":"L’apparence de votre boutique","/app/settings":"Paramètres de la boutique","/app/analytics":"Statistiques de votre boutique","/app/team":"Votre équipe"};
-      if(headings[route])await page.getByRole("heading",{name:headings[route],exact:true}).waitFor();else await page.locator("h1").first().waitFor();
+      if(headings[route])await page.getByRole("heading",{name:headings[route],level:1,exact:true}).waitFor();else await page.locator("h1").first().waitFor();
       await page.getByRole("status").filter({hasText:/Chargement|Opération/}).first().waitFor({state:"hidden",timeout:5000}).catch(()=>{});
       await check(page,(route.split("#")[0]+"-"+viewport.width).replaceAll("/","-"));
     }
