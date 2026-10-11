@@ -6,7 +6,7 @@ import { chromium } from "playwright";
 
 const base="http://127.0.0.1:5175",output="artifacts/journeys";
 const server=spawn(process.execPath,["node_modules/vite/bin/vite.js","--host","127.0.0.1","--port","5175","--strictPort"],{stdio:"pipe",env:{...process.env,VITE_API_BASE_URL:"http://127.0.0.1:8787"}});
-let serverLog="",browser,currentPage;server.stdout.on("data",b=>serverLog+=b);server.stderr.on("data",b=>serverLog+=b);
+let serverLog="",browser,currentPage,currentState;server.stdout.on("data",b=>serverLog+=b);server.stderr.on("data",b=>serverLog+=b);
 const storeId="11111111-1111-4111-8111-111111111111",productId="22222222-2222-4222-8222-222222222222",orderId="33333333-3333-4333-8333-333333333333",token="a".repeat(64);
 const store={id:storeId,role:"owner",name:"Atelier de Douala",slug:"atelier",status:"published",whatsappNumber:"+237670000001",countryCode:"CM",currencyCode:"XAF",description:"Des pièces choisies avec soin",businessLocation:"Douala",contactEmail:null,theme:"fashion-collection",themeSettings:{},logoUrl:null};
 const product={id:productId,storeId,name:"Sac Signature",slug:"sac-signature",description:"Une pièce pour tous les jours",price:"18500.00",currencyCode:"XAF",category:"Accessoires",stockLabel:"À confirmer",status:"active",sortOrder:0,imageUrls:["/landing/fashion-480.webp"],variants:[{name:"Couleur",value:"Camel"},{name:"Couleur",value:"Noir"}]};
@@ -18,10 +18,14 @@ async function fixture({profile="owner",authenticated=true,hasStore=true,languag
   const context=await browser.newContext({locale:language==="fr" ? "fr-FR" : "en-GB",reducedMotion:"reduce"});
   await context.addInitScript(({language})=>localStorage.setItem("commerce-factory-language",language),{language});
   const page=await context.newPage();currentPage=page;const state={authenticated,profile,hasStore,orders:[structuredClone(order)],products:[structuredClone(product)],store:structuredClone(store),calls:[],failConfig:false,failStore:false,loseOrderResponse:false,pendingOrder:null,invitations:[],tickets:[]};
+  currentState=state;state.browserErrors=[];
   page.on("dialog",dialog=>dialog.accept());
+  page.on("pageerror",error=>state.browserErrors.push(error.message));
+  page.on("console",message=>{if(message.type()==="error")state.browserErrors.push(message.text());});
+  page.on("requestfailed",request=>state.browserErrors.push(request.url()+": "+request.failure()?.errorText));
   await page.route("**/neondb/auth/**",async route=>{
     const path=new URL(route.request().url()).pathname;state.calls.push({path,method:route.request().method()});
-    if(route.request().method()==="OPTIONS")return route.fulfill({status:204,headers:{"Access-Control-Allow-Origin":base,"Access-Control-Allow-Credentials":"true","Access-Control-Allow-Headers":"Content-Type,x-neon-client-info"}});
+    if(route.request().method()==="OPTIONS")return route.fulfill({status:204,headers:{"Access-Control-Allow-Origin":base,"Access-Control-Allow-Credentials":"true","Access-Control-Allow-Headers":route.request().headers()["access-control-request-headers"] || "Content-Type,x-neon-client-info","Access-Control-Allow-Methods":"GET,POST,OPTIONS"}});
     const headers={"Access-Control-Allow-Origin":base,"Access-Control-Allow-Credentials":"true"};
     const user={id:profile,email:profile+"@example.com",name:"Commerce Demo",emailVerified:true,createdAt:now,updatedAt:now};
     if(path.endsWith("/get-session"))return route.fulfill({headers,json:state.authenticated ? {session:{id:"session",userId:profile,token:"test-session",expiresAt:"2027-01-01T00:00:00Z",createdAt:now,updatedAt:now},user} : null});
@@ -115,5 +119,5 @@ try{
     const {context,page}=await fixture({authenticated:false,language:"en"});await page.setViewportSize({width:390,height:844});await page.goto(base+"/app/login");await page.getByRole("button",{name:"Forgot password?",exact:true}).waitFor();await check(page,"login-en-mobile");await page.goto(base+"/help");await check(page,"help-en-mobile");await page.keyboard.press("Tab");assert.equal(await page.evaluate(()=>document.activeElement?.textContent),"Skip to content");await page.keyboard.press("Enter");assert.equal(await page.evaluate(()=>document.activeElement?.id),"page-main");report.checks.push("English/mobile and keyboard skip link");await context.close();
   }
   await writeFile(output+"/report.json",JSON.stringify(report,null,2));console.log(JSON.stringify({pages:report.pages.length,checks:report.checks,accessibility:"No serious or critical WCAG rule violations in checked states",limitations:report.unverified}));
-}catch(error){if(currentPage&&!currentPage.isClosed()){await currentPage.screenshot({path:output+"/failure.png",fullPage:true}).catch(()=>{});await writeFile(output+"/failure-dom.txt",await currentPage.locator("body").innerText().catch(()=>""));}await writeFile(output+"/report.json",JSON.stringify(report,null,2));throw error;}
+}catch(error){if(currentPage&&!currentPage.isClosed()){await currentPage.screenshot({path:output+"/failure.png",fullPage:true}).catch(()=>{});await writeFile(output+"/failure-dom.txt",await currentPage.locator("body").innerText().catch(()=>""));}await writeFile(output+"/failure-calls.json",JSON.stringify({calls:currentState?.calls,browserErrors:currentState?.browserErrors},null,2));await writeFile(output+"/report.json",JSON.stringify(report,null,2));throw error;}
 finally{await browser?.close();server.kill("SIGTERM");}
