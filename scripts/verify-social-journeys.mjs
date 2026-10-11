@@ -125,6 +125,14 @@ try{
   {
     const {context,page,state}=await fixture();state.failComplete=true;await page.goto(base+'/app/connections?store='+storeId+'#social_result=ready&provider=facebook&attempt='+attemptId+'&ticket='+ticket);await page.getByRole('button',{name:'Réessayer',exact:true}).waitFor();assert.ok(!page.url().includes(ticket));state.failComplete=false;await page.getByRole('button',{name:'Réessayer',exact:true}).click();await page.getByRole('status').filter({hasText:'Compte connecté.'}).waitFor();assert.equal(await page.evaluate(()=>sessionStorage.getItem('commerce-social-return')),null);await check(page,'social-completion-recovery');report.checks.push('Connection completion survives a lost response and removes the browser ticket');await context.close();
   }
+  {
+    const {context,page,state}=await fixture({authenticated:false});await page.goto(base+'/app/connections?store='+storeId+'#social_result=ready&provider=facebook&attempt='+attemptId+'&ticket='+ticket);
+    await page.getByRole('button',{name:'Continuer avec Google',exact:true}).waitFor();assert.ok(!page.url().includes(ticket));assert.equal(state.requests.filter(r=>r.path.endsWith('/complete')).length,0);
+    await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Continuer avec Google',exact:true}).click();await page.getByRole('status').filter({hasText:'Compte connecté.'}).waitFor();
+    assert.equal(new URL(page.url()).pathname,'/app/connections');assert.equal(new URL(page.url()).searchParams.get('store'),storeId);assert.equal(state.requests.filter(r=>r.path.endsWith('/complete')).length,1);
+    assert.ok(!JSON.stringify(state.requests.find(r=>r.path.endsWith('/sign-in/social')).body).includes(ticket));assert.equal(await page.evaluate(()=>sessionStorage.getItem('commerce-social-return')),null);
+    await check(page,'social-completion-after-google');report.checks.push('Social callback ticket survives sign-in without being disclosed to Google');await context.close();
+  }
   for(const result of ['cancelled','expired','limited']){
     const {context,page}=await fixture();await page.goto(base+'/app/connections?store='+storeId+'#social_result='+result+'&provider=facebook');await page.getByRole('status').filter({hasText:result==='limited' ? 'Trop de tentatives.':result==='cancelled' ? 'Connexion annulée.':'La connexion n’a pas abouti.'}).waitFor();assert.equal(new URL(page.url()).hash,'');await check(page,'social-return-'+result);await context.close();
   }

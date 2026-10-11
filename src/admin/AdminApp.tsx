@@ -692,7 +692,6 @@ function StoreSettings({
 
   useEffect(() => {
     let cancelled = false;
-    captureSocialReturn();
     if (section === "appearance") listProducts(client, store.id).then(value => { if (!cancelled) setPreviewProducts(value); }).catch(() => { if (!cancelled) setServerError(t.genericError); });
     return () => { cancelled = true; };
   }, [client, store.id, section]);
@@ -983,6 +982,7 @@ export default function AdminApp() {
 
   useEffect(() => {
     let cancelled = false;
+    captureSocialReturn();
     (async () => {
       try {
         const nextClient = await getAuthClient();
