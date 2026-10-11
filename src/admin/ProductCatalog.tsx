@@ -135,6 +135,13 @@ type EditorState = {
   sortOrder: number;
 };
 
+function validEditorDraft(value: unknown): value is EditorState | null {
+  if (value === null) return true;
+  if (!value || typeof value !== "object") return false;
+  const editor = value as EditorState;
+  return (editor.id === null || typeof editor.id === "string") && [editor.name, editor.slug, editor.description, editor.price, editor.currencyCode, editor.category, editor.stockLabel, editor.imageText, editor.variantText].every(field => typeof field === "string" && field.length <= 10000) && ["draft", "active"].includes(editor.status) && Number.isSafeInteger(editor.sortOrder) && editor.sortOrder >= 0;
+}
+
 function slugify(value: string): string {
   return value
     .normalize("NFKD")
@@ -301,7 +308,7 @@ export default function ProductCatalog({
 }) {
   const t = copy[language];
   const [products, setProducts] = useState<Product[]>([]);
-  const draft = useDraft<EditorState | null>("commerce-product:"+store.id, null, (value): value is EditorState | null => value === null || Boolean(value && typeof value === "object" && "imageText" in value && "name" in value));
+  const draft = useDraft<EditorState | null>("commerce-product:"+store.id, null, validEditorDraft);
   const editor = draft.value;
   const setEditor = draft.setValue;
   useUnsavedChanges(Boolean(editor));
@@ -551,7 +558,7 @@ export default function ProductCatalog({
         </button>
       </div>
 
-      {message ? <p className="form-message success">{message}</p> : null}
+      {message ? <p role="status" className="form-message success">{message}</p> : null}
       {editor ? <p className="draft-note" role="status">{language === "fr" ? "Brouillon conservé dans cet onglet. Enregistrez pour appliquer vos modifications." : "Draft kept in this tab. Save to apply changes."}</p> : null}
       {error ? <p className="form-message error" role="alert">{error}</p> : null}
 
@@ -561,6 +568,7 @@ export default function ProductCatalog({
             <label className="span-2">
               <span>{t.name}</span>
               <input
+                aria-label={t.name}
                 value={editor.name}
                 maxLength={180}
                 onChange={(event) => {
@@ -580,6 +588,7 @@ export default function ProductCatalog({
               <div className="slug-field">
                 <small>{store.slug}/</small>
                 <input
+                  aria-label={t.slug}
                   value={editor.slug}
                   onChange={(event) => {
                     setSlugTouched(true);
@@ -598,6 +607,7 @@ export default function ProductCatalog({
               <div className="catalog-price-field">
                 <input
                   inputMode="decimal"
+                  aria-label={t.price}
                   value={editor.price}
                   onChange={(event) =>
                     setEditor({ ...editor, price: event.target.value })
@@ -612,6 +622,7 @@ export default function ProductCatalog({
             <label>
               <span>{t.status}</span>
               <select
+                aria-label={t.status}
                 value={editor.status}
                 onChange={(event) =>
                   setEditor({
@@ -628,6 +639,7 @@ export default function ProductCatalog({
             <label>
               <span>{t.category}</span>
               <input
+                aria-label={t.category}
                 value={editor.category}
                 maxLength={80}
                 onChange={(event) =>
@@ -640,6 +652,7 @@ export default function ProductCatalog({
             <label>
               <span>{t.stock}</span>
               <input
+                aria-label={t.stock}
                 value={editor.stockLabel}
                 maxLength={80}
                 onChange={(event) =>
@@ -654,6 +667,7 @@ export default function ProductCatalog({
               <textarea
                 rows={4}
                 maxLength={2000}
+                aria-label={t.description}
                 value={editor.description}
                 onChange={(event) =>
                   setEditor({ ...editor, description: event.target.value })
@@ -685,6 +699,7 @@ export default function ProductCatalog({
                 <span>{mediaBusy ? t.uploading : t.uploadImages}</span>
                 <input
                   type="file"
+                  aria-label={t.uploadImages}
                   accept="image/jpeg,image/png,image/webp"
                   multiple
                   disabled={!editor.id || busy || mediaBusy}
@@ -694,13 +709,14 @@ export default function ProductCatalog({
                   }}
                 />
               </label>
-              <small>{t.imagesHint}</small>
+              <small>{!editor.id ? (language === "fr" ? "Créez le produit pour activer l’ajout des images. " : "Create the product to enable image uploads. ") : ""}{t.imagesHint}</small>
             </div>
 
             <label className="span-2">
               <span>{t.variants}</span>
               <textarea
                 rows={3}
+                aria-label={t.variants}
                 value={editor.variantText}
                 onChange={(event) =>
                   setEditor({ ...editor, variantText: event.target.value })

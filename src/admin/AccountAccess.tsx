@@ -66,7 +66,7 @@ export default function AccountAccess({ client, language, onAuthenticated, verif
     } catch {setError(t.generic);} finally {setBusy(false);}
   }
   const recovery = mode === "forgot" || mode === "reset" || mode === "verify";
-  return <main className="auth-layout" id="merchant-main">
+  return <main className="auth-layout" id="merchant-main" tabIndex={-1}>
     <section className="auth-copy"><span className="admin-eyebrow">Commerce Factory</span>
       <h1>{mode === "forgot" ? t.recoveryTitle : mode === "reset" ? t.resetTitle : mode === "verify" ? t.verifyTitle : t.title}</h1>
       <p>{mode === "forgot" ? t.recoveryBody : mode === "reset" ? t.resetBody : mode === "verify" ? t.verifyBody : t.body}</p>

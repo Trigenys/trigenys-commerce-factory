@@ -6,7 +6,7 @@ import "../pages/public-pages.css";
 import AccountAccess from "./AccountAccess";
 import RecoveryState from "../components/RecoveryState";
 import { useDraft, useUnsavedChanges } from "../lib/drafts";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useId, useMemo, useState } from "react";
 import type { CommerceAuthClient } from "./auth";
 import { getAuthClient, getSessionSnapshot } from "./auth";
 import {
@@ -26,7 +26,7 @@ import {
 } from "./api";
 import { MediaPreparationError, prepareImageForUpload } from "./media";
 import "./admin.css";
-import { resolveStoreTheme, themeFonts } from "../../shared/store-themes";
+import { isStoreTheme, parseThemeSettings, resolveStoreTheme, themeFonts } from "../../shared/store-themes";
 import { themeShellProps } from "../storefront/theme-style";
 import ThemePicker from "../themes/ThemePicker";
 import LiveThemePreview from "../themes/LiveThemePreview";
@@ -72,7 +72,7 @@ const copy = {
     country: "Pays",
     currency: "Devise",
     whatsappTitle: "Où vos clients vous écrivent-ils ?",
-    whatsappBody: "Nous normalisons le numéro au format international avant de l’enregistrer.",
+    whatsappBody: "Indiquez le numéro où vos clients pourront vous joindre sur WhatsApp.",
     whatsapp: "Numéro WhatsApp",
     whatsappHint: "Ex. 670 00 00 01 ou +237 670 00 00 01",
     appearanceTitle: "Un univers pour votre boutique",
@@ -157,7 +157,7 @@ const copy = {
     country: "Country",
     currency: "Currency",
     whatsappTitle: "Where should customers message you?",
-    whatsappBody: "We normalize the number to international format before saving it.",
+    whatsappBody: "Enter the number customers can use to reach you on WhatsApp.",
     whatsapp: "WhatsApp number",
     whatsappHint: "E.g. 670 00 00 01 or +237 670 00 00 01",
     appearanceTitle: "A style for your storefront",
@@ -246,6 +246,12 @@ function emptyInput(email = ""): StoreInput {
   };
 }
 
+function validStoreDraft(value: unknown): value is StoreInput {
+  if (!value || typeof value !== "object") return false;
+  const input = value as StoreInput;
+  return [input.name, input.slug, input.whatsappNumber, input.countryCode, input.currencyCode, input.description, input.businessLocation, input.contactEmail].every(field => typeof field === "string" && field.length <= 280) && isStoreTheme(input.theme) && parseThemeSettings(input.themeSettings) !== null;
+}
+
 function storeToInput(store: Store): StoreInput {
   return {
     name: store.name,
@@ -324,7 +330,7 @@ function BrandPreview({
         </div>
         <div className="merchant-preview-product">
           <i />
-          <div><strong>Votre premier produit</strong><small>Prix • {input.currencyCode}</small></div>
+          <div><strong>{language === "fr" ? "Votre premier produit" : "Your first product"}</strong><small>{language === "fr" ? "Prix" : "Price"} • {input.currencyCode}</small></div>
         </div>
         <div className="merchant-preview-wa">WA · WhatsApp</div>
       </div>
@@ -348,11 +354,14 @@ function BusinessFields({
   slugTouched: boolean;
   setSlugTouched: (value: boolean) => void;
 }) {
+  const id = useId();
   return (
     <div className="admin-form admin-form-grid">
       <label className="span-2">
         <span>{t.storeName}</span>
         <input
+          aria-label={t.storeName}
+            aria-describedby={errors.name ? id+"-name-error" : undefined}
           value={input.name}
           onChange={(event) => {
             const name = event.target.value;
@@ -364,14 +373,16 @@ function BusinessFields({
           }}
           aria-invalid={Boolean(errors.name)}
         />
-        {errors.name ? <small className="field-error">{errors.name}</small> : null}
+        {errors.name ? <small id={id+"-name-error"} className="field-error">{errors.name}</small> : null}
       </label>
 
       <label className="span-2">
         <span>{t.slug}</span>
         <div className="slug-field">
-          <small>commercefactory.shop/</small>
+          <small>/store/</small>
           <input
+            aria-label={t.slug}
+            aria-describedby={errors.slug ? id+"-slug-error" : undefined}
             value={input.slug}
             onChange={(event) => {
               setSlugTouched(true);
@@ -380,12 +391,13 @@ function BusinessFields({
             aria-invalid={Boolean(errors.slug)}
           />
         </div>
-        {errors.slug ? <small className="field-error">{errors.slug}</small> : null}
+        {errors.slug ? <small id={id+"-slug-error"} className="field-error">{errors.slug}</small> : null}
       </label>
 
       <label className="span-2">
         <span>{t.description}</span>
         <textarea
+          aria-label={t.description}
           value={input.description}
           maxLength={280}
           rows={3}
@@ -397,6 +409,7 @@ function BusinessFields({
       <label>
         <span>{t.location}</span>
         <input
+          aria-label={t.location}
           value={input.businessLocation}
           onChange={(event) => setInput({ ...input, businessLocation: event.target.value })}
           placeholder="Douala, Bonapriso"
@@ -407,16 +420,19 @@ function BusinessFields({
         <span>{t.contactEmail}</span>
         <input
           type="email"
+          aria-label={t.contactEmail}
+            aria-describedby={errors.contactEmail ? id+"-contactEmail-error" : undefined}
           value={input.contactEmail}
           onChange={(event) => setInput({ ...input, contactEmail: event.target.value })}
           aria-invalid={Boolean(errors.contactEmail)}
         />
-        {errors.contactEmail ? <small className="field-error">{errors.contactEmail}</small> : null}
+        {errors.contactEmail ? <small id={id+"-contactEmail-error"} className="field-error">{errors.contactEmail}</small> : null}
       </label>
 
       <label>
         <span>{t.country}</span>
         <select
+          aria-label={t.country}
           value={input.countryCode}
           onChange={(event) => setInput({ ...input, countryCode: event.target.value })}
         >
@@ -431,6 +447,7 @@ function BusinessFields({
       <label>
         <span>{t.currency}</span>
         <select
+          aria-label={t.currency}
           value={input.currencyCode}
           onChange={(event) => setInput({ ...input, currencyCode: event.target.value })}
         >
@@ -457,7 +474,7 @@ function Onboarding({
 }) {
   const t = copy[language];
   const [step, setStep] = useState<OnboardingStep>(0);
-  const draft = useDraft("commerce-onboarding:"+email, emptyInput(email), (value): value is StoreInput => Boolean(value && typeof value === "object" && "name" in value && "themeSettings" in value));
+  const draft = useDraft("commerce-onboarding:"+email, emptyInput(email), validStoreDraft);
   const input = draft.value;
   const setInput = draft.setValue;
   useUnsavedChanges(Boolean(input.name));
@@ -469,7 +486,10 @@ function Onboarding({
   function next() {
     const found = fieldError(input, step, language);
     setErrors(found);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) {
+      window.requestAnimationFrame(() => document.querySelector<HTMLElement>('.merchant-form-card [aria-invalid="true"]')?.focus());
+      return;
+    }
     setServerError(null);
     setStep((Math.min(3, step + 1)) as OnboardingStep);
     window.requestAnimationFrame(() => document.getElementById("onboarding-step")?.focus());
@@ -514,7 +534,7 @@ function Onboarding({
   ][step];
 
   return (
-    <main className="merchant-layout" id="merchant-main">
+    <main className="merchant-layout" id="merchant-main" tabIndex={-1}>
       <aside className="merchant-progress">
         <span className="admin-eyebrow">{t.onboardingEyebrow}</span>
         <h1>{t.onboardingTitle}</h1>
@@ -565,6 +585,7 @@ function Onboarding({
                 <div className="whatsapp-field">
                   <b>WA</b>
                   <input
+                    aria-label={t.whatsapp}
                     value={input.whatsappNumber}
                     onChange={(event) =>
                       setInput({ ...input, whatsappNumber: event.target.value })
@@ -653,7 +674,7 @@ function StoreSettings({
   section?: "settings" | "appearance";
 }) {
   const t = copy[language];
-  const draft = useDraft("commerce-settings:"+store.id, storeToInput(store), (value): value is StoreInput => Boolean(value && typeof value === "object" && "name" in value && "themeSettings" in value));
+  const draft = useDraft("commerce-settings:"+store.id, storeToInput(store), validStoreDraft);
   const input = draft.value;
   const setInput = draft.setValue;
   const dirty = JSON.stringify(input) !== JSON.stringify(storeToInput(store));
@@ -842,6 +863,7 @@ function StoreSettings({
             <label hidden={section === "appearance"}>
               <span>{t.whatsapp}</span>
               <input
+                aria-label={t.whatsapp}
                 value={input.whatsappNumber}
                 onChange={(event) => setInput({ ...input, whatsappNumber: event.target.value })}
                 aria-invalid={Boolean(errors.whatsappNumber)}
@@ -863,6 +885,7 @@ function StoreSettings({
                     <span>{logoBusy ? t.logoUploading : t.chooseLogo}</span>
                     <input
                       type="file"
+                      aria-label={t.chooseLogo}
                       accept="image/jpeg,image/png,image/webp"
                       disabled={logoBusy}
                       onChange={(event) => {
@@ -1030,7 +1053,7 @@ export default function AdminApp() {
     return (
       <div className="admin-shell">
         {header}
-        <main className="admin-loading">
+        <main className="admin-loading" id="merchant-main" tabIndex={-1}>
           <span className="admin-loader" aria-hidden="true" />
           <p role="status">{t.loading}</p>
         </main>
@@ -1061,7 +1084,7 @@ export default function AdminApp() {
       ) : window.location.pathname === "/app/accept-invitation" ? (
         <InvitationAccept client={client} language={language} />
       ) : window.location.pathname === "/app/platform" && !store ? (
-        <main id="merchant-main"><PlatformPanel client={client} language={language} /></main>
+        <main id="merchant-main" tabIndex={-1}><PlatformPanel client={client} language={language} /></main>
       ) : store ? (
         <MerchantWorkspace client={client} store={store} stores={stores.length ? stores : [store]} language={language} onUpdated={setStore}
           renderSettings={(section) => <StoreSettings key={store.id+section} client={client} store={store} language={language} section={section} onUpdated={setStore} />} />

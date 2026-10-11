@@ -44,10 +44,10 @@ export default function ThemePicker({ value, settings, language, onChange, image
     <p className="theme-selected-description"><b>{selected.name}</b> · {selected.description[language]}</p>
     {customization ? <div className="theme-customization">
       <label><span>{language === "fr" ? "Couleur d’accent" : "Accent color"}</span><input type="color" value={selected.tokens.accent} onChange={(event) => onChange(value, { ...settings, accent: event.target.value })} /></label>
-      <label><span>{language === "fr" ? "Typographie" : "Typography"}</span><select value={settings.font ?? ""} onChange={(event) => {
+      <label><span>{language === "fr" ? "Typographie" : "Typography"}</span><select aria-label={language === "fr" ? "Typographie" : "Typography"} value={settings.font ?? ""} onChange={(event) => {
         const next = { ...settings }; if (event.target.value) next.font = event.target.value as ThemeSettings["font"]; else delete next.font; onChange(value, next);
       }}><option value="">{language === "fr" ? "Selon le thème" : "Theme default"}</option><option value="sans">Sans serif</option><option value="serif">{language === "fr" ? "Éditoriale" : "Editorial"}</option><option value="display">{language === "fr" ? "Graphique" : "Display"}</option></select></label>
-      <label><span>{language === "fr" ? "Images des produits" : "Product images"}</span><select value={settings.imageFit ?? ""} onChange={(event) => {
+      <label><span>{language === "fr" ? "Images des produits" : "Product images"}</span><select aria-label={language === "fr" ? "Images des produits" : "Product images"} value={settings.imageFit ?? ""} onChange={(event) => {
         const next = { ...settings }; if (event.target.value) next.imageFit = event.target.value as ThemeSettings["imageFit"]; else delete next.imageFit; onChange(value, next);
       }}><option value="">{language === "fr" ? "Selon le thème" : "Theme default"}</option><option value="contain">{language === "fr" ? "Produit entier" : "Whole product"}</option><option value="cover">{language === "fr" ? "Remplir le cadre" : "Fill the frame"}</option></select></label>
       <button type="button" className="theme-reset" onClick={() => onChange(value, {})}>{language === "fr" ? "Rétablir le style du thème" : "Reset theme style"}</button>

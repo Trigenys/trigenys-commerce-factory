@@ -113,7 +113,6 @@
 }
 
 .catalog-card.archived {
-  opacity: .62;
   background: #f5f6f6;
 }
 
@@ -125,7 +124,7 @@
   place-items: center;
   border-radius: 12px;
   background: #eef3f0;
-  color: #8a9690;
+  color: #56645e;
   font-size: 9px;
   font-weight: 800;
   text-align: center;
@@ -213,7 +212,7 @@
 .catalog-archived-note {
   display: block;
   margin-top: 7px;
-  color: #7c8782;
+  color: #56645e;
   font-size: 9px;
 }
 
@@ -224,7 +223,7 @@
 }
 
 .catalog-actions button {
-  min-height: 34px;
+  min-height: 44px;
   padding: 0 10px;
   border: 1px solid var(--admin-line);
   border-radius: 9px;
@@ -250,7 +249,7 @@
 }
 
 .catalog-order-actions button {
-  width: 32px;
+  width: 44px;
   padding: 0;
 }
 
@@ -327,8 +326,8 @@
 }
 
 .catalog-media-field > small {
-  color: #87928d;
-  font-size: 10px;
+  color: #56645e;
+  font-size: 12px;
 }
 
 .catalog-media-grid {
@@ -369,6 +368,7 @@
 }
 
 .catalog-upload-control {
+  position: relative;
   min-height: 48px;
   padding: 0 14px;
   display: inline-flex !important;
@@ -383,8 +383,19 @@
   font-weight: 900 !important;
 }
 
-.catalog-upload-control input {
-  display: none;
+.admin-shell .catalog-upload-control input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+}
+
+.catalog-upload-control:focus-within {
+  outline: 3px solid var(--admin-burgundy);
+  outline-offset: 4px;
 }
 
 @media (max-width: 680px) {
