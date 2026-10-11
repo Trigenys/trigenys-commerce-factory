@@ -959,7 +959,8 @@ export default function AdminApp() {
       try {
         const nextClient = await getAuthClient();
         if (cancelled) return;
-        setClient(nextClient);
+        // Better Auth exposes a callable proxy; React must store it as a value.
+        setClient(() => nextClient);
         await hydrate(nextClient);
       } catch {
         if (!cancelled) {

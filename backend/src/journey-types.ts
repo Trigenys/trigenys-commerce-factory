@@ -16,7 +16,7 @@ export interface JourneyRepository {
   acceptInvitation(subject:string,email:string,tokenHash:string):Promise<{storeId:string}|null>;
   hasPlatformAccess(subject:string):Promise<boolean>;
   listPlatformStores(subject:string,query:string):Promise<PlatformStore[]|null>;
-  createSupport(input:SupportInput):Promise<PublicSupportTicket>;
+  createSupport(input:SupportInput):Promise<PublicSupportTicket|null>;
   getPublicSupport(id:string,trackingHash:string):Promise<PublicSupportTicket|null>;
   listSupport(subject:string):Promise<SupportTicket[]|null>;
   updateSupport(subject:string,id:string,status:SupportStatus,reply:string):Promise<SupportTicket|null>;

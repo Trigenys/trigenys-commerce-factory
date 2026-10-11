@@ -123,7 +123,7 @@ export function createJourneyRepository(connectionString:string, client?:ReturnT
       const rows = await sql`INSERT INTO support_requests(id,tracking_hash,name,email,message,store_slug) VALUES(${input.id}::uuid,${input.trackingHash},${input.name},${input.email},${input.message},${input.storeSlug}) ON CONFLICT(id) DO NOTHING RETURNING *`;
       if (rows[0]) return publicTicket(rows[0]);
       const prior = await sql`SELECT * FROM support_requests WHERE id=${input.id}::uuid AND tracking_hash=${input.trackingHash} AND name=${input.name} AND email=${input.email} AND message=${input.message} AND store_slug IS NOT DISTINCT FROM ${input.storeSlug}`;
-      if (!prior[0]) throw new Error("SUPPORT_CONFLICT");
+      if (!prior[0]) return null;
       return publicTicket(prior[0]);
     },
     async getPublicSupport(id,trackingHash) {

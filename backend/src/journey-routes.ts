@@ -142,7 +142,7 @@ export function registerJourneyRoutes(app:Hono<AppEnv>,coreFactory:(env:WorkerBi
     let p:any;try{p=await c.req.json();}catch{return c.json({error:"INVALID_JSON"},400);}
     const name=optionalText(p?.name,120),email=optionalText(p?.email,254),message=optionalText(p?.message,4000),storeSlug=optionalText(p?.storeSlug,80);
     if(!uuid(p?.id)||!token(p?.trackingToken)||!name||!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||!message||message.length<10||storeSlug===false||p?.website)return c.json({error:"INVALID_SUPPORT_REQUEST"},400);
-    const ticket=await repo(c.env).createSupport({id:p.id,trackingHash:await hashSecret(p.trackingToken),name,email:email.toLowerCase(),message,storeSlug});c.header("Cache-Control","no-store");return c.json({ticket},201);
+    const ticket=await repo(c.env).createSupport({id:p.id,trackingHash:await hashSecret(p.trackingToken),name,email:email.toLowerCase(),message,storeSlug});c.header("Cache-Control","no-store");return ticket ? c.json({ticket},201) : c.json({error:"SUPPORT_REQUEST_CHANGED"},409);
   });
   app.get("/v1/public/support/:id",async c=>{
     const id=c.req.param("id"),secret=c.req.header("X-Support-Token");if(!uuid(id)||!token(secret))return c.json({error:"REQUEST_NOT_FOUND"},404);

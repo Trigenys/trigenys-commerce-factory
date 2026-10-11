@@ -301,8 +301,9 @@ function ProductDetail({
     }
   }
 
+  const Content=preview ? "div" : "main";
   return (
-    <main className="product-detail-page" id="store-main">
+    <Content className="product-detail-page" id={preview ? undefined : "store-main"} tabIndex={-1}>
       <a className="public-back" href={homeHref}>
         ← {t.back}
       </a>
@@ -413,7 +414,7 @@ function ProductDetail({
           </button>
         </section>
       </div>
-    </main>
+    </Content>
   );
 }
 
@@ -520,6 +521,7 @@ export function StorefrontView({ storefront, language, productSlug = null, homeH
   preview?: boolean;
   cartPage?: boolean;
 }) {
+  const Content=preview ? "div" : "main";
   const t = copy[language];
   const cart = useStoreCart(storefront.store.slug,!preview);
   const [category, setCategory] = useState<string | null>(null);
@@ -541,19 +543,19 @@ export function StorefrontView({ storefront, language, productSlug = null, homeH
   }, [storefront, category]);
 
   const footer = <footer className="public-store-footer"><span>{t.powered}</span><nav aria-label={language === "fr" ? "Aide et informations" : "Help and information"}><a href="/help">{language === "fr" ? "Aide" : "Help"}</a><a href="/contact">Contact</a><a href="/privacy">{language === "fr" ? "Confidentialité" : "Privacy"}</a><a href="/terms">{language === "fr" ? "Conditions" : "Terms"}</a></nav></footer>;
-  const skip = <a className="skip-link" href="#store-main">{language === "fr" ? "Aller au contenu" : "Skip to content"}</a>;
-  if (cartPage && !preview) return <div {...themeShellProps(storefront.store)}>{skip}<StoreHeader storefront={storefront} homeHref={homeHref} language={language} cart={cart} preview={preview} /><main id="store-main"><CartCheckout storefront={storefront} language={language} cart={cart} /></main>{footer}</div>;
+  const skip = !preview && <a className="skip-link" href="#store-main">{language === "fr" ? "Aller au contenu" : "Skip to content"}</a>;
+  if (cartPage && !preview) return <div {...themeShellProps(storefront.store)}>{skip}<StoreHeader storefront={storefront} homeHref={homeHref} language={language} cart={cart} preview={preview} /><Content id={preview ? undefined : "store-main"} tabIndex={-1}><CartCheckout storefront={storefront} language={language} cart={cart} /></Content>{footer}</div>;
   if (productSlug) {
     if (!product) {
       return (
         <div {...themeShellProps(storefront.store)}>
         {skip}
           <StoreHeader storefront={storefront} homeHref={homeHref} language={language} cart={cart} preview={preview} />
-          <main className="public-state">
+          <Content className="public-state">
             <h1>404</h1>
             <p>{t.productNotFound}</p>
             <a href={homeHref}>← {t.back}</a>
-          </main>
+          </Content>
         </div>
       );
     }
@@ -581,7 +583,7 @@ export function StorefrontView({ storefront, language, productSlug = null, homeH
         {skip}
       <StoreHeader storefront={storefront} homeHref={homeHref} language={language} cart={cart} preview={preview} />
 
-      <main id="store-main">
+      <Content id={preview ? undefined : "store-main"} tabIndex={-1}>
         <ThemeHero storefront={storefront} language={language} productHref={productHref} />
 
         <section className="public-catalog-section" id="catalog">
@@ -627,7 +629,7 @@ export function StorefrontView({ storefront, language, productSlug = null, homeH
             <div className="public-empty-catalog">{t.noProducts}</div>
           )}
         </section>
-      </main>
+      </Content>
 
       {footer}
     </div>

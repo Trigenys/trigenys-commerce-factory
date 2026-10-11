@@ -62,7 +62,7 @@ async function fixture({profile="owner",authenticated=true,hasStore=true,languag
       return send({order:state.pendingOrder,href:"https://wa.me/237670000001?text=order-request"},201);
     }
     if(path===`/v1/public/orders/${orderId}`)return route.request().headers()["x-order-token"]===token ? send({order:state.orders[0]}):send({error:"ORDER_NOT_FOUND"},404);
-    if(path==="/v1/public/support"){const ticket={...body,status:"open",reply:null,storeSlug:null,createdAt:now,updatedAt:now};state.tickets=[ticket];return send({ticket},201);}
+    if(path==="/v1/public/support"){const ticket={...body,status:"open",reply:null,storeSlug:null,createdAt:now,updatedAt:now};state.tickets=[ticket];if(state.loseSupportResponse){state.loseSupportResponse=false;return route.abort("failed");}return send({ticket},201);}
     if(path.startsWith("/v1/public/support/"))return send({ticket:state.tickets[0]||{id:orderId,status:"resolved",reply:"Votre réponse est disponible",createdAt:now,updatedAt:now}});
     if(path==="/v1/public/events")return send({},202);
     return send({error:"UNMOCKED_API"},404);
@@ -87,7 +87,10 @@ try{
   for(const viewport of [{width:1440,height:900},{width:390,height:844}]){
     const {context,page,state}=await fixture();await page.setViewportSize(viewport);
     for(const route of ["/help","/contact","/privacy","/terms","/missing-page","/app","/app/products","/app/orders","/app/appearance","/app/settings","/app/analytics","/app/team","/store/atelier","/store/atelier/p/sac-signature","/store/atelier/cart","/orders/"+orderId+"#token="+token,"/app/accept-invitation#token="+token]){
-      await page.goto(base+route);await page.locator("h1").first().waitFor();await page.getByRole("status").filter({hasText:/Chargement|Opération/}).first().waitFor({state:"hidden",timeout:15000}).catch(()=>{});
+      await page.goto(base+route);
+      const headings={"/app":"Votre boutique, étape par étape","/app/products":"Vos produits","/app/orders":"Commandes","/app/appearance":"L’apparence de votre boutique","/app/settings":"Paramètres de la boutique","/app/analytics":"Statistiques de votre boutique","/app/team":"Votre équipe"};
+      if(headings[route])await page.getByRole("heading",{name:headings[route],exact:true}).waitFor();else await page.locator("h1").first().waitFor();
+      await page.getByRole("status").filter({hasText:/Chargement|Opération/}).first().waitFor({state:"hidden",timeout:5000}).catch(()=>{});
       await check(page,(route.split("#")[0]+"-"+viewport.width).replaceAll("/","-"));
     }
     await context.close();
@@ -100,6 +103,9 @@ try{
     const posts=state.calls.filter(c=>c.path.endsWith("/orders")&&c.method==="POST");assert.equal(posts.length,2);assert.deepEqual(posts[0].body,posts[1].body);assert.equal(await page.getByRole("link",{name:/Panier \(0\)/}).count(),1);await check(page,"buyer-receipt-desktop");report.checks.push("Buyer cart persists and lost-response retry retains request identity");await context.close();
   }
   // Auth uses the installed SDK, including email OTP reset; endpoint requests are mocked only.
+  {
+    const {context,page,state}=await fixture({authenticated:false});await page.goto(base+"/contact");await page.getByLabel("Votre nom",{exact:true}).fill("Test support");await page.getByLabel("Email",{exact:true}).fill("test@example.com");await page.getByLabel("Votre demande",{exact:true}).fill("Je souhaite reprendre mon accès marchand.");await page.reload();assert.equal(await page.getByLabel("Votre nom",{exact:true}).inputValue(),"Test support");state.loseSupportResponse=true;await page.getByRole("button",{name:"Envoyer ma demande",exact:true}).click();await page.getByRole("alert").waitFor();await page.reload();assert.equal(await page.getByLabel("Votre demande",{exact:true}).getAttribute("readonly"),"");await page.getByRole("button",{name:"Réessayer la même demande",exact:true}).click();await page.getByRole("heading",{name:"Votre demande est enregistrée",exact:true}).waitFor();const posts=state.calls.filter(c=>c.path==="/v1/public/support"&&c.method==="POST");assert.equal(posts.length,2);assert.deepEqual(posts[0].body,posts[1].body);await page.getByRole("link",{name:"Suivre ma demande",exact:true}).click();await page.getByRole("heading",{name:"Suivi de votre demande",exact:true}).waitFor();await check(page,"support-private-tracking");report.checks.push("Support draft survives reload and lost-response retry keeps the same private request");await context.close();
+  }
   {
     const {context,page,state}=await fixture({authenticated:false,hasStore:false});await page.goto(base+"/app/login");await page.getByRole("button",{name:"Mot de passe oublié ?",exact:true}).click();await page.getByLabel("Email",{exact:true}).fill("demo@example.com");await page.getByRole("button",{name:"Recevoir un code",exact:true}).click();await page.getByLabel("Code reçu par email",{exact:true}).fill("123456");await page.getByLabel("Mot de passe",{exact:true}).fill("test-only-password");await page.getByLabel("Confirmer le mot de passe",{exact:true}).fill("test-only-password");await check(page,"password-reset");await page.getByRole("button",{name:"Réinitialiser le mot de passe",exact:true}).click();await page.getByText("Mot de passe modifié. Connectez-vous pour reprendre.").waitFor();
     assert.ok(state.calls.some(c=>c.path.endsWith("/email-otp/reset-password")));await page.getByLabel("Mot de passe",{exact:true}).fill("test-only-password");await page.getByRole("button",{name:"Continuer",exact:true}).click();await page.getByRole("heading",{name:/boutique/}).first().waitFor();await check(page,"onboarding-account");report.checks.push("Installed Auth SDK recovery/login requests and onboarding entry");await context.close();

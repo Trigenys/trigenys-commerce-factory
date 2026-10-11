@@ -28,7 +28,9 @@ export function getAuthClient(): Promise<CommerceAuthClient> {
 export async function getApiToken(
   client: CommerceAuthClient
 ): Promise<string> {
-  const result = await client.token();
+  // Neon Auth 0.5 caches get-session and /token under the same hook.
+  // Force the token request so a cached session cannot replace the JWT response.
+  const result = await client.token({fetchOptions:{headers:{"X-Force-Fetch":"true"}}});
   if (result.error || !result.data?.token) {
     throw new Error("AUTH_TOKEN_UNAVAILABLE");
   }
@@ -38,7 +40,7 @@ export async function getApiToken(
 export async function getSessionSnapshot(
   client: CommerceAuthClient
 ): Promise<{ authenticated: boolean; email: string }> {
-  const result = await client.getSession();
+  const result = await client.getSession({fetchOptions:{headers:{"X-Force-Fetch":"true"}}});
   if (result.error && result.error.status !== 401) throw new Error("AUTH_SESSION_UNAVAILABLE");
   const data = result.data;
 

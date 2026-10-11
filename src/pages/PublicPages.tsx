@@ -3,6 +3,7 @@ import { merchantAppHref } from "../merchant-navigation";
 import { apiBaseUrl } from "../admin/runtime";
 import { timedFetch } from "../lib/requests";
 import { preferredLanguage, rememberLanguage } from "../lib/language";
+import { useDraft } from "../lib/drafts";
 import type { PublicSupportTicket } from "../../shared/commerce-journeys";
 import "../admin/admin.css";
 import "./public-pages.css";
@@ -81,22 +82,32 @@ const terms = {
 };
 
 function privateToken():string {return [...crypto.getRandomValues(new Uint8Array(32))].map(v=>v.toString(16).padStart(2,"0")).join("");}
+type SupportDraft={id:string;trackingToken:string;name:string;email:string;message:string;pending:boolean;receipt:string};
+function validSupportDraft(value:unknown):value is SupportDraft {
+  if(!value||typeof value!=="object")return false;const v=value as SupportDraft;
+  return typeof v.id==="string"&&/^[0-9a-f-]{36}$/.test(v.id)&&typeof v.trackingToken==="string"&&/^[a-f0-9]{64}$/.test(v.trackingToken)&&typeof v.name==="string"&&v.name.length<=120&&typeof v.email==="string"&&v.email.length<=254&&typeof v.message==="string"&&v.message.length<=4000&&typeof v.pending==="boolean"&&typeof v.receipt==="string"&&(v.receipt===""||v.receipt===`/help/requests/${v.id}#token=${v.trackingToken}`);
+}
 function ContactForm({language}: {language:"fr"|"en"}) {
-  const fr=language==="fr";const [name,setName]=useState("");const[email,setEmail]=useState("");const[message,setMessage]=useState("");const[busy,setBusy]=useState(false);const[error,setError]=useState("");const[receipt,setReceipt]=useState("");
-  const [request]=useState(()=>({id:crypto.randomUUID(),trackingToken:privateToken()}));
+  const fr=language==="fr";const[busy,setBusy]=useState(false);const[error,setError]=useState("");const[copyMessage,setCopyMessage]=useState("");
+  const draft=useDraft<SupportDraft>("commerce-support-request",{id:crypto.randomUUID(),trackingToken:privateToken(),name:"",email:"",message:"",pending:false,receipt:""},validSupportDraft);
+  const {name,email,message,pending,receipt}=draft.value;
   async function submit(event:FormEvent) {
     event.preventDefault();setBusy(true);setError("");
-    try {const r=await timedFetch(apiBaseUrl+"/v1/public/support",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...request,name,email,message})});if(!r.ok)throw new Error("SUPPORT_FAILED");const body=await r.json() as {ticket:PublicSupportTicket};setReceipt("/help/requests/"+body.ticket.id+"#token="+request.trackingToken);}
+    const attempt={...draft.value,pending:true};draft.setValue(attempt);
+    try {const {id,trackingToken,name,email,message}=attempt;const r=await timedFetch(apiBaseUrl+"/v1/public/support",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,trackingToken,name,email,message})});if(!r.ok)throw new Error("SUPPORT_FAILED");const body=await r.json() as {ticket:PublicSupportTicket};draft.setValue({...attempt,receipt:"/help/requests/"+body.ticket.id+"#token="+trackingToken});}
     catch {setError(fr ? "L’envoi n’a pas abouti. Votre texte est conservé ; réessayez." : "Submission did not complete. Your text is safe; try again.");}finally{setBusy(false);}
   }
-  if(receipt)return <div className="info-card" role="status"><h2>{fr ? "Votre demande est enregistrée" : "Your request is saved"}</h2><p>{fr ? "Conservez ce lien privé pour consulter la réponse du support." : "Keep this private link to read the support reply here."}</p><a className="admin-primary" href={receipt}>{fr ? "Suivre ma demande" : "Track my request"}</a>{error && <p role="alert">{error}</p>}<button type="button" className="admin-secondary" onClick={()=>navigator.clipboard?.writeText(window.location.origin+receipt).catch(()=>setError(fr ? "Ouvrez le suivi puis copiez son adresse." : "Open tracking and copy its address."))}>{fr ? "Copier le lien" : "Copy link"}</button></div>;
+  async function copyLink(){try{if(!navigator.clipboard)throw new Error();await navigator.clipboard.writeText(window.location.origin+receipt);setCopyMessage(fr ? "Lien copié." : "Link copied.");}catch{setCopyMessage(fr ? "Ouvrez le suivi puis copiez son adresse." : "Open tracking and copy its address.");}}
+  if(receipt)return <div className="info-card"><h2>{fr ? "Votre demande est enregistrée" : "Your request is saved"}</h2><p>{fr ? "Conservez ce lien privé pour consulter la réponse du support." : "Keep this private link to read the support reply here."}</p><a className="admin-primary" href={receipt}>{fr ? "Suivre ma demande" : "Track my request"}</a><button type="button" className="admin-secondary" onClick={copyLink}>{fr ? "Copier le lien" : "Copy link"}</button>{copyMessage&&<p role="status">{copyMessage}</p>}</div>;
   return <form className="admin-form info-card" onSubmit={submit} aria-busy={busy}>
-    <label><span>{fr ? "Votre nom" : "Your name"}</span><input value={name} onChange={e=>setName(e.target.value)} autoComplete="name" maxLength={120} required /></label>
-    <label><span>Email</span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" maxLength={254} required /></label>
-    <label><span>{fr ? "Votre demande" : "Your request"}</span><textarea value={message} onChange={e=>setMessage(e.target.value)} minLength={10} maxLength={4000} rows={6} required aria-describedby="support-hint" /></label>
+    <label><span>{fr ? "Votre nom" : "Your name"}</span><input value={name} onChange={e=>draft.setValue({...draft.value,name:e.target.value})} readOnly={pending} autoComplete="name" maxLength={120} required /></label>
+    <label><span>Email</span><input type="email" value={email} onChange={e=>draft.setValue({...draft.value,email:e.target.value})} readOnly={pending} autoComplete="email" maxLength={254} required /></label>
+    <label><span>{fr ? "Votre demande" : "Your request"}</span><textarea value={message} onChange={e=>draft.setValue({...draft.value,message:e.target.value})} readOnly={pending} minLength={10} maxLength={4000} rows={6} required aria-describedby="support-hint" /></label>
+    {!draft.available&&<p role="status">{fr ? "Gardez cet onglet ouvert : le brouillon ne peut pas être conservé sur cet appareil." : "Keep this tab open: your draft cannot be saved on this device."}</p>}
+    {pending&&<p>{fr ? "Cette demande reste identique pendant la reprise pour éviter un double envoi." : "The request stays unchanged during retry to avoid a duplicate submission."}</p>}
     <p id="support-hint">{fr ? "Décrivez le problème et la référence concernée. N’envoyez ni mot de passe ni code. Votre réponse sera disponible via un lien privé." : "Describe the issue and relevant reference. Do not send passwords or codes. Your reply will be available through a private link."} <a href="/privacy">{fr ? "Confidentialité" : "Privacy"}</a></p>
     {error && <p role="alert" className="form-message error">{error}</p>}
-    <button type="submit" className="admin-primary" disabled={busy}>{busy ? (fr ? "Envoi…" : "Sending…") : (fr ? "Envoyer ma demande" : "Send request")}</button>
+    <button type="submit" className="admin-primary" disabled={busy}>{busy ? (fr ? "Envoi…" : "Sending…") : pending ? (fr ? "Réessayer la même demande" : "Retry the same request") : (fr ? "Envoyer ma demande" : "Send request")}</button>
   </form>;
 }
 function SupportReceipt({language}: {language:"fr"|"en"}) {
@@ -110,7 +121,7 @@ export default function PublicPages() {
   const [language,setLanguage]=useState(preferredLanguage);const path=window.location.pathname;const fr=language==="fr";
   const type=path==="/privacy" ? "privacy" : path==="/terms" ? "terms" : path==="/contact" ? "contact" : path==="/help" ? "help" : path.startsWith("/help/requests/") ? "receipt" : "404";
   const title=type==="privacy" ? (fr ? "Confidentialité" : "Privacy") : type==="terms" ? (fr ? "Conditions d’utilisation" : "Terms of use") : type==="contact" ? (fr ? "Parlons de votre demande" : "How can we help?") : type==="help" ? (fr ? "L’aide pour avancer" : "Help to move forward") : type==="receipt" ? (fr ? "Suivi de demande" : "Request tracking") : (fr ? "Cette page n’existe pas" : "This page does not exist");
-  useEffect(()=>{document.title=title+" — Commerce Factory";document.documentElement.lang=language;rememberLanguage(language);if(type==="404"||type==="receipt"){const meta=document.createElement("meta");meta.name="robots";meta.content="noindex,nofollow";document.head.appendChild(meta);return()=>meta.remove();}},[language,title,type]);
+  useEffect(()=>{document.title=title+" — Commerce Factory";document.documentElement.lang=language;rememberLanguage(language);if(type==="404"||type==="receipt"){const meta=document.createElement("meta");meta.name="robots";meta.content="noindex,nofollow";document.head.appendChild(meta);const referrer=document.createElement("meta");referrer.name="referrer";referrer.content="no-referrer";if(type==="receipt")document.head.appendChild(referrer);return()=>{meta.remove();referrer.remove();};}},[language,title,type]);
   const sections=type==="privacy" ? privacy[language] : type==="terms" ? terms[language] : help[language];
   return <PublicLayout language={language} onLanguage={setLanguage}><span className="admin-eyebrow">Commerce Factory</span>{type!=="receipt" && <h1>{title}</h1>}
     {type==="404" ? <><p>{fr ? "Le lien peut être incorrect ou la page a été déplacée." : "The link may be incorrect or the page has moved."}</p><a className="admin-primary" href="/">{fr ? "Retour à l’accueil" : "Back home"}</a></> : type==="contact" ? <><p>{fr ? "Pour une commande, contactez le vendeur sur WhatsApp. Pour l’outil, vos accès ou vos données, écrivez au support ici." : "Contact the seller on WhatsApp about an order. For the tool, access or your data, contact support here."}</p><ContactForm language={language} /></> : type==="receipt" ? <SupportReceipt language={language} /> : <>{type!=="help" && <p className="info-date">{fr ? "Version du 10 octobre 2026" : "Version: 10 October 2026"}</p>}<div className="info-sections">{sections.map(([heading,body])=>type==="help" ? <details className="info-card" key={heading}><summary>{heading}</summary><p>{body}</p></details> : <section key={heading}><h2>{heading}</h2><p>{body}</p></section>)}</div><a className="admin-primary" href="/contact">{fr ? "Contacter le support" : "Contact support"}</a></>}

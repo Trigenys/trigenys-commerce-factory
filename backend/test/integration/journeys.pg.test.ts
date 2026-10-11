@@ -127,6 +127,8 @@ describe("persisted Commerce Factory user journeys",()=>{
   test("support replies are private and audited, with no merchant self-promotion to platform",async()=>{
     const support={id:crypto.randomUUID(),trackingToken:secret,name:"Test User",email:"test@example.com",message:"Unable to reopen my store"};
     assert.equal((await request("/v1/public/support","POST",support)).status,201);assert.equal((await request("/v1/public/support","POST",support)).status,201);
+    assert.equal((await request("/v1/public/support","POST",{...support,message:"A different request with the same key"})).status,409);
+    assert.equal((await request("/v1/public/support","POST",{...support,trackingToken:otherSecret})).status,409);
     assert.equal((await query("SELECT count(*)::int AS count FROM support_requests")).rows[0].count,1);
     for(const subject of ["owner","stranger"]){assert.equal((await request("/v1/admin/platform/stores","GET",undefined,subject)).status,403);assert.equal((await request("/v1/admin/platform/support","GET",undefined,subject)).status,403);}
     assert.equal((await request("/v1/admin/platform/support")).status,401);
