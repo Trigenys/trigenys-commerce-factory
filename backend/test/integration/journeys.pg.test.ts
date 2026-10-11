@@ -12,7 +12,8 @@ import { createJourneyRepository } from "../../src/journey-repository.ts";
 import { parseOrderInput, quoteCart } from "../../src/journey-routes.ts";
 import type { MerchantOrder, PublicOrder } from "../../../shared/commerce-journeys.ts";
 
-const env={TRIGENYS_COMMERCE_FACTORY_DATABASE_URL:"postgresql://test",TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL:"https://auth.example/neondb/auth",TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN:"https://commerce.example"};
+const allowRate={limit:async()=>({success:true})};
+const env={TRIGENYS_COMMERCE_FACTORY_DATABASE_URL:"postgresql://test",TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL:"https://auth.example/neondb/auth",TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN:"https://commerce.example",ORDER_RATE_LIMITER:allowRate,SUPPORT_RATE_LIMITER:allowRate};
 let query:(sql:string,values?:unknown[])=>Promise<{rows:any[]}>;
 let exec:(sql:string)=>Promise<unknown>;
 let pool:Pool|undefined,pglite:PGlite|undefined,directory:string;
@@ -145,5 +146,14 @@ describe("persisted Commerce Factory user journeys",()=>{
     const broken=createApp({repositoryFactory:()=>({...createNeonRepository("",tag),listOwnedStores:async()=>{throw new Error("private connection secret");}}),verifyIdentity:async()=>({subject:"owner"})});
     const response=await broken.request("/v1/admin/me/stores",{headers:{Authorization:"Bearer owner"}},env);assert.equal(response.status,503);assert.equal((await response.json() as any).error,"SERVICE_UNAVAILABLE");
     assert.equal((await request("/v1/admin/me/stores","GET",undefined,"invalid")).status,401);
+  });
+  test("provider throttling blocks writes and missing limiter configuration fails closed",async()=>{
+    const count=(await query("SELECT count(*)::int AS count FROM commerce_orders")).rows[0].count;
+    for(const [path,binding,body] of [["/v1/public/stores/atelier/orders","ORDER_RATE_LIMITER",input({idempotencyKey:crypto.randomUUID()})],["/v1/public/support","SUPPORT_RATE_LIMITER",{id:crypto.randomUUID(),trackingToken:secret,name:"QA",email:"qa@example.com",message:"Test throttled request"}]] as const){
+      let rateKey="";const response=await app().request(path,{method:"POST",headers:{"Content-Type":"application/json","CF-Connecting-IP":"192.0.2.1"},body:JSON.stringify(body)},{...env,[binding]:{limit:async({key}:{key:string})=>{rateKey=key;return {success:false};}}});
+      assert.equal(response.status,429);assert.equal(response.headers.get("Retry-After"),"60");assert.match(rateKey,/^[a-f0-9]{64}$/);
+      const missing=await app().request(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)},{...env,[binding]:undefined});assert.equal(missing.status,503);
+    }
+    assert.equal((await query("SELECT count(*)::int AS count FROM commerce_orders")).rows[0].count,count);
   });
 });

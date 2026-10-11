@@ -75,9 +75,8 @@ async function check(page,label,{axe=true}={}){
   const bad=await page.locator("img").evaluateAll(images=>images.filter(i=>i.complete&&!i.naturalWidth).map(i=>i.src));assert.deepEqual(bad,[],label+": images");
   if(axe){await page.evaluate(axeSource);const result=await page.evaluate(async()=>await axe.run(document,{runOnly:{type:"tag",values:["wcag2a","wcag2aa","wcag21a","wcag21aa","wcag22aa"]}}));
     const violations=result.violations.filter(v=>["critical","serious"].includes(v.impact));
-    report.pages.push({label,violations:violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)}))});
+    report.pages.push({label,violations:violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target),details:v.nodes.map(n=>n.failureSummary)}))});
     if(violations.length){await page.screenshot({path:output+"/failure.png",fullPage:true});await writeFile(output+"/report.json",JSON.stringify(report,null,2));}
-    assert.deepEqual(violations.map(v=>v.id),[],label+": accessibility");
   }
   await page.screenshot({path:output+"/"+label.replaceAll(/[^a-z0-9-]/gi,"-")+".png",fullPage:true});
 }
@@ -124,6 +123,6 @@ try{
   {
     const {context,page}=await fixture({authenticated:false,language:"en"});await page.setViewportSize({width:390,height:844});await page.goto(base+"/app/login");await page.getByRole("button",{name:"Forgot password?",exact:true}).waitFor();await check(page,"login-en-mobile");await page.goto(base+"/help");await check(page,"help-en-mobile");await page.keyboard.press("Tab");assert.equal(await page.evaluate(()=>document.activeElement?.textContent),"Skip to content");await page.keyboard.press("Enter");assert.equal(await page.evaluate(()=>document.activeElement?.id),"page-main");report.checks.push("English/mobile and keyboard skip link");await context.close();
   }
-  await writeFile(output+"/report.json",JSON.stringify(report,null,2));console.log(JSON.stringify({pages:report.pages.length,checks:report.checks,accessibility:"No serious or critical WCAG rule violations in checked states",limitations:report.unverified}));
+  await writeFile(output+"/report.json",JSON.stringify(report,null,2));assert.deepEqual(report.pages.filter(p=>p.violations.length).map(p=>({label:p.label,rules:p.violations.map(v=>v.id)})),[],"Accessibility violations in checked states");console.log(JSON.stringify({pages:report.pages.length,checks:report.checks,accessibility:"No serious or critical WCAG rule violations in checked states",limitations:report.unverified}));
 }catch(error){if(currentPage&&!currentPage.isClosed()){await currentPage.screenshot({path:output+"/failure.png",fullPage:true}).catch(()=>{});await writeFile(output+"/failure-dom.txt",await currentPage.locator("body").innerText().catch(()=>""));}await writeFile(output+"/failure-calls.json",JSON.stringify({calls:currentState?.calls,browserErrors:currentState?.browserErrors},null,2));await writeFile(output+"/report.json",JSON.stringify(report,null,2));throw error;}
 finally{await browser?.close();server.kill("SIGTERM");}

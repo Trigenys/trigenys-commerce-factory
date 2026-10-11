@@ -54,17 +54,14 @@ function whatsappOrderHref(order:import("../../shared/commerce-journeys.ts").Pub
 
 export function registerJourneyRoutes(app:Hono<AppEnv>,coreFactory:(env:WorkerBindings)=>CommerceRepository,factory?: (env:WorkerBindings)=>JourneyRepository) {
   const repo=(env:WorkerBindings)=>factory ? factory(env) : createJourneyRepository(env.TRIGENYS_COMMERCE_FACTORY_DATABASE_URL || "");
-  const rates=new Map<string,{count:number;until:number}>();
-  function limited(ip:string,area:string,max:number) {
-    const key=area+":"+ip;const now=Date.now();let entry=rates.get(key);
-    if (!entry || entry.until<now) {entry={count:0,until:now+60000};rates.set(key,entry);}
-    if (rates.size>10000) {for(const [k,v] of rates){if(v.until<now)rates.delete(k);}if(rates.size>10000)rates.delete(rates.keys().next().value!);}
-    return ++entry.count>max;
+  async function limited(ip:string,limiter:WorkerBindings["ORDER_RATE_LIMITER"]) {
+    if(!limiter)throw new Error("RATE_LIMITER_NOT_CONFIGURED");
+    return !(await limiter.limit({key:await hashSecret(ip)})).success;
   }
   for(const path of ["/v1/public/stores/:slug/orders","/v1/public/support","/v1/admin/stores/:storeId/orders/:id","/v1/admin/stores/:storeId/team/invitations","/v1/admin/invitations/accept","/v1/admin/platform/support/:id"]) app.use(path,bodyLimit({maxSize:65536,onError:c=>c.json({error:"REQUEST_TOO_LARGE"},413)}));
   app.get("/v1/admin/me/access",async c=>c.json({platform:await repo(c.env).hasPlatformAccess(c.get("identity").subject),email:c.get("identity").email || "",emailVerified:Boolean(c.get("identity").emailVerified)}));
   app.post("/v1/public/stores/:slug/orders",async c=>{
-    if (limited(c.req.header("CF-Connecting-IP") || "unknown","order",30))return c.json({error:"RATE_LIMITED"},429);
+    if (await limited(c.req.header("CF-Connecting-IP") || "unknown",c.env.ORDER_RATE_LIMITER)){c.header("Retry-After","60");return c.json({error:"RATE_LIMITED"},429);}
     let payload:unknown;try {payload=await c.req.json();}catch{return c.json({error:"INVALID_JSON"},400);}
     const input=parseOrderInput(payload);if(!input)return c.json({error:"INVALID_ORDER"},400);
     const trackingHash=await hashSecret(input.trackingToken);
@@ -138,7 +135,7 @@ export function registerJourneyRoutes(app:Hono<AppEnv>,coreFactory:(env:WorkerBi
     const result=await repo(c.env).acceptInvitation(identity.subject,identity.email,await hashSecret(p.token));return result ? c.json(result) : c.json({error:"INVITATION_NOT_FOUND"},404);
   });
   app.post("/v1/public/support",async c=>{
-    if(limited(c.req.header("CF-Connecting-IP") || "unknown","support",8))return c.json({error:"RATE_LIMITED"},429);
+    if(await limited(c.req.header("CF-Connecting-IP") || "unknown",c.env.SUPPORT_RATE_LIMITER)){c.header("Retry-After","60");return c.json({error:"RATE_LIMITED"},429);}
     let p:any;try{p=await c.req.json();}catch{return c.json({error:"INVALID_JSON"},400);}
     const name=optionalText(p?.name,120),email=optionalText(p?.email,254),message=optionalText(p?.message,4000),storeSlug=optionalText(p?.storeSlug,80);
     if(!uuid(p?.id)||!token(p?.trackingToken)||!name||!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||!message||message.length<10||storeSlug===false||p?.website)return c.json({error:"INVALID_SUPPORT_REQUEST"},400);

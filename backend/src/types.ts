@@ -31,6 +31,8 @@ export type WorkerBindings = {
   TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL?: string;
   TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN?: string;
   MEDIA_BUCKET?: MediaBucket;
+  ORDER_RATE_LIMITER?: {limit(input:{key:string}):Promise<{success:boolean}>};
+  SUPPORT_RATE_LIMITER?: {limit(input:{key:string}):Promise<{success:boolean}>};
 };
 
 export type Identity = { subject: string; email?: string; emailVerified?: boolean };

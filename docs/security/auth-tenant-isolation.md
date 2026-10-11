@@ -21,16 +21,18 @@ The database stores that value as `store_members.auth_subject`. Core commerce ta
 
 ## Authorization rule
 
-The MVP role model has one role: `owner`.
+The store roles are `owner` and `staff`. Owners retain settings, publishing, payments, analytics and team control. Staff can manage catalog products and order preparation. A separate explicit `platform_members` grant gives Trigenys support access to support tickets and store metadata, without merchant-order access.
 
 Private store reads and writes join `stores` to `store_members` and require both:
 
 - `store_members.auth_subject = verified JWT subject`;
-- `store_members.role = 'owner'`.
+- the role permitted for that operation (`owner`, or `owner`/`staff` for catalog and fulfillment).
 
 A client-supplied `store_id` locates a candidate resource; it never grants access.
 
 Cross-tenant access returns the same 404 used for a missing store, so the API does not disclose whether another merchant owns that identifier.
+
+Invitations expire after 48 hours, are single-use and match the email in the signed JWT. Acceptance requires a signed verified-email claim. Tokens are hashed in storage; removing membership revokes store access immediately even when the identity JWT remains valid. An owner cannot remove the store's owner membership.
 
 ## Public storefront boundary
 
@@ -69,7 +71,7 @@ Before public beta, configure Cloudflare rate limits at minimum:
 - `/v1/public/*`: 120 requests/minute/IP;
 - tighter limits later for analytics ingestion, upload signing and Meta callbacks.
 
-Do not implement an in-memory Worker counter as a security control because edge isolates do not provide a reliable global counter.
+Order and support submissions use native Cloudflare Rate Limiting bindings, configured in `backend/wrangler.production.jsonc`. Missing bindings fail closed with 503; throttled calls return 429 and `Retry-After: 60` without writing. Keys are hashed, and staging uses separate namespace IDs. These are approximate per-location limits, not global quotas or an accounting mechanism. Edge-isolate memory is not used as a security counter.
 
 ## Failure behavior
 

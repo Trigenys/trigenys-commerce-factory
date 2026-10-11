@@ -46,6 +46,7 @@ RAIDER means **Risks, Assumptions, Issues, Dependencies, Evidence, Results**.
 - The installed Neon Auth 0.5 adapter routes `/token` through its session cache. JWT and fresh session calls use the adapter's force-fetch option; staging verifies sign-up, sign-in, sign-out, signed claims and protected Worker access with the actual provider.
 - The isolated Commerce staging branch verifies all 25 theme settings round trips and a persistent order through manual payment and fulfillment. Email delivery and usability studies remain separate verification items.
 - Browser checks require each merchant route's expected heading, so a recovery page cannot satisfy a functional route check. Support retries persist the original payload and private tracking identity; payload conflicts return 409.
+- Order and support request bursts use native Cloudflare limiters with separate staging namespaces. The PostgreSQL suite verifies that throttled requests cannot write and missing limiter configuration fails closed; these are approximate per-location limits.
 
 - Repository baseline: React 19, TypeScript, Vite and Node 24.
 - The product can deliver value without a payment gateway by improving product discovery and WhatsApp handoff.

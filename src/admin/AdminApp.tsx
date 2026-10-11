@@ -96,7 +96,7 @@ const copy = {
     invalidSlug: "Utilisez au moins 3 caractères avec lettres, chiffres et tirets.",
     settingsEyebrow: "Ma boutique",
     settingsTitle: "Paramètres de la boutique",
-    settingsBody: "Modifiez les informations de base. Les changements sont enregistrés côté serveur dans votre tenant.",
+    settingsBody: "Actualisez les coordonnées de votre boutique, puis enregistrez vos modifications.",
     save: "Enregistrer",
     saving: "Enregistrement…",
     saved: "Modifications enregistrées.",
@@ -181,7 +181,7 @@ const copy = {
     invalidSlug: "Use at least 3 characters with letters, numbers and hyphens.",
     settingsEyebrow: "My store",
     settingsTitle: "Store settings",
-    settingsBody: "Edit the essentials. Changes are persisted server-side inside your tenant.",
+    settingsBody: "Update your store contact details, then save your changes.",
     save: "Save changes",
     saving: "Saving…",
     saved: "Changes saved.",
@@ -796,7 +796,7 @@ function StoreSettings({
         <div className="settings-title-row">
           <div>
             <h1>{section === "appearance" ? (language === "fr" ? "L’apparence de votre boutique" : "Your store appearance") : t.settingsTitle}</h1>
-            <p>{t.settingsBody}</p>
+            <p>{section === "appearance" ? (language === "fr" ? "Choisissez un thème, personnalisez son style et vérifiez l’aperçu de votre boutique." : "Choose a theme, customize its style and check your store preview.") : t.settingsBody}</p>
           </div>
           <div className="store-status-actions">
             <span className={"draft-pill " + store.status}>
