@@ -113,6 +113,7 @@ const copy = {
 
 export default function CommerceHero({ language }: { language: Language }) {
   const [selected, setSelected] = useState<HeroProduct["id"]>("fashion");
+  const [hasInteracted, setHasInteracted] = useState(false);
   const t = copy[language];
   const example = examples.find((item) => item.id === selected) ?? examples[0];
   const message = t.inquiry + " « " + example.product[language] + " » (" +
@@ -157,7 +158,7 @@ export default function CommerceHero({ language }: { language: Language }) {
                 sizes="(max-width: 600px) 85vw, (max-width: 850px) 61vw, 46vw"
               />
               <img
-                className="cfh-photo"
+                className={hasInteracted ? "cfh-photo cfh-photo-swap" : "cfh-photo"}
                 src={example.image}
                 srcSet={`${example.webp480} 480w, ${example.image} ${example.width}w`}
                 sizes="(max-width: 600px) 85vw, (max-width: 850px) 61vw, 46vw"
@@ -197,7 +198,7 @@ export default function CommerceHero({ language }: { language: Language }) {
                 type="button"
                 className={"cfh-pick" + (selected === item.id ? " is-active" : "")}
                 aria-pressed={selected === item.id}
-                onClick={() => setSelected(item.id)}
+                onClick={() => { setSelected(item.id); setHasInteracted(true); }}
                 aria-label={item.shop + " — " + item.category[language]}
               >
                 <span>0{i + 1}</span><strong>{item.category[language]}</strong>
