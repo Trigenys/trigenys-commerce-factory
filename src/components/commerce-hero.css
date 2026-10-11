@@ -371,16 +371,16 @@
   .cfh-endnote {margin-top:20px;}
 }
 @media(max-width:600px) {
-  .cfh-section {padding-block:34px 18px;}
-  .cfh-eyebrow {font-size:9px;letter-spacing:.12em;margin-bottom:24px;}
+  .cfh-section {padding-block:20px 18px;}
+  .cfh-eyebrow {font-size:9px;letter-spacing:.12em;margin-bottom:14px;}
   .cfh-symbol {width:30px;height:30px;}
   .cfh-copy h1 {font-size:clamp(43px,11vw,68px);letter-spacing:-.062em;max-width:12ch;}
   .cfh-copy h1 em {font-size:1.05em;letter-spacing:-.06em;}
-  .cfh-lead {font-size:14px;margin-top:22px;line-height:1.65;}
-  .cfh-actions {display:grid;grid-template-columns:1fr;gap:10px;margin-top:25px;}
-  .cfh-actions a {min-height:54px;}
-  .cfh-honesty {font-size:10px;}
-  .cfh-micro-flow {gap:7px;margin-top:24px;font-size:8px;}
+  .cfh-lead {font-size:14px;margin-top:14px;line-height:1.6;}
+  .cfh-actions {display:grid;grid-template-columns:1fr;gap:8px;margin-top:18px;}
+  .cfh-actions a {min-height:48px;}
+  .cfh-honesty {font-size:10px;margin-top:10px;}
+  .cfh-micro-flow {display:none;}
   .cfh-flow-line {width:14px;}
   .cfh-stage {display:flex;flex-direction:column;min-height:0;padding-bottom:16px;border-radius:20px;}
   .cfh-stage-header {top:18px;left:17px;right:17px;}
@@ -391,7 +391,7 @@
     inset:auto;
     width:calc(100% - 42px);
     height:225px;
-    margin:99px auto 0;
+    margin:75px auto 0;
     transform:rotate(2deg);
     border-radius:15px;
     padding:7px;
