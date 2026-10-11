@@ -38,8 +38,8 @@ export default function SocialConnections({client,store,language,onUpdated}:{cli
       PREVIEW_USED:["Cet aperçu a déjà été confirmé avec une autre sélection. Préparez un nouvel aperçu.","This preview was already confirmed with another selection. Prepare a new preview."],
       PREVIEW_NOT_FOUND:["Cet aperçu n’est plus disponible. Préparez-en un nouveau.","This preview is no longer available. Prepare a new one."],
       ACCOUNT_NOT_AUTHORIZED:["Ce profil n’est plus autorisé. Choisissez un compte accessible ou reconnectez-vous.","This profile is no longer authorized. Choose an accessible account or reconnect."],
-      OWNER_REQUIRED:["Seul le propriétaire de la boutique peut gérer ces connexions.","Only the store owner can manage these connections."]
-      ,RATE_LIMITED:["Trop de tentatives. Patientez une minute avant de reprendre cette connexion.","Too many attempts. Wait a minute before resuming this connection."]
+      OWNER_REQUIRED:["Seul le propriétaire de la boutique peut gérer ces connexions.","Only the store owner can manage these connections."],
+      RATE_LIMITED:["Trop de tentatives. Patientez une minute avant de reprendre cette connexion.","Too many attempts. Wait a minute before resuming this connection."]
     };
     setError(copy[code]?.[fr ? 0:1] || (fr ? "Impossible de récupérer les informations pour le moment. Réessayez ; votre boutique continue de fonctionner." : "Information is temporarily unavailable. Try again; your store continues to work."));
   }
@@ -53,7 +53,7 @@ export default function SocialConnections({client,store,language,onUpdated}:{cli
         await merchantRequest(client,path+"/complete",{method:"POST",body:JSON.stringify({attempt:pending.attempt,ticket:pending.ticket})});
         clearSocialReturn();setMessage(fr ? "Compte connecté. Vous pouvez maintenant choisir les informations à importer." : "Account connected. You can now choose information to import.");
       } else if(pending){
-        setMessage(pending.result==="cancelled" ? (fr ? "Connexion annulée. Vous pourrez la reprendre quand vous le souhaitez." : "Connection cancelled. You can resume whenever you like.") : (fr ? "La connexion n’a pas abouti. Vous pouvez réessayer." : "Connection did not complete. You can try again."));clearSocialReturn();
+        setMessage(pending.result==="limited" ? (fr ? "Trop de tentatives. Patientez une minute avant de reprendre cette connexion." : "Too many attempts. Wait a minute before resuming this connection.") : pending.result==="cancelled" ? (fr ? "Connexion annulée. Vous pourrez la reprendre quand vous le souhaitez." : "Connection cancelled. You can resume whenever you like.") : (fr ? "La connexion n’a pas abouti. Vous pouvez réessayer." : "Connection did not complete. You can try again."));clearSocialReturn();
       }
       await refresh();
       let savedId:string|null=null;try{savedId=sessionStorage.getItem(previewKey(store.id));}catch{/* Optional storage. */}
@@ -114,6 +114,7 @@ export default function SocialConnections({client,store,language,onUpdated}:{cli
       <div className="social-provider-heading"><span className={"social-brand social-brand-"+c.provider} aria-hidden="true">{c.provider==="facebook" ? "f":c.provider==="instagram" ? "◎":"♪"}</span><h2>{names[c.provider]}</h2></div>
       <span className={"social-status social-status-"+c.status}>{c.available || c.status!=="disconnected" ? statuses[c.status] : (fr ? "Connexion bientôt disponible":"Connection coming soon")}</span>
       <p>{descriptions[c.provider]}</p>{c.accountName && <p><strong>{c.accountName}</strong></p>}
+      {c.lastError && <p>{c.lastError==="PROVIDER_UNAVAILABLE" ? (fr ? "Le service est temporairement inaccessible. Réessayez plus tard." : "The service is temporarily unavailable. Try again later.") : (fr ? "L’autorisation est expirée ou a été retirée. Reconnectez ce compte." : "Authorization expired or was removed. Reconnect this account.")}</p>}
       {c.expiresAt && <small>{fr ? "Autorisation jusqu’au ":"Authorization until "}{new Date(c.expiresAt).toLocaleString(fr ? "fr-FR":"en-GB")}</small>}
       {c.importedAt && <small>{fr ? "Dernier import : ":"Last import: "}{new Date(c.importedAt).toLocaleString(fr ? "fr-FR":"en-GB")}</small>}
       <div className="social-card-actions">{c.available && <button type="button" className="admin-secondary" disabled={busy || loading} onClick={()=>connect(c.provider)}>{c.status==="disconnected" ? (fr ? "Connecter":"Connect") : (fr ? "Reconnecter":"Reconnect")} {names[c.provider]}</button>}

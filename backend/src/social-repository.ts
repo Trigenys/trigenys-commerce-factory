@@ -134,7 +134,7 @@ export function createSocialRepository(connectionString: string, client?: Return
         SELECT s.* FROM stores s JOIN store_members sm ON sm.store_id=s.id
         WHERE s.id=${storeId}::uuid AND sm.auth_subject=${subject} AND sm.role='owner' FOR UPDATE OF s,sm
       ), locked AS MATERIALIZED (
-        SELECT p.*,c.revision,c.status,c.expires_at AS connection_expiry,
+        SELECT p.*,c.revision,c.status,c.last_error,c.expires_at AS connection_expiry,
           jsonb_build_object('name',s.name,'description',COALESCE(s.description,''),'businessLocation',COALESCE(s.business_location,''),'contactEmail',COALESCE(s.contact_email,'')) AS current_values
         FROM store_social_previews p JOIN owned s ON s.id=p.store_id
         JOIN store_social_connections c ON c.store_id=s.id AND c.provider=p.provider
@@ -145,6 +145,7 @@ export function createSocialRepository(connectionString: string, client?: Return
           WHEN applied_fields IS NOT NULL THEN CASE WHEN applied_fields=${selected}::jsonb THEN 'already_applied' ELSE 'used' END
           WHEN expires_at<=now() OR connection_expiry<=now() THEN 'expired'
           WHEN status='disconnected' OR connection_revision<>revision THEN 'changed'
+          WHEN last_error IN ('PERMISSION_REQUIRED','TOKEN_EXPIRED') THEN 'changed'
           WHEN EXISTS(SELECT 1 FROM jsonb_array_elements_text(${selected}::jsonb) f WHERE NOT proposed_values ? f OR (current_values->>f) IS DISTINCT FROM (baseline_values->>f)) THEN 'changed'
           ELSE 'applied' END AS outcome FROM locked l
       ), saved AS (

@@ -111,7 +111,7 @@ try{
     const {context,page,state}=await fixture();await openConnections(page);await prepare(page);await page.getByRole('checkbox',{name:/^Nom de la boutique/}).check();state.applyError=kind;await page.getByRole('button',{name:'Confirmer l’import des champs cochés',exact:true}).click();await page.getByRole('alert').waitFor();assert.equal(state.store.name,originalStore.name);await check(page,'social-'+kind.toLowerCase());await context.close();
   }
   {
-    const {context,page,state}=await fixture();await openConnections(page);state.failAccounts=true;await page.getByRole('button',{name:'Choisir les informations',exact:true}).click();await page.getByRole('alert').waitFor();await check(page,'social-provider-outage');await page.getByRole('link',{name:'Produits',exact:true}).click();await page.getByRole('heading',{name:'Vos produits',exact:true}).waitFor();report.checks.push('Provider outage leaves the merchant catalog accessible');await context.close();
+    const {context,page,state}=await fixture();await openConnections(page);state.failAccounts=true;await page.getByRole('button',{name:'Choisir les informations',exact:true}).click();await page.getByRole('alert').waitFor();await check(page,'social-provider-outage');await page.getByRole('link',{name:'Produits',exact:true}).click();await page.getByRole('heading',{name:'Vos produits',exact:true,level:1}).waitFor();report.checks.push('Provider outage leaves the merchant catalog accessible');await context.close();
   }
   {
     const {context,page,state}=await fixture();await openConnections(page);await page.getByRole('button',{name:'Retirer la connexion',exact:true}).click();await page.getByRole('status').filter({hasText:'Connexion retirée de Commerce Factory.'}).waitFor();assert.equal(state.connected,false);await check(page,'social-disconnected');await context.close();
@@ -125,8 +125,8 @@ try{
   {
     const {context,page,state}=await fixture();state.failComplete=true;await page.goto(base+'/app/connections?store='+storeId+'#social_result=ready&provider=facebook&attempt='+attemptId+'&ticket='+ticket);await page.getByRole('button',{name:'Réessayer',exact:true}).waitFor();assert.ok(!page.url().includes(ticket));state.failComplete=false;await page.getByRole('button',{name:'Réessayer',exact:true}).click();await page.getByRole('status').filter({hasText:'Compte connecté.'}).waitFor();assert.equal(await page.evaluate(()=>sessionStorage.getItem('commerce-social-return')),null);await check(page,'social-completion-recovery');report.checks.push('Connection completion survives a lost response and removes the browser ticket');await context.close();
   }
-  for(const result of ['cancelled','expired']){
-    const {context,page}=await fixture();await page.goto(base+'/app/connections?store='+storeId+'#social_result='+result+'&provider=facebook');await page.getByRole('status').filter({hasText:result==='cancelled' ? 'Connexion annulée.':'La connexion n’a pas abouti.'}).waitFor();assert.equal(new URL(page.url()).hash,'');await check(page,'social-return-'+result);await context.close();
+  for(const result of ['cancelled','expired','limited']){
+    const {context,page}=await fixture();await page.goto(base+'/app/connections?store='+storeId+'#social_result='+result+'&provider=facebook');await page.getByRole('status').filter({hasText:result==='limited' ? 'Trop de tentatives.':result==='cancelled' ? 'Connexion annulée.':'La connexion n’a pas abouti.'}).waitFor();assert.equal(new URL(page.url()).hash,'');await check(page,'social-return-'+result);await context.close();
   }
   {
     const {context,page,state}=await fixture();state.badRedirect=true;await openConnections(page);await page.getByRole('button',{name:'Reconnecter Facebook',exact:true}).click();await page.getByRole('alert').waitFor();assert.equal(new URL(page.url()).origin,base);report.checks.push('Unexpected provider start destinations are rejected');await context.close();

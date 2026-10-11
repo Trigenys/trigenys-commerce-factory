@@ -58,7 +58,7 @@ export function registerSocialRoutes(app: Hono<AppEnv>, coreFactory: (env: Worke
     const provider=c.req.param("provider"),ticket=c.req.query("ticket");
     if (!isSocialProvider(provider) || !secret(ticket)) return c.json({error:"INVALID_CONNECTION_REQUEST"},400);
     const adapter=adapterFactory(provider,c.env);if (!c.env.SOCIAL_RATE_LIMITER || !adapter || !webOrigin(c.env)) return c.json({error:"CONNECTION_UNAVAILABLE"},503);
-    if(!await allowed(c,"public:"+(c.req.header("CF-Connecting-IP") || "unknown"))){c.header("Retry-After","60");return c.json({error:"RATE_LIMITED"},429);}
+    if(!await allowed(c,"public:"+(c.req.header("CF-Connecting-IP") || "unknown")))return c.redirect(returnHref(c.env,"limited",provider),303);
     const state=randomSecret(),browser=randomSecret();
     const attempt=await repository(c.env).startAttempt(await hashSecret(ticket),await hashSecret(state),await hashSecret(browser));
     if (!attempt || attempt.provider!==provider) return c.redirect(returnHref(c.env,"expired",provider),303);
@@ -73,7 +73,7 @@ export function registerSocialRoutes(app: Hono<AppEnv>, coreFactory: (env: Worke
     const browser=getCookie(c,cookieName(provider));
     if (!secret(state) || !secret(browser)) return c.redirect(returnHref(c.env,"expired",provider),303);
     if(!c.env.SOCIAL_RATE_LIMITER)return c.redirect(returnHref(c.env,"failed",provider),303);
-    if(!await allowed(c,"public:"+(c.req.header("CF-Connecting-IP") || "unknown"))){c.header("Retry-After","60");return c.json({error:"RATE_LIMITED"},429);}
+    if(!await allowed(c,"public:"+(c.req.header("CF-Connecting-IP") || "unknown")))return c.redirect(returnHref(c.env,"limited",provider),303);
     const repo=repository(c.env),attempt=await repo.claimCallback(provider,await hashSecret(state),await hashSecret(browser));
     if (!attempt) return c.redirect(returnHref(c.env,"expired",provider),303);
     deleteCookie(c,cookieName(provider),{httpOnly:true,secure:true,sameSite:"Lax",path:"/"});
@@ -144,6 +144,9 @@ export function registerSocialRoutes(app: Hono<AppEnv>, coreFactory: (env: Worke
     let p:any;try {p=await c.req.json();} catch {return c.json({error:"INVALID_JSON"},400);}
     const storeId=c.req.param("storeId"),id=c.req.param("id"),fields=parseImportFields(p?.fields);
     if (!uuid(storeId) || !uuid(id) || !fields || Object.keys(p).some(k=>k!=="fields")) return c.json({error:"INVALID_IMPORT"},400);
+    const preview=await repository(c.env).getPreview(c.get("identity").subject,storeId,id);
+    if(!preview)return c.json({error:"PREVIEW_NOT_FOUND"},404);
+    if(!c.env.SOCIAL_RATE_LIMITER || !adapterFactory(preview.provider,c.env))return c.json({error:"CONNECTION_UNAVAILABLE"},503);
     const result=await repository(c.env).applyPreview(c.get("identity").subject,storeId,id,fields);
     if (result!=="applied" && result!=="already_applied") return c.json({error:"PREVIEW_"+result.toUpperCase()},result==="not_found" ? 404 : 409);
     const store=await coreFactory(c.env).getOwnedStore(c.get("identity").subject,storeId);

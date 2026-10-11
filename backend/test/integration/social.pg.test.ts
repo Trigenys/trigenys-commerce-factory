@@ -107,6 +107,11 @@ describe("persisted social account authorization and import",()=>{
   test("simultaneous confirmations do not apply an import twice",async()=>{
     const p=await prepare();const responses=await Promise.all([apply(p.id,["description"]),apply(p.id,["description"])]);const results=await Promise.all(responses.map(async r=>{assert.equal(r.status,200);return (await r.json() as any).result;}));assert.deepEqual(results.sort(),["already_applied","applied"]);
   });
+  test("a detected provider revocation blocks an unconfirmed preview",async()=>{
+    const p=await prepare(),repo=createSocialRepository("",tag),connection=await repo.getConnection("owner",storeId,"facebook");
+    await repo.markError("owner",storeId,"facebook",connection!.revision,"PERMISSION_REQUIRED");
+    assert.equal((await (await apply(p.id,["name"])).json() as any).error,"PREVIEW_CHANGED");await connect();
+  });
   test("disconnect invalidates pending grants and previews without erasing imported data",async()=>{
     const p=await prepare(),s=await start();assert.equal((await request(connectionPath()+"/facebook","DELETE",undefined,"owner")).status,204);
     assert.match((await callback(s)).headers.get("Location")!,/social_result=expired/);assert.equal((await apply(p.id,["name"])).status,404);
