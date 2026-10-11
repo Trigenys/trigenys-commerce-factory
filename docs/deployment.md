@@ -1,6 +1,6 @@
 # Deployment, environments and custom-domain path
 
-Status: MVP production baseline  
+Status: Commerce Factory beta — theme and journey rollout  
 Related: #13, ADR-001
 
 ## Current production topology
@@ -49,9 +49,9 @@ Preview is intentionally read-only with respect to production infrastructure pro
 
 Merchant creation/login links on this project's Pages preview hosts point to the canonical production `/app` origin. Direct visits to a preview `/app` also redirect there before loading the merchant client. The preview origin is not added to production API CORS or Managed Auth trusted domains. Local development and the canonical site retain relative `/app` navigation.
 
-The theme showroom remains a presentation preview until its migration and Worker rollout are complete. Opening the production merchant app does not enable draft-only themes.
+The theme showroom uses the shared storefront renderer with a fictional catalog. Theme choices become operational in the canonical merchant settings only after the reviewed migration and API/frontend rollout. Project preview hosts keep account creation and login on the canonical origin.
 
-When isolated API/database previews become necessary, use AppFactory's existing `staging` Worker/Hyperdrive identity instead of sharing production credentials with PR builds.
+An isolated journey validation environment uses its own Worker, private media bucket and Neon branch. Its Auth trusted domain belongs only to that branch; production credentials and trusted origins are never shared with PR builds.
 
 ### Production
 
@@ -73,6 +73,7 @@ Frontend:
 - Cloudflare Pages production branch: `main`.
 
 API:
+- native order/support rate limit bindings are declared in `backend/wrangler.production.jsonc`; a missing binding fails closed;
 - source root: `/backend`;
 - Node: 24;
 - validation: `npm install --ignore-scripts --no-audit --no-fund && npm run check`;

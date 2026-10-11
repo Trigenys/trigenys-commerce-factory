@@ -4,11 +4,13 @@ The release supports catalog sales agreed directly with the seller. Orange Money
 
 | Person | Entry and available journey | Permissions |
 | --- | --- | --- |
-| Visitor/buyer | Store → product and variants → persistent cart → saved request → WhatsApp agreement → private order tracking | No account required. The private tracking link omits buyer contact data. |
+| Visitor/buyer | Store → product and variants → persistent cart → saved request and retained receipt → WhatsApp agreement → private order tracking | No account required. The private tracking link omits buyer contact data. |
 | Merchant owner | Sign up/log in → business and WhatsApp setup → appearance → first product → publication → dashboard, products, orders, settings, analytics and team | Own store only; confirms payments received outside the app. |
 | Staff | Private invitation → invited account and email verification → store workspace | Catalog and fulfillment; no settings, publishing, payment confirmation, analytics or team control. |
 | Trigenys support | Authenticated account with an explicit platform grant → support console → ticket reply and store metadata search | No customer-order access and no automatic promotion from merchant ownership. |
 | Person needing help | Help/contact → saved support request → private support tracking | Draft and stable retry identity survive tab reload when storage is available. |
+
+Setup also covers a persisted store/product draft, a theme preview and publication after activating a product. Logo/product media controls are keyboard focusable. Invalid cached drafts are rejected rather than trapping the workspace in a recovery loop.
 
 Public pages are `/help`, `/contact`, `/privacy`, `/terms`, private support tracking, private order tracking and a recoverable missing-page state. Account forms include password visibility, code recovery, resend delay, email verification, meaningful error/loading states, and FR/EN. Navigation respects store roles. Merchant drafts and carts survive the documented interruptions; unavailable storage is disclosed.
 

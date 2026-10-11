@@ -47,7 +47,7 @@ export default function ThemeHero({ storefront, language, productHref }: {
         {store.description ? <p>{store.description}</p> : null}
         <a className="theme-cta" href={productHref(product)}>{discover}<span aria-hidden="true">↗</span></a>
       </div>
-      <a className="theme-spotlight-image" href={productHref(product)}><ProductImage product={product} priority /></a>
+      <a className="theme-spotlight-image" aria-label={product.name} href={productHref(product)}><ProductImage product={product} priority /></a>
       <div className="theme-spotlight-price">
         <small>{selection}</small><strong>{formatMoney(product.price, product.currencyCode, language)}</strong>
         <span>{product.stockLabel || sector}</span>

@@ -196,6 +196,7 @@ function ProductCard({
     <article className="public-product-card">
       <a
         className="public-product-image"
+        aria-label={product.name}
         href={href}
       >
         {product.imageUrls[0] ? (

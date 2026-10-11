@@ -328,6 +328,10 @@
   gap: clamp(28px, 5vw, 70px);
 }
 
+.merchant-layout > * {
+  min-width: 0;
+}
+
 .merchant-progress {
   position: sticky;
   top: 104px;
@@ -777,7 +781,7 @@
   .auth-layout,
   .merchant-layout,
   .settings-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .auth-layout {
@@ -797,13 +801,12 @@
   }
 
   .merchant-progress ol {
-    grid-template-columns: repeat(6, minmax(90px, 1fr));
-    overflow-x: auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     padding-bottom: 8px;
   }
 
   .merchant-progress li {
-    min-width: 90px;
+    min-width: 0;
     flex-direction: column;
     align-items: flex-start;
     gap: 6px;
