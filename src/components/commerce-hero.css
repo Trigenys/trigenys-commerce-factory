@@ -235,6 +235,8 @@
   object-fit:cover;
   border-radius:12px;
   background:var(--cfh-stage-photo);
+}
+.cfh-photo-swap {
   animation:cfh-photo-reveal .42s ease-out both;
 }
 .cfh-category-vertical {
