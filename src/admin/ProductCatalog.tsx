@@ -1,5 +1,7 @@
 import { useDraft, useUnsavedChanges } from "../lib/drafts";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import MerchantNotice, { useMerchantNotice } from "./MerchantNotice";
+import { categoryChoices, categoryKey, stockChoices } from "./catalog-options";
 import type { CommerceAuthClient } from "./auth";
 import {
   ApiError,
@@ -35,6 +37,14 @@ const copy = {
     slug: "Adresse produit",
     price: "Prix",
     category: "Catégorie",
+    noCategory: "Sans catégorie",
+    existingCategories: "Catégories de la boutique",
+    suggestedCategories: "Suggestions",
+    addCategory: "Ajouter une catégorie…",
+    categoryName: "Nouvelle catégorie",
+    useCategory: "Ajouter",
+    categoryHint: "La catégorie sera enregistrée avec le produit.",
+    categoryRequired: "Saisissez le nom de la catégorie.",
     stock: "Indication de stock",
     description: "Description",
     status: "Visibilité",
@@ -61,14 +71,18 @@ const copy = {
     archiveConfirm: "Archiver ce produit ? Il disparaîtra de la boutique publique.",
     moveUp: "Monter",
     moveDown: "Descendre",
-    invalid: "Vérifiez le nom, le prix, les images et les variantes.",
+    invalid: "Vérifiez le nom, le prix, la catégorie, le stock, les images et les variantes.",
     slugTaken: "Cette adresse produit existe déjà dans votre boutique.",
     genericError: "Une erreur est survenue. Réessayez.",
     imagePending: "Aucune image",
     variantsLabel: "variantes",
     stockDefault: "Stock non précisé",
     archivedHint: "Ce produit reste dans l’historique mais n’est plus modifiable.",
-    saved: "Produit enregistré."
+    saved: "Produit enregistré.",
+    duplicated: "Produit dupliqué.",
+    archivedDone: "Produit archivé.",
+    reordered: "Ordre des produits enregistré.",
+    refreshLater: "Le catalogue n’a pas pu être actualisé pour le moment."
   },
   en: {
     eyebrow: "Catalog",
@@ -83,6 +97,14 @@ const copy = {
     slug: "Product address",
     price: "Price",
     category: "Category",
+    noCategory: "No category",
+    existingCategories: "Store categories",
+    suggestedCategories: "Suggestions",
+    addCategory: "Add a category…",
+    categoryName: "New category",
+    useCategory: "Add",
+    categoryHint: "The category will be saved with the product.",
+    categoryRequired: "Enter the category name.",
     stock: "Stock label",
     description: "Description",
     status: "Visibility",
@@ -109,14 +131,18 @@ const copy = {
     archiveConfirm: "Archive this product? It will disappear from the public storefront.",
     moveUp: "Move up",
     moveDown: "Move down",
-    invalid: "Check the name, price, images and variants.",
+    invalid: "Check the name, price, category, stock, images and variants.",
     slugTaken: "That product address is already used in this store.",
     genericError: "Something went wrong. Try again.",
     imagePending: "No image",
     variantsLabel: "variants",
     stockDefault: "Stock not specified",
     archivedHint: "This product stays in history but can no longer be edited.",
-    saved: "Product saved."
+    saved: "Product saved.",
+    duplicated: "Product duplicated.",
+    archivedDone: "Product archived.",
+    reordered: "Product order saved.",
+    refreshLater: "The catalog could not be refreshed right now."
   }
 } as const;
 
@@ -245,6 +271,8 @@ function toInput(editor: EditorState): ProductInput | null {
     editor.name.trim().length < 1 ||
     editor.name.trim().length > 180 ||
     editor.slug.trim().length < 2 ||
+    editor.category.trim().length > 80 ||
+    editor.stockLabel.trim().length > 80 ||
     !/^\d{1,12}(?:\.\d{1,2})?$/.test(price) ||
     !images ||
     !variants
@@ -315,8 +343,17 @@ export default function ProductCatalog({
   const [slugTouched, setSlugTouched] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setInlineError] = useState<string | null>(null);
+  const { notice, notify, dismiss } = useMerchantNotice();
+  const setError = useCallback((value: string | null) => {
+    setInlineError(value);
+    if (value) notify("error", value);
+  }, [notify]);
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [categoryName, setCategoryName] = useState("");
+  const categorySelectRef = useRef<HTMLSelectElement>(null);
+  const categoryNameRef = useRef<HTMLInputElement>(null);
+  const categoryHelpId = useId();
   const [mediaBusy, setMediaBusy] = useState(false);
   const [pendingDeleteUrls, setPendingDeleteUrls] = useState<string[]>([]);
 
@@ -328,11 +365,50 @@ export default function ProductCatalog({
     }),
     [products]
   );
+  const categories = useMemo(() => categoryChoices([editor?.category, ...products.map(product => product.category)], language), [editor?.category, products, language]);
+  const stocks = stockChoices(editor?.stockLabel || "", language);
+
+  useEffect(() => {
+    if (addingCategory) categoryNameRef.current?.focus();
+  }, [addingCategory]);
+
+  function resetCategoryEntry(returnFocus = false) {
+    setAddingCategory(false);
+    setCategoryName("");
+    if (returnFocus) categorySelectRef.current?.focus();
+  }
+
+  function addCategory() {
+    if (!editor) return;
+    const name = categoryName.trim();
+    if (!name) {
+      categoryNameRef.current?.setCustomValidity(t.categoryRequired);
+      categoryNameRef.current?.reportValidity();
+      return;
+    }
+    if (!categoryNameRef.current?.reportValidity()) return;
+    const existing = [...categories.existing, ...categories.proposed].find(value => categoryKey(value) === categoryKey(name));
+    setEditor({ ...editor, category: existing || name });
+    resetCategoryEntry(true);
+  }
 
   async function reload() {
     const next = await listProducts(client, store.id);
     setProducts(next);
     onProductsChange?.(next);
+  }
+
+  function cacheProduct(product: Product) {
+    setProducts(current => current.some(item => item.id === product.id)
+      ? current.map(item => item.id === product.id ? product : item)
+      : [...current, product]);
+  }
+
+  async function refreshAfterMutation(message: string) {
+    // A confirmed mutation must not look like a failed save when this read fails.
+    notify("success", message);
+    try { await reload(); }
+    catch { notify("success", message + " " + t.refreshLater); }
   }
 
   useEffect(() => {
@@ -348,7 +424,7 @@ export default function ProductCatalog({
       }
     })();
     return () => { cancelled = true; };
-  }, [client, store.id, language, onProductsChange]);
+  }, [client, store.id, language, onProductsChange, setError]);
 
   function startCreate() {
     if (editor && !window.confirm(language === "fr" ? "Remplacer le brouillon en cours ?" : "Replace the current draft?")) return;
@@ -359,7 +435,8 @@ export default function ProductCatalog({
     setEditor(blankEditor(store, maxOrder + 10));
     setSlugTouched(false);
     setError(null);
-    setMessage(null);
+    dismiss();
+    resetCategoryEntry();
     setPendingDeleteUrls([]);
   }
 
@@ -369,7 +446,8 @@ export default function ProductCatalog({
     setEditor(editorFromProduct(product));
     setSlugTouched(true);
     setError(null);
-    setMessage(null);
+    dismiss();
+    resetCategoryEntry();
     setPendingDeleteUrls([]);
   }
 
@@ -418,7 +496,7 @@ export default function ProductCatalog({
   }
 
   function removeImage(url: string) {
-    if (!editor) return;
+    if (!editor || busy || mediaBusy) return;
     const next = editor.imageText
       .split(/\r?\n/)
       .map((value) => value.trim())
@@ -433,7 +511,7 @@ export default function ProductCatalog({
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (!editor) return;
+    if (!editor || busy || mediaBusy || addingCategory) return;
     const input = toInput(editor);
     if (!input) {
       setError(t.invalid);
@@ -442,10 +520,11 @@ export default function ProductCatalog({
 
     setBusy(true);
     setError(null);
-    setMessage(null);
+    dismiss();
     try {
       if (editor.id) {
-        await updateProduct(client, store.id, editor.id, input);
+        const saved = await updateProduct(client, store.id, editor.id, input);
+        cacheProduct(saved);
         for (const url of pendingDeleteUrls) {
           const publicId = managedMediaPublicId(url);
           if (!publicId) continue;
@@ -455,18 +534,17 @@ export default function ProductCatalog({
             // The orphan cleanup path handles storage records left behind.
           }
         }
-        await reload();
         setEditor(null);
         draft.discard();
         setPendingDeleteUrls([]);
-        setMessage(t.saved);
+        await refreshAfterMutation(t.saved);
       } else {
         const created = await createProduct(client, store.id, input);
-        await reload();
+        cacheProduct(created);
         setEditor(editorFromProduct(created));
         setSlugTouched(true);
         setPendingDeleteUrls([]);
-        setMessage(t.createdAddImages);
+        await refreshAfterMutation(t.createdAddImages);
       }
     } catch (cause) {
       if (cause instanceof ApiError && cause.code === "PRODUCT_SLUG_TAKEN") {
@@ -482,9 +560,10 @@ export default function ProductCatalog({
   async function duplicate(product: Product) {
     setBusy(true);
     setError(null);
+    dismiss();
     try {
-      await duplicateProduct(client, store.id, product.id);
-      await reload();
+      cacheProduct(await duplicateProduct(client, store.id, product.id));
+      await refreshAfterMutation(t.duplicated);
     } catch {
       setError(t.genericError);
     } finally {
@@ -496,10 +575,12 @@ export default function ProductCatalog({
     if (!window.confirm(t.archiveConfirm)) return;
     setBusy(true);
     setError(null);
+    dismiss();
     try {
       await archiveProduct(client, store.id, product.id);
-      await reload();
+      cacheProduct({ ...product, status: "archived" });
       if (editor?.id === product.id) {setEditor(null);draft.discard();}
+      await refreshAfterMutation(t.archivedDone);
     } catch {
       setError(t.genericError);
     } finally {
@@ -519,20 +600,21 @@ export default function ProductCatalog({
 
     setBusy(true);
     setError(null);
+    dismiss();
     try {
       for (let index = 0; index < reordered.length; index += 1) {
         const item = reordered[index];
         const sortOrder = (index + 1) * 10;
         if (item.sortOrder !== sortOrder) {
-          await updateProduct(
+          cacheProduct(await updateProduct(
             client,
             store.id,
             item.id,
             productToInput(item, sortOrder)
-          );
+          ));
         }
       }
-      await reload();
+      await refreshAfterMutation(t.reordered);
     } catch {
       setError(t.genericError);
     } finally {
@@ -558,13 +640,13 @@ export default function ProductCatalog({
         </button>
       </div>
 
-      {message ? <p role="status" className="form-message success">{message}</p> : null}
+      <MerchantNotice notice={notice} language={language} onDismiss={dismiss} />
       {editor ? <p className="draft-note" role="status">{language === "fr" ? "Brouillon conservé dans cet onglet. Enregistrez pour appliquer vos modifications." : "Draft kept in this tab. Save to apply changes."}</p> : null}
-      {error ? <p className="form-message error" role="alert">{error}</p> : null}
+      {error ? <p className="form-message error">{error}</p> : null}
 
       {editor ? (
         <form className="catalog-editor" onSubmit={save}>
-          <div className="admin-form admin-form-grid">
+          <fieldset className="admin-form admin-form-grid catalog-fields" disabled={busy || mediaBusy} aria-label={language === "fr" ? "Informations du produit" : "Product details"}>
             <label className="span-2">
               <span>{t.name}</span>
               <input
@@ -636,30 +718,49 @@ export default function ProductCatalog({
               </select>
             </label>
 
-            <label>
-              <span>{t.category}</span>
-              <input
+            <div className="catalog-category-control">
+              <label><span>{t.category}</span>
+              <select
+                ref={categorySelectRef}
                 aria-label={t.category}
                 value={editor.category}
-                maxLength={80}
-                onChange={(event) =>
-                  setEditor({ ...editor, category: event.target.value })
-                }
-                placeholder="Audio"
-              />
-            </label>
+                onChange={event => {
+                  if (event.target.value === categories.addValue) setAddingCategory(true);
+                  else { setEditor({ ...editor, category: event.target.value }); resetCategoryEntry(); }
+                }}
+              >
+                <option value="">{t.noCategory}</option>
+                {categories.existing.length ? <optgroup label={t.existingCategories}>{categories.existing.map(value => <option key={value} value={value}>{value}</option>)}</optgroup> : null}
+                {categories.proposed.length ? <optgroup label={t.suggestedCategories}>{categories.proposed.map(value => <option key={value} value={value}>{value}</option>)}</optgroup> : null}
+                <option value={categories.addValue}>{t.addCategory}</option>
+              </select></label>
+              {addingCategory ? <div className="catalog-category-entry">
+                <label><span>{t.categoryName}</span><input
+                  ref={categoryNameRef}
+                  value={categoryName}
+                  maxLength={80}
+                  required
+                  aria-describedby={categoryHelpId}
+                  onChange={event => { event.target.setCustomValidity(""); setCategoryName(event.target.value); }}
+                  onKeyDown={event => { if (event.key === "Enter" && !event.nativeEvent.isComposing) { event.preventDefault(); addCategory(); } }}
+                /></label>
+                <small id={categoryHelpId}>{t.categoryHint}</small>
+                <div className="catalog-category-actions"><button type="button" className="admin-secondary" onClick={addCategory}>{t.useCategory}</button><button type="button" className="admin-secondary" onClick={() => resetCategoryEntry(true)}>{t.cancel}</button></div>
+              </div> : null}
+            </div>
 
             <label>
               <span>{t.stock}</span>
-              <input
+              <select
                 aria-label={t.stock}
                 value={editor.stockLabel}
-                maxLength={80}
                 onChange={(event) =>
                   setEditor({ ...editor, stockLabel: event.target.value })
                 }
-                placeholder={language === "fr" ? "En stock" : "In stock"}
-              />
+              >
+                <option value="">{t.stockDefault}</option>
+                {stocks.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
             </label>
 
             <label className="span-2">
@@ -725,7 +826,7 @@ export default function ProductCatalog({
               />
               <small>{t.variantsHint}</small>
             </label>
-          </div>
+          </fieldset>
 
           <div className="catalog-editor-actions">
             <button
@@ -741,7 +842,7 @@ export default function ProductCatalog({
             >
               {t.cancel}
             </button>
-            <button className="admin-primary" type="submit" disabled={busy || mediaBusy}>
+            <button className="admin-primary" type="submit" disabled={busy || mediaBusy || addingCategory}>
               {editor.id ? t.save : t.create}
             </button>
           </div>

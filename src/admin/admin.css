@@ -36,6 +36,11 @@
   backdrop-filter: blur(16px);
 }
 
+.admin-shell :is(input, select, textarea, button, a, [tabindex], [id]) {
+  scroll-margin-top: calc(var(--merchant-header-height, 72px) + var(--merchant-mobile-nav-height, 0px) + var(--merchant-notice-height, 0px) + 20px);
+  scroll-margin-bottom: 20px;
+}
+
 .admin-brand img {
   display: block;
   width: 168px;
