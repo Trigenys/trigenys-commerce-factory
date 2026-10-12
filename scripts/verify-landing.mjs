@@ -59,7 +59,7 @@ try {
     const color = initial.background.match(/[\d.]+/g).map(Number);
     assert.ok(color[0] - color[2] > 8, "Header should use the warm hero palette, not the old white/lavender strip");
     if (width === 390) assert.ok(initial.photoTop < 730, "Product proof falls below the first mobile window: " + JSON.stringify(initial));
-    if (width === 768) assert.ok(initial.photoTop < 900, "Tablet product proof falls below the first window: " + JSON.stringify(initial));
+    if (width === 768) assert.ok(initial.photoTop < 780, "Tablet product proof should be visible in the first window: " + JSON.stringify(initial));
     await page.screenshot({ path: output + "/first-fold-" + label + ".png" });
     await accessibility(page, "initial-" + label);
     assert.equal(await page.locator(".cfh-primary").getAttribute("href"), "/app");
