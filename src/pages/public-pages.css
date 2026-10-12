@@ -1,5 +1,5 @@
 .info-shell { min-height:100vh; background:#f5f7f6; color:#15211d; }
-.info-header { display:flex; gap:24px; align-items:center; justify-content:space-between; padding:18px clamp(18px,5vw,70px); background:#fff; border-bottom:1px solid #dfe7e2; flex-wrap:wrap; }
+.info-header { position:sticky; top:0; z-index:60; display:flex; gap:24px; align-items:center; justify-content:space-between; padding:18px clamp(18px,5vw,70px); background:#fff; border-bottom:1px solid #dfe7e2; flex-wrap:wrap; }
 .info-header img { width:168px; height:48px; object-fit:contain; }
 .info-header nav { display:flex; gap:18px; flex-wrap:wrap; }
 .info-header a,.info-footer a { color:#006948; font-weight:700; text-decoration:underline; text-underline-offset:4px; padding:8px 0; }

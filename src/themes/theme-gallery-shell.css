@@ -1,5 +1,5 @@
 .theme-gallery-app { min-height: 100vh; background: #f4f3ed; color: #19372b; font-family: "Plus Jakarta Sans", system-ui, sans-serif; }
-.theme-gallery-header { max-width: 1500px; margin: auto; padding: 24px 32px; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.theme-gallery-header { position:sticky; top:0; z-index:60; max-width:none; margin:auto; padding:16px max(32px, calc((100vw - 1436px) / 2)); display:flex; align-items:center; justify-content:space-between; gap:18px; background:rgba(244,243,237,.94); border-bottom:1px solid rgba(25,55,43,.12); backdrop-filter:blur(14px); }
 .theme-gallery-header a { color: inherit; text-decoration: none; font-size: 15px; font-weight: 800; }
 .theme-gallery-header span { margin-left: 12px; font-weight: 400; color: #5a6b61; }
 .theme-gallery-header a.theme-gallery-create { border-radius: 999px; background: #19372b; color: white; padding: 14px 22px; font-size: 12px; }

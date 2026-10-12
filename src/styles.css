@@ -72,7 +72,11 @@ button:focus-visible {
 
 img { max-width: 100%; }
 
-.site-shell { min-height: 100vh; overflow: hidden; }
+/* Clip decorative overflow without creating a scrolling ancestor: sticky needs the viewport. */
+.site-shell { min-height: 100vh; overflow: clip; }
+.site-shell :is(#top, #how, #showcase, #whatsapp, #dashboard, #pricing) {
+  scroll-margin-top: 84px;
+}
 
 .site-header {
   position: sticky;
@@ -1032,6 +1036,7 @@ img { max-width: 100%; }
 
 @media (max-width: 760px) {
   .site-header { height: 66px; padding-inline: 16px; }
+  .site-shell :is(#top, #how, #showcase, #whatsapp, #dashboard, #pricing) { scroll-margin-top: 74px; }
   .brand-logo { width: 152px; height: auto; }
   .header-login { display: none; }
   .header-actions .button-compact { display: none; }
