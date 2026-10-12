@@ -49,7 +49,7 @@ export default function LandingHeader({ language, onLanguageChange }: {
       if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) setOpen(false);
     }}>
     <a className="brand" href="#top" aria-label={fr ? "Accueil Commerce Factory" : "Commerce Factory home"} onClick={() => setOpen(false)}>
-      <img className="brand-logo" src="/commerce-factory-logo-v3.png?v=3" alt="Commerce Factory by Trigenys" width={176} height={72} />
+      <img className="brand-logo" src="/commerce-factory-logo-v3.png?v=3" alt="Commerce Factory by Trigenys" width={500} height={159} />
     </a>
     <nav className="desktop-nav" aria-label={fr ? "Navigation principale" : "Primary navigation"}>
       {links.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
