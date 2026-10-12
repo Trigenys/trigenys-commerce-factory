@@ -18,16 +18,34 @@ The merchant creates their Commerce Factory store first and connects accounts fr
 
 Use the existing Neon Auth configuration on the Commerce branch, not another application's default branch.
 
-1. Create Commerce Factory's own Google OAuth web application with the intended consent-screen name and authorized domains.
+1. Use separate Google Cloud projects for test and production, as required by [Google's production-readiness policy](https://developers.google.com/identity/protocols/oauth2/production-readiness/policy-compliance). Separate clients in one project are not the documented project separation. Keep `commerce-factory-511320` for production and create a distinct project for the isolated test site. A production Google client must not include test origins or callbacks.
 2. Register the provider callback `{NEON_AUTH_BASE_URL}/callback/google`. This is different from the application callback `/app/auth-callback`.
 3. Configure the custom Google client in the branch's Neon Auth settings. Supply secrets through the provider configuration, never `VITE_*`, source control or public runtime JSON.
-4. Keep only canonical production/local development origins in production Auth. The isolated staging branch trusts its own Pages origin.
+4. Register the frontend origin for the matching Google client and trust that application origin in the matching Neon Auth branch. The isolated staging branch trusts its own Pages origin; use that branch for development. Do not copy the test origin into the production Google client.
 5. Verify Google consent, account creation, sign-out/sign-in, page reload, a signed JWT and an existing store with the real provider. Verify invitation email claims separately.
 6. Set Worker binding `TRIGENYS_COMMERCE_FACTORY_GOOGLE_SIGN_IN=enabled` only once the custom production application and real consent flow are verified.
 
-Neon's shared Google credentials are for isolated development/testing. They are currently present in production Auth but the Commerce Factory Google button remains disabled by default. Do not enable that production flag using the shared application.
+Neon's shared Google credentials are for isolated development/testing. Do not enable the production flag using the shared application.
+
+Current activation status (2026-10-12): both dedicated Commerce Auth branches have custom Google credentials. Real first account creation and sign-out/sign-in on staging were confirmed by the merchant, who returned to onboarding because no store exists. Both branches still use the same Google client; move staging to the separate test project before public activation. Google UI is enabled on staging and disabled in production. Reload, protected JWT, existing-store and invitation checks remain to be recorded.
+
+The isolated test client uses only:
+
+- JavaScript origin: `https://commerce-factory-journeys.pages.dev`
+- Provider callback: `https://ep-soft-river-b2at40xx.neonauth.c-6.eu-central-1.aws.neon.tech/commerce_factory/auth/callback/google`
+
+The production client uses only:
+
+- JavaScript origin: `https://trigenys-commerce-factory.pages.dev`
+- Provider callback: `https://ep-plain-wave-b23ip5pe.neonauth.c-6.eu-central-1.aws.neon.tech/commerce_factory/auth/callback/google`
+
+Configure the test client on `br-dry-cell-b2hsrgii` first. Once verified, remove the test origin and callback from the existing production Google client; its current production client ID and secret can be retained. Credential setup must target one explicit Neon branch at a time, never update both with the same Google JSON. The Windows setup helper defaults to staging, rejects the production project there, validates the matching origin/callback and keeps CLI credential output private.
+
+Google's [audience documentation](https://support.google.com/cloud/answer/15549945?hl=en) exempts sign-in requests limited to basic identity (`openid`, email, profile) from Testing's test-user restriction and seven-day authorization expiry. Do not treat Testing alone as evidence that this basic flow is blocked, or treat that exception as permission to add other scopes. Verify actual audience, branding and requested permissions before a public release.
 
 The installed Neon SDK owns redirects and its iframe popup/session-verifier handling. The Commerce callback stores only a validated merchant destination in tab storage for 15 minutes. Invitation secrets stay in that tab and are never sent to Google/Neon. No account is linked by client-side email matching.
+
+The Google button can create an account when used from the Login tab. That screen explicitly explains automatic creation and displays the terms and privacy links; the Create account tab requires its terms checkbox. This is the implemented UX behavior, not proof of server-side versioned acceptance records or legal compliance.
 
 ## Social application setup
 
