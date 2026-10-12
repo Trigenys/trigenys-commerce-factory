@@ -199,7 +199,6 @@ export default function CommerceHero({ language }: { language: Language }) {
                 className={"cfh-pick" + (selected === item.id ? " is-active" : "")}
                 aria-pressed={selected === item.id}
                 onClick={() => { setSelected(item.id); setHasInteracted(true); }}
-                aria-label={item.shop + " — " + item.category[language]}
               >
                 <span>0{i + 1}</span><strong>{item.category[language]}</strong>
                 <span aria-hidden="true">↗</span>
