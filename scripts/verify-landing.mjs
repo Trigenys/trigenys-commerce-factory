@@ -92,6 +92,7 @@ try {
       const section = document.querySelector("#whatsapp").getBoundingClientRect();
       return scrollY > 300 && Math.abs(header.top) < 2 && section.top >= header.bottom && section.top < header.bottom + 30;
     });
+    await page.locator('.landing-header[data-scrolled="true"]').waitFor();
     assert.equal(await page.locator(".landing-header").getAttribute("data-scrolled"), "true");
     await page.screenshot({ path: output + "/sticky-" + label + ".png" });
 

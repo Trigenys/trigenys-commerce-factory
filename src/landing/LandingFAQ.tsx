@@ -10,7 +10,7 @@ export default function LandingFAQ({ language }: { language: LandingLanguage }) 
       <a className="landing-text-link" href="/help">{t.help}<span aria-hidden="true">↗</span></a>
     </div>
     <div className="landing-faq-list">
-      {t.questions.map(([question, answer]) => <details key={question}>
+      {t.questions.map(([question, answer], index) => <details key={index}>
         <summary>{question}<span aria-hidden="true">+</span></summary>
         <p>{answer}</p>
       </details>)}
