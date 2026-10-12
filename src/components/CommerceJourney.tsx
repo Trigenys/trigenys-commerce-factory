@@ -30,7 +30,7 @@ const copy = {
     create: "Créer ma boutique", tagline: "Du catalogue à la conversation", chatPlaceholder: "Aperçu non envoyé",
     hint: "Choisissez une étape du parcours ou un autre produit.",
     inquiryBefore: "Bonjour, je souhaite en savoir plus sur", inquiryAfter: "vu chez TechPulse. Est-il disponible ?",
-    note: "Paiement et livraison restent gérés par le commerçant dans ce MVP."
+    note: "Vous convenez du paiement et de la livraison avec votre client."
   },
   en: {
     eyebrow: "THE MOMENT · WHATSAPP-FIRST", titleOne: "A product discovered.", titleTwo: "A conversation started.",
@@ -49,7 +49,7 @@ const copy = {
     create: "Create my store", tagline: "From catalog to conversation", chatPlaceholder: "Unsent preview",
     hint: "Choose a journey step or another product.",
     inquiryBefore: "Hello, I'd like to know more about", inquiryAfter: "at TechPulse. Is it available?",
-    note: "Payment and delivery remain in the merchant's own process for the MVP."
+    note: "You agree on payment and delivery with your customer."
   }
 } as const;
 

@@ -47,6 +47,14 @@ jobs:
         with:
           name: commerce-hero-interactions
           path: artifacts/hero/
+      - name: Verify complete landing, navigation and responsive accessibility
+        run: npm run test:landing
+      - name: Retain landing screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: commerce-landing
+          path: artifacts/landing/
       - name: Verify storefront themes and media transparency
         run: npm run test:themes
       - name: Read-only live runtime diagnostic

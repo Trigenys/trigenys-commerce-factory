@@ -44,6 +44,7 @@ try{
     assert.match(await page.locator("#cfh-heading").innerText(),/Show your products/);
     assert.ok((await page.locator(".cfh-message p").innerText()).includes("35,000 FCFA"));
     await page.getByRole("button",{name:"FR",exact:true}).click();
+    await page.evaluate(() => scrollTo({top:0,behavior:"instant"}));
     const metrics=await page.evaluate(()=>{
       const photo=document.querySelector(".cfh-photo");
       const rect=photo.getBoundingClientRect();

@@ -15,7 +15,8 @@
     "test:journeys": "node scripts/verify-user-journeys.mjs",
     "test:social": "node scripts/verify-social-journeys.mjs",
     "test:hero": "node scripts/verify-hero-story.mjs",
-    "test:catalog": "node scripts/verify-catalog-ux.mjs"
+    "test:catalog": "node scripts/verify-catalog-ux.mjs",
+    "test:landing": "node scripts/verify-landing.mjs"
   },
   "dependencies": {
     "@neondatabase/neon-js": "^0.7.0-beta",
