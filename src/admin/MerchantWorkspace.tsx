@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useChromeHeight } from "./merchant-chrome";
 import { listProducts, merchantRequest, publishStore, type Product, type Store } from "./api";
 import type { CommerceAuthClient } from "./auth";
 import ProductCatalog from "./ProductCatalog";
@@ -14,6 +15,8 @@ export default function MerchantWorkspace({client,store,stores,language,onUpdate
   renderSettings:(section:"appearance"|"settings")=>ReactNode;
 }) {
   const fr=language==="fr",owner=store.role!=="staff";
+  const sidebarRef = useRef<HTMLElement>(null);
+  useChromeHeight(sidebarRef, "--merchant-mobile-nav-height", true);
   const page=window.location.pathname.split("/")[2] || "overview";
   const[products,setProducts]=useState<Product[]>([]);const[loading,setLoading]=useState(true);const[busy,setBusy]=useState(false);const[error,setError]=useState("");const[platform,setPlatform]=useState(false);const[message,setMessage]=useState("");
   const route=(name:string)=>"/app"+(name==="overview" ? "" : "/"+name)+"?store="+store.id;
@@ -22,9 +25,9 @@ export default function MerchantWorkspace({client,store,stores,language,onUpdate
   async function publish(){setBusy(true);setError("");try{onUpdated(await publishStore(client,store.id));setMessage(fr ? "Votre boutique est publiée." : "Your store is published.");}catch{setError(fr ? "La publication n’a pas abouti. Vérifiez qu’un produit est actif et réessayez." : "Publication did not complete. Make sure a product is active and try again.");}finally{setBusy(false);}}
   const nav=[{id:"overview",label:fr ? "Tableau de bord" : "Dashboard"},{id:"products",label:fr ? "Produits" : "Products"},{id:"orders",label:fr ? "Commandes" : "Orders"},...(owner ? [{id:"appearance",label:fr ? "Apparence" : "Appearance"},{id:"settings",label:fr ? "Réglages" : "Settings"},{id:"analytics",label:fr ? "Statistiques" : "Analytics"},{id:"team",label:fr ? "Équipe" : "Team"},{id:"connections",label:fr ? "Comptes connectés" : "Connected accounts"}]:[]),...(platform ? [{id:"platform",label:fr ? "Support Trigenys" : "Trigenys support"}]:[])];
   const restricted=!owner&&["appearance","settings","analytics","team","connections"].includes(page);
-  return <div className="merchant-workspace-shell"><aside className="merchant-sidebar"><div className="workspace-store"><span className="admin-eyebrow">{owner ? (fr ? "Propriétaire" : "Owner") : (fr ? "Collaborateur" : "Staff")}</span><strong>{store.name}</strong>
+  return <div className="merchant-workspace-shell"><aside ref={sidebarRef} className="merchant-sidebar"><div className="workspace-store"><span className="admin-eyebrow">{owner ? (fr ? "Propriétaire" : "Owner") : (fr ? "Collaborateur" : "Staff")}</span><strong>{store.name}</strong>
     {stores.length>1 && <label>{fr ? "Boutique active" : "Active store"}<select aria-label={fr ? "Boutique active" : "Active store"} value={store.id} onChange={e=>window.location.assign("/app?store="+e.target.value)}>{stores.map(item=><option value={item.id} key={item.id}>{item.name}</option>)}</select></label>}
-  </div><nav aria-label={fr ? "Espace marchand" : "Merchant workspace"}>{nav.map(item=><a key={item.id} href={route(item.id)} aria-current={page===item.id ? "page" : undefined}>{item.label}</a>)}</nav><a className="workspace-help" href="/help">{fr ? "Aide et support" : "Help and support"} ↗</a></aside>
+  </div><label className="merchant-mobile-navigation"><span>{fr ? "Navigation" : "Navigation"}</span><select aria-label={fr ? "Navigation de l’espace marchand" : "Merchant workspace navigation"} value={nav.some(item=>item.id===page) ? page : "overview"} onChange={event=>window.location.assign(route(event.target.value))}>{nav.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label><nav aria-label={fr ? "Espace marchand" : "Merchant workspace"}>{nav.map(item=><a key={item.id} href={route(item.id)} aria-current={page===item.id ? "page" : undefined}>{item.label}</a>)}</nav><a className="workspace-help" href="/help">{fr ? "Aide et support" : "Help and support"} ↗</a></aside>
     <main className="workspace-main" id="merchant-main" tabIndex={-1}>
       {restricted ? <section className="workspace-section"><h1>{fr ? "Accès réservé au propriétaire" : "Owner access required"}</h1><p>{fr ? "Votre rôle permet de gérer les produits et les commandes." : "Your role allows product and order management."}</p><a href={route("products")}>{fr ? "Gérer les produits" : "Manage products"}</a></section> : page==="overview" ? <section className="workspace-section"><span className="admin-eyebrow">{fr ? "Votre espace" : "Your workspace"}</span><h1>{fr ? "Votre boutique, étape par étape" : "Your store, step by step"}</h1><p>{store.name} · {store.status==="published" ? (fr ? "Publiée" : "Published") : (fr ? "Brouillon privé" : "Private draft")}</p>
       {loading&&<p role="status">{fr ? "Chargement du catalogue…" : "Loading catalog…"}</p>}{error&&<p className="form-message error" role="alert">{error}</p>}{message&&<p className="form-message success" role="status">{message}</p>}

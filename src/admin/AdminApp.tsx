@@ -6,7 +6,8 @@ import "../pages/public-pages.css";
 import AccountAccess from "./AccountAccess";
 import RecoveryState from "../components/RecoveryState";
 import { useDraft, useUnsavedChanges } from "../lib/drafts";
-import { FormEvent, useEffect, useId, useMemo, useState } from "react";
+import { FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useChromeHeight } from "./merchant-chrome";
 import type { CommerceAuthClient } from "./auth";
 import { canSignInWithGoogle, getAuthClient, getSessionSnapshot } from "./auth";
 import { finishGoogleReturn } from "./google-access";
@@ -945,6 +946,8 @@ function StoreSettings({
 }
 
 export default function AdminApp() {
+  const headerRef = useRef<HTMLElement>(null);
+  useChromeHeight(headerRef, "--merchant-header-height");
   const [language, setLanguage] = useState<Language>(languageFromPreference);
   const [client, setClient] = useState<CommerceAuthClient | null>(null);
   const [sessionEmail, setSessionEmail] = useState("");
@@ -1012,7 +1015,7 @@ export default function AdminApp() {
   }, []);
 
   const header = useMemo(() => (
-    <header className="admin-header">
+    <header ref={headerRef} className="admin-header">
       <a className="skip-link" href="#merchant-main">{language === "fr" ? "Aller au contenu" : "Skip to content"}</a>
       <a href="/" className="admin-brand">
         <img src="/commerce-factory-logo-v3.png?v=3" alt="Commerce Factory" />

@@ -1,0 +1,32 @@
+.merchant-notice {
+  position: fixed;
+  z-index: 100;
+  top: calc(var(--merchant-header-height, 72px) + var(--merchant-mobile-nav-height, 0px) + 12px);
+  left: max(16px, env(safe-area-inset-left));
+  width: min(380px, calc(100vw - 32px));
+  max-height: calc(100dvh - var(--merchant-header-height, 72px) - var(--merchant-mobile-nav-height, 0px) - 28px);
+  overflow: auto;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 44px;
+  align-items: start;
+  pointer-events: none;
+  color: #15211d;
+  font: 600 14px/1.6 "Plus Jakarta Sans", system-ui, sans-serif;
+}
+.merchant-notice[data-visible="true"] {
+  padding: 14px 10px 14px 14px;
+  gap: 10px;
+  border: 1px solid #bed9cb;
+  border-left: 4px solid #006948;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 12px 36px rgb(21 33 29 / 16%);
+  pointer-events: auto;
+}
+.merchant-notice.error { border-color: #efc5bf; border-left-color: #b42318; }
+.merchant-notice-content { grid-column: 2; grid-row: 1; overflow-wrap: anywhere; }
+.merchant-notice-icon { display: grid; place-items: center; width: 24px; height: 24px; margin-top: 3px; border-radius: 50%; color: #006948; background: #edf8f3; font-weight: 800; }
+.merchant-notice.error .merchant-notice-icon { color: #b42318; background: #fff1ee; }
+.merchant-notice button { grid-column: 3; grid-row: 1; min-width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #43554b; font: inherit; font-size: 24px; cursor: pointer; }
+.merchant-notice button:hover { background: #edf8f3; }
+.merchant-notice button:focus-visible { outline: 3px solid #9d0b43; outline-offset: 2px; }

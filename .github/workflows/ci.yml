@@ -53,6 +53,14 @@ jobs:
         run: node scripts/diagnose-runtime.mjs
       - name: Verify user journeys and accessibility
         run: npm run test:journeys
+      - name: Verify catalog controls, sticky navigation and visible notifications
+        run: npm run test:catalog
+      - name: Retain catalog screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: commerce-catalog-ux
+          path: artifacts/catalog/
       - name: Verify Google and merchant social imports
         run: npm run test:social
       - name: Retain social journey screenshots and report
