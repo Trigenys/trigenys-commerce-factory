@@ -57,6 +57,38 @@ try{
     assert.deepEqual(errors,[],"Uncaught browser errors");
     await page.screenshot({path:dir+"/hero-"+width+".png",animations:"disabled"});
     report.checks.push({width,passed:true,...metrics});
+
+    // A CSS sticky declaration alone is insufficient when an ancestor creates
+    // an unintended scrolling box (as happened with .site-shell overflow:hidden).
+    // Test the rendered header after real viewport scroll on every public shell.
+    for (const [route, selector] of [
+      ["/", ".site-header"],
+      ["/help", ".info-header"],
+      ["/themes", ".theme-gallery-header"],
+      ["/app", ".admin-header"],
+      ["/demo/faya-computer", ".demo-header"]
+    ]) {
+      await page.goto(base + route, {waitUntil:"domcontentloaded"});
+      await page.locator(selector).waitFor({state:"visible"});
+      const nav = await page.evaluate((headerSelector) => {
+        const header = document.querySelector(headerSelector);
+        if (!header?.parentElement) throw new Error("Navigation header missing");
+        const spacer = document.createElement("div");
+        spacer.style.height = "1600px";
+        spacer.setAttribute("aria-hidden", "true");
+        header.parentElement.appendChild(spacer);
+        window.scrollTo({top:1000,behavior:"instant"});
+        return {
+          top:header.getBoundingClientRect().top,
+          position:getComputedStyle(header).position,
+          scrollY:window.scrollY
+        };
+      }, selector);
+      assert.ok(nav.scrollY >= 500, "Viewport did not scroll for " + route + ": " + JSON.stringify(nav));
+      assert.equal(nav.position, "sticky", "Header not sticky on " + route);
+      assert.ok(Math.abs(nav.top) <= 2, "Header scrolled away on " + route + ": " + JSON.stringify(nav));
+      report.checks.push({width,route,passed:true,...nav});
+    }
     await context.close();
   }
 }catch(error){
