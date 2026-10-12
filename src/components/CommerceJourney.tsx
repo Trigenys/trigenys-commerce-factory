@@ -137,7 +137,7 @@ export default function CommerceJourney({ language }: { language: Language }) {
                       className={productId === item.id ? "journey-product-choice is-selected" : "journey-product-choice"}
                       onClick={() => selectProduct(item.id)}
                       aria-pressed={productId === item.id}
-                      aria-label={t.select + " : " + item[language]}>
+                      aria-label={item.category[language] + " — " + item[language]}>
                       <img src={item.image} alt="" width={84} height={64} loading="eager" decoding="async" />
                       <span>{item.category[language]}</span>
                     </button>
