@@ -153,7 +153,7 @@ try {
     assert.equal(await category().isDisabled(), true, "Controls cannot change during an in-flight save");
     release(); state.gate = null;
     await page.locator('.merchant-notice [role="status"]').filter({ hasText: fr ? "Produit créé." : "Product created." }).waitFor();
-    await page.locator('.merchant-notice [role="status"]').filter({ hasText: fr ? "actualisation" : "refresh" }).waitFor();
+    await page.locator('.merchant-notice [role="status"]').filter({ hasText: fr ? "actualisé" : "refresh" }).waitFor();
     await noticePosition(page, width);
     assert.ok(await page.evaluate(() => scrollY) > 100, "Success does not jump the user back to the top");
     assert.equal(state.products.length, 2);
