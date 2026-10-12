@@ -245,6 +245,7 @@ img { max-width: 100%; }
 
 
 .section-heading { max-width: 760px; margin-bottom: 34px; }
+.section-heading p { margin: 14px 0 0; color: var(--muted); line-height: 1.7; font-size: 15px; }
 
 .site-footer {
   padding-block: 42px;
@@ -276,6 +277,7 @@ img { max-width: 100%; }
   .language-switch { padding: 2px; }
   .language-switch button { min-width: 34px; height: 28px; padding-inline: 8px; }
   .section { padding: 52px 16px; }
+  .section-heading p { font-size: 13px; }
   .site-footer { grid-template-columns: 1fr; align-items: start; }
 }
 
