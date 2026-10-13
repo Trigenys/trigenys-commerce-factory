@@ -5,6 +5,7 @@ import App from "./App";
 import ThemeGalleryApp from "./themes/ThemeGalleryApp";
 import { merchantAppHref } from "./merchant-navigation";
 import "./styles.css";
+import "./brand/brand.css";
 
 // The public landing must not download merchant-admin, storefront or
 // personalized-demo code before the visitor chooses one of those routes.

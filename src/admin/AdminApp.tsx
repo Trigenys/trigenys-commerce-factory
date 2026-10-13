@@ -1,4 +1,5 @@
 import MerchantWorkspace from "./MerchantWorkspace";
+import WorkspaceFooter from "../brand/WorkspaceFooter";
 import InvitationAccept from "./InvitationAccept";
 import PlatformPanel from "./PlatformPanel";
 import { preferredLanguage, rememberLanguage } from "../lib/language";
@@ -29,6 +30,7 @@ import {
 } from "./api";
 import { MediaPreparationError, prepareImageForUpload } from "./media";
 import "./admin.css";
+import "../brand/workspace-brand.css";
 import { isStoreTheme, parseThemeSettings, resolveStoreTheme, themeFonts } from "../../shared/store-themes";
 import { themeShellProps } from "../storefront/theme-style";
 import ThemePicker from "../themes/ThemePicker";
@@ -1018,7 +1020,7 @@ export default function AdminApp() {
     <header ref={headerRef} className="admin-header">
       <a className="skip-link" href="#merchant-main">{language === "fr" ? "Aller au contenu" : "Skip to content"}</a>
       <a href="/" className="admin-brand">
-        <img src="/commerce-factory-logo-v3.png?v=3" alt="Commerce Factory" />
+        <img src="/commerce-factory-logo-v3.png?v=3" alt="Commerce Factory" width={500} height={159} />
       </a>
       <div className="admin-header-actions">
         <a className="admin-back" href="/help">{language === "fr" ? "Aide" : "Help"}</a>
@@ -1059,27 +1061,29 @@ export default function AdminApp() {
 
   if (loading) {
     return (
-      <div className="admin-shell">
+      <div className="admin-shell brand-page">
         {header}
         <main className="admin-loading" id="merchant-main" tabIndex={-1}>
           <span className="admin-loader" aria-hidden="true" />
           <p role="status">{t.loading}</p>
         </main>
+        <WorkspaceFooter language={language} />
       </div>
     );
   }
 
   if (fatalError || !client) {
     return (
-      <div className="admin-shell">
+      <div className="admin-shell brand-page">
         {header}
         <RecoveryState language={language} title={language === "fr" ? "Votre espace est temporairement indisponible" : "Your workspace is temporarily unavailable"} message={language === "fr" ? "Vérifiez votre connexion puis réessayez. Vos données enregistrées sont conservées." : "Check your connection and try again. Your saved data is safe."} retry={() => { setFatalError(null);setLoading(true);setAttempt(value=>value+1); }} />
+        <WorkspaceFooter language={language} />
       </div>
     );
   }
 
   return (
-    <div className="admin-shell">
+    <div className="admin-shell brand-page">
       {header}
       {!authenticated ? (
         <AccountAccess
@@ -1106,6 +1110,7 @@ export default function AdminApp() {
           onCreated={(created) => { setStore(created);setStores([created]); }}
         />
       )}
+      <WorkspaceFooter language={language} />
     </div>
   );
 }

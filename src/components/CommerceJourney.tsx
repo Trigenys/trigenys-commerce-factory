@@ -1,5 +1,6 @@
 import { merchantAppHref } from "../merchant-navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useScrollStory } from "../landing/useScrollStory";
 import "./commerce-journey.css";
 
 type Language = "fr" | "en";
@@ -56,6 +57,9 @@ const copy = {
 export default function CommerceJourney({ language }: { language: Language }) {
   const [stage, setStage] = useState<Stage>(0);
   const [productId, setProductId] = useState("audio");
+  const trackRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const goToStage = useScrollStory(trackRef, sceneRef, setStage);
   const t = copy[language];
   const product = products.find((item) => item.id === productId) ?? products[0];
   const name = product[language];
@@ -64,35 +68,38 @@ export default function CommerceJourney({ language }: { language: Language }) {
 
   function selectProduct(id: string) {
     setProductId(id);
-    setStage(1);
+    goToStage(1);
   }
 
   function next() {
-    setStage((current) => (current === 3 ? 0 : (current + 1) as Stage));
+    goToStage(stage === 3 ? 0 : (stage + 1) as Stage);
   }
 
   return (
     <section className="section journey-section" id="whatsapp" aria-labelledby="journey-title">
       <div className="journey-glow" aria-hidden="true" />
-      <div className="journey-intro">
+      <div className="journey-intro" data-reveal>
         <div>
           <p className="journey-overline"><span aria-hidden="true">✳</span> {t.eyebrow}</p>
           <h2 id="journey-title">{t.titleOne} <em>{t.titleTwo}</em></h2>
         </div>
         <p className="journey-lede">{t.intro}</p>
       </div>
-      <div className="journey-stage" data-stage={stage}>
+      <p className="journey-payment-note">{t.note}</p>
+      <div ref={trackRef} className="journey-scroll-track">
+      <div ref={sceneRef} className="journey-stage" data-stage={stage}>
         <div className="journey-controls">
           <span className="journey-scene-label"><span className="journey-live-dot" aria-hidden="true" /> {t.label}</span>
-          <span className="journey-progress" aria-hidden="true">0{stage + 1} <i /> 04</span>
+          <div className="journey-controls-end"><span className="journey-progress" aria-hidden="true">0{stage + 1} <i /> 04</span><a className="journey-skip" href="#dashboard">{language === "fr" ? "Passer la démonstration" : "Skip walkthrough"}<span aria-hidden="true">↘</span></a></div>
         </div>
+        <div className="journey-current-step" aria-live="polite"><span aria-hidden="true">0{stage + 1}</span><div><strong>{t.steps[stage][0]}</strong><p>{t.steps[stage][1]}</p></div></div>
         <div className="journey-grid">
           <div className="journey-story">
             <div className="journey-step-list" role="group" aria-label={t.hint}>
               {t.steps.map(([title, description], index) => (
                 <button key={title} type="button"
                   className={stage === index ? "journey-step is-active" : "journey-step"}
-                  onClick={() => setStage(index as Stage)}
+                  onClick={() => goToStage(index as Stage)}
                   aria-pressed={stage === index}>
                   <span className="journey-step-index">0{index + 1}</span>
                   <span className="journey-step-content"><strong>{title}</strong><small>{description}</small></span>
@@ -143,12 +150,12 @@ export default function CommerceJourney({ language }: { language: Language }) {
                     </button>
                   ))}
                 </div>
-                <button type="button" className="journey-product-action" onClick={() => setStage(2)}>
+                <button type="button" className="journey-product-action" onClick={() => goToStage(2)}>
                   <span aria-hidden="true">◉</span> {t.prepare} <span aria-hidden="true">↗</span>
                 </button>
               </div>
             </div>
-            <div className={stage >= 2 ? "journey-message is-visible" : "journey-message"}>
+            <div className={stage >= 2 ? "journey-message is-visible" : "journey-message"} aria-hidden={stage < 2}>
               <div className="journey-message-header">
                 <span className="journey-message-logo" aria-hidden="true">◉</span>
                 <div><strong>WhatsApp</strong><small>{t.messageReady}</small></div>
@@ -168,6 +175,7 @@ export default function CommerceJourney({ language }: { language: Language }) {
           <span>{t.footer}</span>
           <a href={merchantAppHref()}>{t.create} <span aria-hidden="true">↗</span></a>
         </div>
+      </div>
       </div>
     </section>
   );

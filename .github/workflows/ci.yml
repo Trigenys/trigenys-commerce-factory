@@ -55,6 +55,14 @@ jobs:
         with:
           name: commerce-landing
           path: artifacts/landing/
+      - name: Verify motion, scrollytelling and shared page branding
+        run: npm run test:motion-brand
+      - name: Retain motion and shared-brand screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: commerce-motion-brand
+          path: artifacts/motion-brand/
       - name: Verify storefront themes and media transparency
         run: npm run test:themes
       - name: Read-only live runtime diagnostic

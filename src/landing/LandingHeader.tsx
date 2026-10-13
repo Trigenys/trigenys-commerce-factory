@@ -7,15 +7,18 @@ const navigation = {
   en: [["#how", "How it works"], ["#showcase", "Examples"], ["/themes", "Themes"], ["#whatsapp", "WhatsApp"], ["#dashboard", "Manage"], ["#pricing", "Offers"]]
 } as const;
 
-export default function LandingHeader({ language, onLanguageChange }: {
-  language: LandingLanguage; onLanguageChange: (language: LandingLanguage) => void;
+export default function LandingHeader({ language, onLanguageChange, home = true, support = false, className = "", ctaClassName = "" }: {
+  language: LandingLanguage; onLanguageChange?: (language: LandingLanguage) => void;
+  home?: boolean; support?: boolean; className?: string; ctaClassName?: string;
 }) {
   const fr = language === "fr";
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const links = navigation[language];
+  const links: readonly (readonly [string, string])[] = support
+    ? [["/", fr ? "Accueil" : "Home"], ["/themes", fr ? "Thèmes" : "Themes"], ["/help", fr ? "Aide" : "Help"], ["/contact", "Contact"]]
+    : navigation[language].map(([href, label]) => [!home && href.startsWith("#") ? "/" + href : href, label] as const);
 
   useEffect(() => {
     const update = () => setScrolled(window.scrollY > 16);
@@ -44,11 +47,11 @@ export default function LandingHeader({ language, onLanguageChange }: {
     };
   }, [open]);
 
-  return <header ref={headerRef} className="site-header landing-header" data-scrolled={scrolled}
+  return <header ref={headerRef} className={"site-header landing-header " + className} data-scrolled={scrolled}
     onBlur={event => {
       if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) setOpen(false);
     }}>
-    <a className="brand" href="#top" aria-label={fr ? "Accueil Commerce Factory" : "Commerce Factory home"} onClick={() => setOpen(false)}>
+    <a className="brand" href={home ? "#top" : "/"} aria-label={fr ? "Accueil Commerce Factory" : "Commerce Factory home"} onClick={() => setOpen(false)}>
       <img className="brand-logo" src="/commerce-factory-logo-v3.png?v=3" alt="Commerce Factory by Trigenys" width={500} height={159} />
     </a>
     <nav className="desktop-nav" aria-label={fr ? "Navigation principale" : "Primary navigation"}>
@@ -56,12 +59,12 @@ export default function LandingHeader({ language, onLanguageChange }: {
     </nav>
     <div className="header-actions">
       <a className="header-login" href={merchantAppHref()}>{fr ? "Connexion" : "Log in"}</a>
-      <div className="language-switch" role="group" aria-label={fr ? "Langue" : "Language"}>
+      {onLanguageChange && <div className="language-switch" role="group" aria-label={fr ? "Langue" : "Language"}>
         {(["fr", "en"] as const).map(value => <button type="button" key={value}
           className={value === language ? "active" : ""} aria-pressed={value === language}
           onClick={() => onLanguageChange(value)}>{value.toUpperCase()}</button>)}
-      </div>
-      <a className="button button-primary button-compact" href={merchantAppHref()}>{fr ? "Créer ma boutique" : "Create my store"}<span aria-hidden="true">↗</span></a>
+      </div>}
+      <a className={"button button-primary button-compact " + ctaClassName} href={merchantAppHref()}>{fr ? "Créer ma boutique" : "Create my store"}<span aria-hidden="true">↗</span></a>
       <button ref={menuButtonRef} className="landing-menu-toggle" type="button"
         aria-label={fr ? (open ? "Fermer le menu" : "Ouvrir le menu") : (open ? "Close menu" : "Open menu")}
         aria-expanded={open} aria-controls="landing-mobile-menu" onClick={() => setOpen(value => !value)}>

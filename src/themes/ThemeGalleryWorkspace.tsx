@@ -15,7 +15,8 @@ const sampleProducts: PublicStorefront["products"] = [
   { id: "sample-tech", name: "Sélection connectée", slug: "selection-connectee", description: "Les essentiels d’un quotidien connecté.", price: "45000", currencyCode: "XAF", category: "Électronique", stockLabel: "Disponible", imageUrls: ["/landing/electronics-960.webp"], variants: [] }
 ];
 
-export default function ThemeGalleryWorkspace() {
+export default function ThemeGalleryWorkspace({ language = "fr" }: { language?: "fr" | "en" }) {
+  const fr = language === "fr";
   const params = new URLSearchParams(window.location.search);
   const path = window.location.pathname.split("/").filter(Boolean);
   const initial = path[1] || params.get("theme");
@@ -35,9 +36,9 @@ export default function ThemeGalleryWorkspace() {
     const url = new URL(window.location.href); url.pathname = "/themes/" + value; url.search = ""; url.hash = ""; window.history.replaceState(null, "", url);
   }
   return <div className="theme-gallery-workspace">
-      <aside className="theme-gallery-controls"><ThemePicker value={theme} settings={settings} language="fr" onChange={changeTheme} /><a className="theme-gallery-cta" href={merchantAppHref()}>Créer ma boutique avec Commerce Factory ↗</a>{merchantAppHref() !== "/app" ? <p className="theme-gallery-merchant-note">Création et connexion sur le site principal. Ces nouveaux styles sont encore en aperçu.</p> : null}</aside>
-      <section className="theme-gallery-preview" aria-label="Aperçu du thème">
-        <div className="theme-gallery-preview-label"><div><strong>{resolveStoreTheme(theme, settings).name}</strong><span>Catalogue fictif pour comparer les présentations</span></div><a href={"/themes/" + theme}>Lien vers ce thème ↗</a></div>
+      <aside className="theme-gallery-controls"><ThemePicker value={theme} settings={settings} language={language} onChange={changeTheme} /><a className="theme-gallery-cta" href={merchantAppHref()}>{fr ? "Créer ma boutique avec Commerce Factory" : "Create my store with Commerce Factory"} ↗</a>{merchantAppHref() !== "/app" ? <p className="theme-gallery-merchant-note">{fr ? "Création et connexion sur le site principal. Ces nouveaux styles sont encore en aperçu." : "Create an account and log in on the main site. These new styles are still previews."}</p> : null}</aside>
+      <section className="theme-gallery-preview" aria-label={fr ? "Aperçu du thème" : "Theme preview"}>
+        <div className="theme-gallery-preview-label"><div><strong>{resolveStoreTheme(theme, settings).name}</strong><span>{fr ? "Catalogue fictif pour comparer les présentations" : "Fictional catalog for comparing layouts"}</span></div><a href={"/themes/" + theme}>{fr ? "Lien vers ce thème" : "Link to this theme"} ↗</a></div>
         <div onClickCapture={(event) => {
           const link = (event.target as Element).closest("a"); if (!link) return;
           if (link.getAttribute("href") === "#catalog") return;
@@ -46,7 +47,7 @@ export default function ThemeGalleryWorkspace() {
           const parts = url.pathname.split("/").filter(Boolean);
           event.preventDefault(); setProductSlug(parts[2] === "p" ? parts[3] || null : url.searchParams.get("product")); window.history.replaceState(null, "", url);
         }}>
-          <StorefrontView storefront={storefront} language="fr" productSlug={productSlug} homeHref={"/themes/" + theme} productHref={(product) => "/themes/" + theme + "/p/" + product.slug} preview />
+          <StorefrontView storefront={storefront} language={language} productSlug={productSlug} homeHref={"/themes/" + theme} productHref={(product) => "/themes/" + theme + "/p/" + product.slug} preview />
         </div>
       </section>
   </div>;

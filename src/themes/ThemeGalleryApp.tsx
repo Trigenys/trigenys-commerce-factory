@@ -1,5 +1,8 @@
+import { lazy, Suspense, useEffect, useState } from "react";
+import LandingHeader from "../landing/LandingHeader";
+import BrandFooter from "../brand/BrandFooter";
+import { preferredLanguage, rememberLanguage } from "../lib/language";
 import { merchantAppHref } from "../merchant-navigation";
-import { lazy, Suspense, useEffect } from "react";
 import { storeThemeIds } from "../../shared/store-themes";
 import "./theme-gallery-shell.css";
 
@@ -8,16 +11,24 @@ import "./theme-gallery-shell.css";
 const ThemeGalleryWorkspace = lazy(() => import("./ThemeGalleryWorkspace"));
 
 export default function ThemeGalleryApp() {
+  const [language, setLanguage] = useState(preferredLanguage);
+  const fr = language === "fr";
   useEffect(() => {
-    document.title = "Bibliothèque de thèmes — Commerce Factory";
+    document.title = (fr ? "Bibliothèque de thèmes" : "Theme library") + " — Commerce Factory";
+    document.documentElement.lang = language;
+    rememberLanguage(language);
     const robots = document.head.querySelector('meta[name="robots"]');
     robots?.setAttribute("content", "noindex,follow");
-  }, []);
-  return <div className="theme-gallery-app">
-    <header className="theme-gallery-header"><a href="/">Commerce Factory <span>Thèmes</span></a><a className="theme-gallery-create" href={merchantAppHref()}>Créer ma boutique ↗</a></header>
-    <section className="theme-gallery-intro"><span>LA BIBLIOTHÈQUE COMMERCE FACTORY</span><h1>{storeThemeIds.length - 1} styles.<br />Une boutique à votre image.</h1><p>Mode, sport, beauté, maison, alimentation… Explorez les univers, personnalisez leur style et ouvrez les fiches produits dans l’aperçu.</p></section>
+  }, [fr, language]);
+  return <div className="theme-gallery-app brand-page">
+    <a className="skip-link" href="#page-main">{fr ? "Aller au contenu" : "Skip to content"}</a>
+    <LandingHeader language={language} onLanguageChange={setLanguage} home={false} className="theme-gallery-header" />
+    <main id="page-main" tabIndex={-1}>
+    <section className="theme-gallery-intro"><span>{fr ? "LA BIBLIOTHÈQUE COMMERCE FACTORY" : "THE COMMERCE FACTORY LIBRARY"}</span><h1>{storeThemeIds.length} {fr ? "thèmes." : "themes."}<em>{fr ? "Une boutique à votre image." : "A store with your identity."}</em></h1><p>{fr ? "Mode, sport, beauté, maison, alimentation… Explorez les univers, personnalisez leur style et ouvrez les fiches produits dans l’aperçu." : "Fashion, sports, beauty, interiors, food… Explore the styles, customize them and open product details in the preview."}</p><a className="theme-gallery-create button button-primary" href={merchantAppHref()}>{fr ? "Créer ma boutique" : "Create my store"}<span aria-hidden="true">↗</span></a></section>
     <Suspense fallback={<div className="theme-gallery-loading" role="status">Chargement des aperçus…</div>}>
-      <ThemeGalleryWorkspace />
+      <ThemeGalleryWorkspace language={language} />
     </Suspense>
+    </main>
+    <BrandFooter language={language} />
   </div>;
 }

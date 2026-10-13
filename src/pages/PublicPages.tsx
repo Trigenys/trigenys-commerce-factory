@@ -1,22 +1,21 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { merchantAppHref } from "../merchant-navigation";
 import { apiBaseUrl } from "../admin/runtime";
 import { timedFetch } from "../lib/requests";
 import { preferredLanguage, rememberLanguage } from "../lib/language";
 import { useDraft } from "../lib/drafts";
 import type { PublicSupportTicket } from "../../shared/commerce-journeys";
+import LandingHeader from "../landing/LandingHeader";
+import BrandFooter from "../brand/BrandFooter";
 import "../admin/admin.css";
 import "./public-pages.css";
+import "../brand/info-brand.css";
 
 export function PublicLayout({children,language,onLanguage}: {children:ReactNode;language:"fr"|"en";onLanguage?:(value:"fr"|"en")=>void}) {
-  return <div className="info-shell">
+  return <div className="info-shell brand-page">
     <a className="skip-link" href="#page-main">{language==="fr" ? "Aller au contenu" : "Skip to content"}</a>
-    <header className="info-header"><a href="/" aria-label="Commerce Factory"><img src="/commerce-factory-logo-v3.png?v=3" alt="Commerce Factory" /></a>
-      <nav aria-label={language==="fr" ? "Navigation" : "Navigation"}><a href="/help">{language==="fr" ? "Aide" : "Help"}</a><a href="/contact">Contact</a><a href={merchantAppHref()}>{language==="fr" ? "Mon espace" : "My workspace"}</a></nav>
-      {onLanguage && <div className="admin-language" role="group" aria-label={language==="fr" ? "Langue" : "Language"}>{(["fr","en"] as const).map(value=><button type="button" key={value} aria-pressed={value===language} className={value===language ? "active" : ""} onClick={()=>onLanguage(value)}>{value.toUpperCase()}</button>)}</div>}
-    </header>
+    <LandingHeader language={language} onLanguageChange={onLanguage} home={false} support className="info-header" />
     <main id="page-main" className="info-content" tabIndex={-1}>{children}</main>
-    <footer className="info-footer"><a href="/help">{language==="fr" ? "Aide" : "Help"}</a><a href="/contact">Contact</a><a href="/privacy">{language==="fr" ? "Confidentialité" : "Privacy"}</a><a href="/terms">{language==="fr" ? "Conditions" : "Terms"}</a><span>Commerce Factory · Trigenys</span></footer>
+    <BrandFooter language={language} className="info-footer" />
   </div>;
 }
 
