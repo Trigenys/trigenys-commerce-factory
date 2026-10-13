@@ -154,7 +154,7 @@ try {
     await page.goto(base); await ready(page);
     await page.mouse.move(width - 1, 350); await page.mouse.wheel(1600, 0);
     await overflow(page, "edges-" + width);
-    await page.evaluate(() => document.getElementById("showcase").scrollIntoView({ behavior: "instant" }));
+    await page.locator("#showcase").evaluate(node => node.scrollIntoView({ behavior: "instant" }));
     await overflow(page, "showcase-edges-" + width);
     await screenshot(page, "edges-" + width);
     await context.close();

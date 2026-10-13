@@ -4,6 +4,7 @@ import LandingHeader from "./landing/LandingHeader";
 import type { LandingLanguage } from "./landing/content";
 import BrandFooter from "./brand/BrandFooter";
 import "./landing/landing-shell.css";
+import "./landing/carousel.css";
 
 const LandingContent = lazy(() => import("./landing/LandingContent"));
 const metadata = {
@@ -21,6 +22,18 @@ const metadata = {
 
 export default function App() {
   const shellRef = useRef<HTMLDivElement>(null);
+  const [contentReady, setContentReady] = useState(() => Boolean(window.location.hash && window.location.hash !== "#top"));
+  useEffect(() => {
+    if (contentReady) return;
+    // Give the hero a painted frame before loading the longer illustrated sections.
+    // Direct links and immediate navigation still load their destination at once.
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => setContentReady(true));
+    });
+    const navigate = () => setContentReady(true);
+    window.addEventListener("hashchange", navigate);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener("hashchange", navigate); };
+  }, [contentReady]);
   const [language, setLanguage] = useState<LandingLanguage>(() => {
     try { return localStorage.getItem("commerce-factory-language") === "en" ? "en" : "fr"; }
     catch { return "fr"; }
@@ -43,9 +56,9 @@ export default function App() {
     <main id="top" tabIndex={-1}>
       <CommerceHero language={language} />
 
-      <Suspense fallback={<div role="status" style={{ minHeight: "100vh", padding: "2rem" }}>{language === "fr" ? "Chargement…" : "Loading…"}</div>}>
+      {contentReady ? <Suspense fallback={<div role="status" style={{ minHeight: "100vh", padding: "2rem" }}>{language === "fr" ? "Chargement…" : "Loading…"}</div>}>
         <LandingContent language={language} shellRef={shellRef} />
-      </Suspense>
+      </Suspense> : <div role="status" style={{ minHeight: "100vh", padding: "2rem" }}>{language === "fr" ? "Chargement…" : "Loading…"}</div>}
     </main>
     <BrandFooter language={language} home />
   </div>;

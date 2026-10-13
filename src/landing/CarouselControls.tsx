@@ -1,4 +1,3 @@
-import "./carousel.css";
 import type { useCarousel } from "./useCarousel";
 
 type Carousel = ReturnType<typeof useCarousel>;
