@@ -2,9 +2,6 @@ export type LandingLanguage = "fr" | "en";
 
 export const landingCopy = {
   fr: {
-    metaTitle: "Commerce Factory par Trigenys",
-    metaDescription: "Créez une boutique à votre image, présentez vos produits et recevez des demandes précises sur WhatsApp. Thèmes, catalogue et gestion, pensés pour le mobile.",
-    skip: "Aller au contenu",
     create: "Créer ma boutique",
     howLabel: "01 / Votre boutique prend forme",
     howTitle: "De vos produits",
@@ -60,7 +57,12 @@ export const landingCopy = {
       { name: "La boutique", status: "Disponible en bêta", price: "Accès gratuit", body: "Pour présenter vos produits et commencer à recevoir des demandes.", features: ["Votre catalogue et votre lien de boutique", "Thèmes, couleurs et logo personnalisables", "Demandes WhatsApp et suivi des commandes", "Statistiques essentielles"], cta: "Créer ma boutique", available: true },
       { name: "Les intégrations", status: "En préparation", price: "Offre payante à venir", body: "Pour relier votre boutique à vos applications et à vos assistants IA.", features: ["API pour vos applications", "MCP pour vos assistants IA", "SDK pour les développeurs", "Accès et quotas adaptés à vos boutiques"], cta: "Discuter d’une intégration", available: false }
     ],
-    offerNote: "Les fonctions d’intégration sont prévues pour une prochaine version.",
+    offerNote: "Modèle envisagé : SDK téléchargeable gratuitement ; accès privé API/MCP payant. Les tarifs et quotas restent à définir avant souscription.",
+    billingFacts: [
+      ["Aujourd’hui : 0 FCFA", "L’accès à la bêta est gratuit et la création de compte ne demande pas de carte bancaire."],
+      ["Avant toute offre payante", "Prix en FCFA, période de facturation, boutiques incluses, quotas et dépassements seront affichés avant votre souscription."],
+      ["Les coûts séparés", "Vos services de paiement et vos éventuels abonnements à des assistants IA ont leurs propres tarifs. Ils ne sont pas inclus dans l’accès Commerce Factory."]
+    ],
     faqLabel: "Les réponses, avant de commencer",
     faqTitle: "Et concrètement ?",
     faqBody: "Votre façon de vendre compte. Voici comment la boutique s’y adapte.",
@@ -78,15 +80,8 @@ export const landingCopy = {
     launchBody: "Vos produits méritent mieux qu’une longue suite de messages. Donnez-leur une boutique que vos clients peuvent parcourir.",
     launchSecondary: "Explorer les thèmes d’abord",
     launchNote: "Votre identité. Votre catalogue. Votre relation client.",
-    footerBody: "Des boutiques à votre image. Des conversations qui commencent avec le bon produit.",
-    footerStatus: "Version bêta · Un produit Trigenys",
-    footerLinks: ["Comment ça marche", "Exemples", "Thèmes", "Offres", "Aide", "Contact", "Confidentialité", "Conditions"],
-    copyright: "Commerce Factory par Trigenys"
   },
   en: {
-    metaTitle: "Commerce Factory by Trigenys",
-    metaDescription: "Build a store with your own identity, showcase your products and receive useful WhatsApp inquiries. Themes, catalog and management, designed for mobile.",
-    skip: "Skip to content",
     create: "Create my store",
     howLabel: "01 / Your store takes shape",
     howTitle: "From your products",
@@ -142,7 +137,12 @@ export const landingCopy = {
       { name: "The store", status: "Available in beta", price: "Free access", body: "To showcase your products and start receiving inquiries.", features: ["Your catalog and store link", "Customizable themes, colors and logo", "WhatsApp inquiries and order tracking", "Essential analytics"], cta: "Create my store", available: true },
       { name: "The integrations", status: "In preparation", price: "Paid offer coming later", body: "To connect your store to your applications and AI assistants.", features: ["API for your applications", "MCP for your AI assistants", "SDK for developers", "Access and quotas tailored to your stores"], cta: "Discuss an integration", available: false }
     ],
-    offerNote: "Integration features are planned for a future release.",
+    offerNote: "Planned model: free SDK download; paid access to private API/MCP capabilities. Prices and quotas are to be defined before subscription.",
+    billingFacts: [
+      ["Today: 0 FCFA", "Beta access is free and account creation does not request a bank card."],
+      ["Before any paid offer", "Prices in FCFA, billing period, included stores, quotas and overage costs will be shown before you subscribe."],
+      ["Separate costs", "Your payment services and any AI assistant subscriptions have their own prices. They are not included in Commerce Factory access."]
+    ],
     faqLabel: "Answers before you start",
     faqTitle: "How does it work in practice?",
     faqBody: "The way you sell matters. Here is how your store fits into it.",
@@ -160,10 +160,6 @@ export const landingCopy = {
     launchBody: "Your products deserve more than a long chain of messages. Give them a store your customers can explore.",
     launchSecondary: "Explore the themes first",
     launchNote: "Your identity. Your catalog. Your customer relationship.",
-    footerBody: "Stores with your own identity. Conversations that start with the right product.",
-    footerStatus: "Beta version · A Trigenys product",
-    footerLinks: ["How it works", "Examples", "Themes", "Offers", "Help", "Contact", "Privacy", "Terms"],
-    copyright: "Commerce Factory by Trigenys"
   }
 } as const;
 

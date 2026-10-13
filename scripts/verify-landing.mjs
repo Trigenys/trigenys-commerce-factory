@@ -115,13 +115,16 @@ try {
       await page.evaluate(id => document.getElementById(id).scrollIntoView({ behavior: "instant", block: "start" }), id);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), id + ": horizontal overflow");
       if (id === "showcase") {
-        for (const image of await page.locator(".landing-concept img").all()) {
+        for (let slide = 0; slide < 3; slide++) {
+          await page.locator(".showcase-carousel-picker button").nth(slide).click();
+          const image = page.locator(".landing-concept:not([hidden]) img");
           await image.scrollIntoViewIfNeeded();
-          await page.waitForFunction(() => [...document.querySelectorAll(".landing-concept img")].filter(image => {
+          await page.waitForFunction(() => [...document.querySelectorAll(".landing-concept:not([hidden]) img")].filter(image => {
             const box = image.getBoundingClientRect();
             return box.bottom > 0 && box.top < innerHeight;
           }).every(image => image.complete && image.naturalWidth > 0));
         }
+        await page.locator(".showcase-carousel-picker button").first().click();
         await page.evaluate(() => document.getElementById("showcase").scrollIntoView({ behavior: "instant", block: "start" }));
       }
       if (language === "fr") await page.screenshot({ path: output + "/" + id + "-" + width + ".png" });

@@ -5,9 +5,10 @@ import App from "./App";
 import ThemeGalleryApp from "./themes/ThemeGalleryApp";
 import { merchantAppHref } from "./merchant-navigation";
 import "./styles.css";
+import "./brand/brand.css";
 
-// The public landing must not download merchant-admin, storefront or
-// personalized-demo code before the visitor chooses one of those routes.
+// The landing and theme-library introduction paint with the entry bundle.
+// Merchant and storefront features are downloaded on their own routes.
 const PublicPages = lazy(() => import("./pages/PublicPages"));
 const OrderTrackingPage = lazy(() => import("./storefront/OrderTrackingPage"));
 const AdminApp = lazy(() => import("./admin/AdminApp"));

@@ -108,7 +108,7 @@ try {
   await page.locator(".theme-gallery-loading").waitFor();
   assert.equal(await page.locator(".theme-gallery-create").isVisible(), true);
   assert.equal(await page.locator(".theme-gallery-create").getAttribute("href"), "/app");
-  assert.ok((await page.locator(".theme-gallery-intro h1").textContent()).includes("24 styles"));
+  assert.equal(parseInt(await page.locator(".theme-gallery-intro h1").textContent(), 10), 25);
   releaseWorkspace();
   await page.unroute("**/src/themes/ThemeGalleryWorkspace.tsx*");
   await page.locator(".theme-choice").first().waitFor();

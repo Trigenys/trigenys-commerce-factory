@@ -1,5 +1,7 @@
 import { merchantAppHref } from "../merchant-navigation";
-import { useState } from "react";
+import { useRef } from "react";
+import CarouselControls from "../landing/CarouselControls";
+import { useCarousel } from "../landing/useCarousel";
 import "./commerce-hero.css";
 
 type Language = "fr" | "en";
@@ -112,15 +114,16 @@ const copy = {
 } as const;
 
 export default function CommerceHero({ language }: { language: Language }) {
-  const [selected, setSelected] = useState<HeroProduct["id"]>("fashion");
-  const [hasInteracted, setHasInteracted] = useState(false);
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const carousel = useCarousel(sceneRef, examples.length);
   const t = copy[language];
-  const example = examples.find((item) => item.id === selected) ?? examples[0];
+  const example = examples[carousel.index];
+  const selected = example.id;
   const message = t.inquiry + " « " + example.product[language] + " » (" +
     example.variant[language] + ") — " + example.price[language] + ". " + t.inquiryEnd;
 
   return (
-    <section className="section cfh-section" aria-labelledby="cfh-heading">
+    <section className="section cfh-section" aria-labelledby="cfh-heading" data-parallax-anchor>
       <div className="cfh-orb cfh-orb-one" aria-hidden="true" />
       <div className="cfh-orb cfh-orb-two" aria-hidden="true" />
 
@@ -144,13 +147,17 @@ export default function CommerceHero({ language }: { language: Language }) {
           </div>
         </div>
 
-        <div className={"cfh-stage cfh-stage--" + selected} role="group" aria-label={t.discover}>
+        <div ref={sceneRef} className={"cfh-stage cfh-stage--" + selected} role="group" aria-label={t.discover}
+          aria-roledescription="carousel" data-playing={carousel.playing} data-running={carousel.running}
+          onMouseEnter={carousel.enter} onMouseLeave={carousel.leave} onFocusCapture={carousel.focus}>
+          <CarouselControls carousel={carousel} language={language} className="cfh-carousel-controls" />
           <div className="cfh-stage-header">
-            <span className="cfh-stage-index">CF / 001</span>
+            <span className="cfh-stage-index">CF / 00{carousel.index + 1}</span>
             <span className="cfh-stage-demo"><i aria-hidden="true" />{t.screen}</span>
           </div>
-          <div className="cfh-ghost" aria-hidden="true">SHOW / SELL</div>
-          <div className="cfh-photo-wrap">
+          <div className="cfh-ghost" aria-hidden="true" data-parallax="30">SHOW / SELL</div>
+          <div className="cfh-photo-wrap" role="group" aria-roledescription="slide" aria-label={example.shop + " — " + (carousel.index + 1) + " / 3"}>
+            <div className="cfh-photo-window"><div className="cfh-photo-plane" data-parallax="18">
             <picture className="cfh-photo-picture" key={example.id}>
               <source
                 type="image/avif"
@@ -158,7 +165,7 @@ export default function CommerceHero({ language }: { language: Language }) {
                 sizes="(max-width: 600px) 85vw, (max-width: 850px) 61vw, 46vw"
               />
               <img
-                className={hasInteracted ? "cfh-photo cfh-photo-swap" : "cfh-photo"}
+                className={carousel.hasChanged ? "cfh-photo cfh-photo-swap" : "cfh-photo"}
                 src={example.image}
                 srcSet={`${example.webp480} 480w, ${example.image} ${example.width}w`}
                 sizes="(max-width: 600px) 85vw, (max-width: 850px) 61vw, 46vw"
@@ -170,6 +177,7 @@ export default function CommerceHero({ language }: { language: Language }) {
                 decoding="async"
               />
             </picture>
+            </div></div>
             <span className="cfh-category-vertical">{example.category[language]} / 2026</span>
           </div>
 
@@ -187,7 +195,7 @@ export default function CommerceHero({ language }: { language: Language }) {
           <div className="cfh-message">
             <div className="cfh-message-head"><span className="cfh-message-logo" aria-hidden="true">◉</span><strong>WhatsApp</strong><span aria-hidden="true">✓</span></div>
             <span className="cfh-message-label">{t.order}</span>
-            <p aria-live="polite">{message}</p>
+            <p aria-live={carousel.playing ? "off" : "polite"}>{message}</p>
             <small>{t.chatMeta}</small>
           </div>
 
@@ -198,7 +206,7 @@ export default function CommerceHero({ language }: { language: Language }) {
                 type="button"
                 className={"cfh-pick" + (selected === item.id ? " is-active" : "")}
                 aria-pressed={selected === item.id}
-                onClick={() => { setSelected(item.id); setHasInteracted(true); }}
+                onClick={() => carousel.select(i)}
               >
                 <span>0{i + 1}</span><strong>{item.category[language]}</strong>
                 <span aria-hidden="true">↗</span>

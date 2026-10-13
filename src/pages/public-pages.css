@@ -1,8 +1,4 @@
 .info-shell { min-height:100vh; background:#f5f7f6; color:#15211d; }
-.info-header { position:sticky; top:0; z-index:60; display:flex; gap:24px; align-items:center; justify-content:space-between; padding:18px clamp(18px,5vw,70px); background:#fff; border-bottom:1px solid #dfe7e2; flex-wrap:wrap; }
-.info-header img { width:168px; height:48px; object-fit:contain; }
-.info-header nav { display:flex; gap:18px; flex-wrap:wrap; }
-.info-header a,.info-footer a { color:#006948; font-weight:700; text-decoration:underline; text-underline-offset:4px; padding:8px 0; }
 .info-content { max-width:960px; margin:auto; padding:clamp(30px,6vw,80px) 24px; min-height:65vh; }
 .info-content h1 { font-size:clamp(32px,5vw,54px); line-height:1.1; letter-spacing:-.04em; margin:16px 0 24px; }
 .info-content h2 { font-size:23px; line-height:1.3; }
@@ -12,8 +8,6 @@
 .info-card summary { font-weight:800; cursor:pointer; line-height:1.5; min-height:32px; }
 .info-card textarea { width:100%; resize:vertical; font:inherit; padding:12px; border:1px solid #a8bbb0; border-radius:10px; }
 .info-content .admin-primary,.info-content .admin-secondary { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; margin:8px 12px 8px 0; min-height:44px; }
-.info-footer { max-width:1200px; margin:auto; padding:28px 24px; display:flex; flex-wrap:wrap; gap:24px; border-top:1px solid #dfe7e2; }
-.info-footer span { color:#43554b; }
 .preserve-lines { white-space:pre-wrap; }
 .recovery-state { max-width:720px; margin:auto; padding:80px 24px; color:#15211d; }
 .recovery-state h1 { font-size:clamp(28px,4vw,44px); line-height:1.15; }
@@ -27,4 +21,4 @@
 .admin-language button { min-width:44px; min-height:36px; height:auto; font-size:12px; }
 .auth-switch { min-height:44px; display:inline-flex; align-items:center; justify-content:center; }
 :is(.info-shell,.admin-shell) :is(a,button,input,textarea,select,summary):focus-visible { outline:3px solid #9d0b43; outline-offset:4px; }
-@media (max-width:600px) { .info-header { gap:12px; } .info-header nav { width:100%; order:3; font-size:13px; } .info-header img { width:145px; } .info-content { padding:35px 18px; } .info-card {padding:20px;} }
+@media (max-width:600px) { .info-content { padding:35px 18px; } .info-card { padding:20px; } }

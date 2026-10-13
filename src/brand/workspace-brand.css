@@ -1,0 +1,45 @@
+
+.admin-shell.brand-page { background:radial-gradient(ellipse at 0 0,#f7e6d4,transparent 38rem),var(--surface); display:flex; flex-direction:column; }
+.admin-shell.brand-page>.merchant-workspace-shell { width:100%; flex:1; }
+.admin-shell.brand-page .admin-header { background:rgba(251,245,235,.96); border-bottom-color:var(--landing-line); }
+.admin-shell.brand-page .admin-brand img { width:168px; height:auto; }
+.admin-shell.brand-page .admin-header-actions :is(a,button) { min-height:44px; display:inline-flex; align-items:center; }
+.admin-shell.brand-page .admin-language { background:var(--landing-paper); }
+.admin-shell.brand-page .admin-language button.active { background:var(--ink); }
+.admin-shell.brand-page .admin-eyebrow { color:var(--landing-coral); }
+.admin-shell.brand-page :is(.auth-copy h1,.merchant-progress h1,.workspace-section h1) { letter-spacing:-.045em; color:var(--ink); }
+.admin-shell.brand-page .workspace-section h1 { font-family:"Space Grotesk",sans-serif; }
+.admin-shell.brand-page :is(.auth-card,.merchant-form-card,.info-card,.catalog-panel,.analytics-panel,.settings-card) { background:var(--landing-paper); border-color:var(--admin-line); box-shadow:0 20px 45px rgba(20,45,37,.045); }
+.admin-shell.brand-page .auth-tabs { background:#eee7d7; }
+.admin-shell.brand-page .auth-tabs button.active { background:var(--ink); color:#fffdf8; box-shadow:none; }
+.admin-shell.brand-page .auth-benefits span { background:#eae8d8; color:var(--ink); border:1px solid var(--admin-line); }
+.admin-shell.brand-page .admin-form label { font-size:13px; }
+.admin-shell.brand-page .admin-form :is(input,textarea,select) { font-size:14px; background:#fffefa; }
+.admin-shell.brand-page .admin-form label>small { font-size:11px; }
+.admin-shell.brand-page .admin-primary { background:var(--ink); min-height:48px; box-shadow:none; }
+.admin-shell.brand-page .admin-primary:hover:not(:disabled) { background:var(--primary-2); }
+.admin-shell.brand-page .admin-secondary { background:transparent; border-color:#8f9d8e; }
+.admin-shell.brand-page .merchant-sidebar { background:#f3eddf; border-color:var(--admin-line); }
+.admin-shell.brand-page .merchant-sidebar nav a { color:var(--muted); }
+.admin-shell.brand-page .merchant-sidebar nav a[aria-current="page"] { background:var(--ink); color:#fffdf8; box-shadow:none; }
+.admin-shell.brand-page .workspace-section p { color:var(--muted); }
+.admin-shell.brand-page :is(.workspace-section a,.workspace-help,.recovery-actions a) { color:var(--admin-primary); }
+.admin-shell.brand-page :is(.launch-checklist li,.catalog-card,.analytics-kpis article) { background:#fffefa; border-color:var(--admin-line); }
+.admin-shell.brand-page :is(.catalog-thumb,.catalog-media-item) { background:#eee7d7; }
+.admin-shell.brand-page .catalog-card-copy :is(small,p) { font-size:11px; }
+.admin-shell.brand-page .catalog-status { font-size:10px; }
+.admin-shell.brand-page .analytics-intent-note { background:#f0e7d8; border-color:var(--admin-line); }
+.admin-shell.brand-page .analytics-intent-note strong { color:var(--ink); font-size:12px; }
+.admin-shell.brand-page .analytics-intent-note span { font-size:11px; }
+.admin-shell.brand-page .analytics-kpis span { font-size:11px; }
+.admin-shell.brand-page .analytics-table-wrap :is(th,td) { font-size:12px; }
+.admin-shell.brand-page .recovery-actions button { background:var(--ink); }
+.workspace-footer { padding:22px clamp(18px,4vw,48px); margin-top:auto; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px 24px; background:#eee7d9; border-top:1px solid var(--admin-line); color:var(--muted); font-size:11px; }
+.workspace-footer nav { display:flex; flex-wrap:wrap; gap:4px 20px; }
+.workspace-footer a { display:flex; align-items:center; min-height:44px; color:var(--ink); }
+.workspace-footer a:hover { color:var(--landing-coral); }
+.workspace-footer small { font-size:inherit; }
+@media (max-width:760px) {
+  .admin-shell.brand-page .admin-brand img { width:143px; } }
+@media (max-width:760px) {
+  .workspace-footer { padding-block:18px; } }
