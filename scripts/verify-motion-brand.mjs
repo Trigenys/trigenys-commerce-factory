@@ -156,6 +156,22 @@ try {
   assert.ok(await page.locator(".journey-message-reply").isVisible());
   await axe(page, "reduced-motion");
   await manual.close();
+  const laptop = await browser.newContext({ viewport: { width: 1366, height: 768 }, reducedMotion: "no-preference" });
+  const laptopPage = await laptop.newPage(); currentPage = laptopPage;
+  await laptopPage.goto(base); await ready(laptopPage);
+  await laptopPage.locator('.journey-scroll-track[data-scroll-enabled="true"]').waitFor();
+  await laptopPage.locator(".journey-scroll-track").evaluate(track => {
+    const scene = track.querySelector(".journey-stage");
+    const header = document.querySelector(".site-header");
+    const start = scrollY + track.getBoundingClientRect().top - header.getBoundingClientRect().height - 12;
+    scrollTo({ top: start + track.getBoundingClientRect().height - scene.getBoundingClientRect().height, behavior: "instant" });
+  });
+  await laptopPage.locator('.journey-stage[data-stage="3"]').waitFor();
+  assert.ok(await laptopPage.locator(".journey-stage").evaluate(node => node.getBoundingClientRect().bottom < innerHeight - 10), "Pinned walkthrough must fit a laptop viewport");
+  await delay(700);
+  await screenshot(laptopPage, "laptop-scroll-story");
+  await axe(laptopPage, "laptop-scroll-story");
+  await laptop.close();
   const short = await browser.newContext({ viewport: { width: 390, height: 650 }, reducedMotion: "no-preference" });
   const shortPage = await short.newPage(); currentPage = shortPage;
   await shortPage.goto(base); await ready(shortPage);
@@ -201,6 +217,13 @@ try {
       await overflow(page, "account-" + authenticated + "-" + language + "-" + width);
       await axe(page, "account-" + authenticated + "-" + language + "-" + width);
       await screenshot(page, (authenticated ? "onboarding" : "account") + "-" + language + "-" + width, true);
+      if (!authenticated) {
+        await page.locator(".auth-tabs button").nth(1).click();
+        await page.locator("#account-consent").waitFor();
+        await overflow(page, "signup-" + language + "-" + width);
+        await axe(page, "signup-" + language + "-" + width);
+        await screenshot(page, "signup-" + language + "-" + width, true);
+      }
       await context.close();
     }
   }

@@ -42,6 +42,7 @@
 .is-scroll-story .journey-controls { padding-block:12px; position:relative; }
 .is-scroll-story .journey-controls::after { content:""; position:absolute; bottom:0; left:0; height:2px; width:calc(var(--story-progress,0)*100%); background:var(--journey-lime); }
 .is-scroll-story .journey-story { padding:24px; gap:22px; }
+.is-scroll-story .journey-grid { min-height:0; }
 .is-scroll-story .journey-step { min-height:64px; padding:12px; }
 .is-scroll-story .journey-step-content small { display:none; }
 .is-scroll-story .journey-step.is-active .journey-step-content small { display:block; }
