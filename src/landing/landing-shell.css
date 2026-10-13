@@ -1,0 +1,49 @@
+/* Landing art direction: the hero's warm paper, forest ink and terracotta.
+   Tokens are scoped so the merchant workspace and storefront themes keep theirs. */
+.landing-shell {
+  --surface: #fbf5eb;
+  --surface-low: #f1e9dc;
+  --surface-mid: #e8e1d3;
+  --surface-high: #ded6c7;
+  --ink: #142d25;
+  --muted: #4a6155;
+  --primary: #142d25;
+  --primary-2: #245641;
+  --outline: #d8d5c5;
+  --landing-coral: #b34729;
+  --landing-paper: #fffdf8;
+  --landing-line: rgba(47, 70, 51, .18);
+  --landing-lime: #d5f58b;
+  color: var(--ink);
+  background: var(--surface);
+}
+.landing-shell :is(a, button, summary, [tabindex]):focus-visible { outline: 3px solid var(--landing-coral); outline-offset: 5px; }
+.landing-shell :is(#top, #how, #showcase, #whatsapp, #dashboard, #pricing, #faq, #launch) { scroll-margin-top: 92px; }
+.landing-shell .button { min-height: 50px; border-radius: 10px; gap: 22px; font-size: 13px; }
+.landing-shell .button-primary { background: var(--ink); box-shadow: none; }
+.landing-shell .button-primary:hover { background: #245641; }
+.landing-shell .button-soft { background: transparent; border: 1px solid #8f9d8e; color: var(--ink); }
+.landing-shell .button-soft:hover { background: #f3eadc; }
+.landing-shell .button > span[aria-hidden] { font-size: 19px; }
+.landing-shell .cfh-section { padding-top: clamp(36px, 4vw, 62px); background: radial-gradient(ellipse at 0% 90%, rgba(241, 206, 177, .26), transparent 46%), #fbf5eb; }
+.landing-shell .cfh-copy { padding-block: 14px 24px; }
+.landing-shell .cfh-micro-flow { margin-top: 32px; }
+.landing-shell .cfh-stage { min-height: 660px; }
+.landing-shell .cfh-message { top: 340px; }
+@media (min-width:601px) and (max-width:850px) { .landing-shell .cfh-copy h1 { max-width:100%; } }
+@media (max-width:850px) {
+  .landing-shell .cfh-copy { padding:0; }
+  .landing-shell .cfh-copy h1 { font-size:clamp(48px,7.8vw,63px); }
+  .landing-shell .cfh-micro-flow { margin-top:24px; }
+  .landing-shell .cfh-stage { min-height:660px; }
+  .landing-shell .cfh-message { top:343px; }
+}
+@media (max-width:760px) { .landing-shell :is(#top,#how,#showcase,#whatsapp,#dashboard,#pricing,#faq,#launch) { scroll-margin-top:84px; } }
+@media (max-width:600px) {
+  .landing-shell .cfh-section { padding-top:18px; }
+  .landing-shell .cfh-copy h1 { font-size:clamp(43px,11vw,68px); }
+  .landing-shell .cfh-stage { min-height:0; }
+  .landing-shell .cfh-message { top:auto; }
+  .landing-shell .cfh-micro-flow { display:none; }
+}
+@media (prefers-reduced-motion:reduce) { .landing-shell *,.landing-shell *::before,.landing-shell *::after { scroll-behavior:auto!important; transition:none!important; animation:none!important; } }

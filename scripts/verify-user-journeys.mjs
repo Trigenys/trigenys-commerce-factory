@@ -26,6 +26,18 @@ async function check(page,label,{axe=true}={}){
   }
   await page.screenshot({path:output+"/"+label.replaceAll(/[^a-z0-9-]/gi,"-")+".png",fullPage:true});
 }
+async function checkPrivateFooter(page, apiPath) {
+  const privateHash = new URL(page.url()).hash;
+  const secret = new URLSearchParams(privateHash.slice(1)).get("token");
+  await page.getByRole("button", { name: "Retour en haut", exact: true }).click();
+  assert.equal(new URL(page.url()).hash, privateHash, "Back to top preserves the private tracking link");
+  const pending = page.waitForResponse(r => new URL(r.url()).pathname === apiPath && r.request().method() === "GET");
+  await page.getByRole("button", { name: "Actualiser le statut", exact: true }).click();
+  const response = await pending;
+  assert.equal(response.status(), 200, "Tracking remains refreshable after using the footer");
+  const headers = response.request().headers();
+  assert.equal(headers[apiPath.includes("/orders/") ? "x-order-token" : "x-support-token"], secret);
+}
 try{
   await mkdir(output,{recursive:true});let ready=false;for(let i=0;i<60;i++){try{if((await fetch(base)).ok){ready=true;break;}}catch{}await delay(100);}assert.ok(ready,serverLog);
   browser=await chromium.launch({headless:true});
@@ -36,6 +48,7 @@ try{
       const headings={"/app":"Votre boutique, étape par étape","/app/products":"Vos produits","/app/orders":"Commandes","/app/appearance":"L’apparence de votre boutique","/app/settings":"Paramètres de la boutique","/app/analytics":"Statistiques de votre boutique","/app/team":"Votre équipe"};
       if(headings[route])await page.getByRole("heading",{name:headings[route],level:1,exact:true}).waitFor();else await page.locator("h1").first().waitFor();
       await page.getByRole("status").filter({hasText:/Chargement|Opération/}).first().waitFor({state:"hidden",timeout:5000}).catch(()=>{});
+      if (route.startsWith("/orders/")) await checkPrivateFooter(page, "/v1/public/orders/" + orderId);
       await check(page,(route.split("#")[0]+"-"+viewport.width).replaceAll("/","-"));
     }
     await context.close();
@@ -49,7 +62,7 @@ try{
   }
   // Auth uses the installed SDK, including email OTP reset; endpoint requests are mocked only.
   {
-    const {context,page,state}=await fixture({authenticated:false});await page.goto(base+"/contact");await page.getByLabel("Votre nom",{exact:true}).fill("Test support");await page.getByLabel("Email",{exact:true}).fill("test@example.com");await page.getByLabel("Votre demande",{exact:true}).fill("Je souhaite reprendre mon accès marchand.");await page.reload();assert.equal(await page.getByLabel("Votre nom",{exact:true}).inputValue(),"Test support");state.loseSupportResponse=true;await page.getByRole("button",{name:"Envoyer ma demande",exact:true}).click();await page.getByRole("alert").waitFor();await page.reload();assert.equal(await page.getByLabel("Votre demande",{exact:true}).getAttribute("readonly"),"");await page.getByRole("button",{name:"Réessayer la même demande",exact:true}).click();await page.getByRole("heading",{name:"Votre demande est enregistrée",exact:true}).waitFor();const posts=state.calls.filter(c=>c.path==="/v1/public/support"&&c.method==="POST");assert.equal(posts.length,2);assert.deepEqual(posts[0].body,posts[1].body);await page.getByRole("link",{name:"Suivre ma demande",exact:true}).click();await page.getByRole("heading",{name:"Suivi de votre demande",exact:true}).waitFor();await check(page,"support-private-tracking");report.checks.push("Support draft survives reload and lost-response retry keeps the same private request");await context.close();
+    const {context,page,state}=await fixture({authenticated:false});await page.goto(base+"/contact");await page.getByLabel("Votre nom",{exact:true}).fill("Test support");await page.getByLabel("Email",{exact:true}).fill("test@example.com");await page.getByLabel("Votre demande",{exact:true}).fill("Je souhaite reprendre mon accès marchand.");await page.reload();assert.equal(await page.getByLabel("Votre nom",{exact:true}).inputValue(),"Test support");state.loseSupportResponse=true;await page.getByRole("button",{name:"Envoyer ma demande",exact:true}).click();await page.getByRole("alert").waitFor();await page.reload();assert.equal(await page.getByLabel("Votre demande",{exact:true}).getAttribute("readonly"),"");await page.getByRole("button",{name:"Réessayer la même demande",exact:true}).click();await page.getByRole("heading",{name:"Votre demande est enregistrée",exact:true}).waitFor();const posts=state.calls.filter(c=>c.path==="/v1/public/support"&&c.method==="POST");assert.equal(posts.length,2);assert.deepEqual(posts[0].body,posts[1].body);await page.getByRole("link",{name:"Suivre ma demande",exact:true}).click();await page.getByRole("heading",{name:"Suivi de votre demande",exact:true}).waitFor();await checkPrivateFooter(page, "/v1/public/support/" + new URL(page.url()).pathname.split("/").pop());await check(page,"support-private-tracking");report.checks.push("Support draft survives reload and lost-response retry keeps the same private request");await context.close();
   }
   {
     const {context,page,state}=await fixture({authenticated:false,hasStore:false});await page.goto(base+"/app/login");await page.getByRole("button",{name:"Mot de passe oublié ?",exact:true}).click();await page.getByLabel("Email",{exact:true}).fill("demo@example.com");await page.getByRole("button",{name:"Recevoir un code",exact:true}).click();await page.getByLabel("Code reçu par email",{exact:true}).fill("123456");await page.getByLabel("Mot de passe",{exact:true}).fill("test-only-password");await page.getByLabel("Confirmer le mot de passe",{exact:true}).fill("test-only-password");await check(page,"password-reset");await page.getByRole("button",{name:"Réinitialiser le mot de passe",exact:true}).click();await page.getByText("Mot de passe modifié. Connectez-vous pour reprendre.").waitFor();

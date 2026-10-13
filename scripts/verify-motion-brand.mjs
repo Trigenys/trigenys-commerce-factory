@@ -132,6 +132,22 @@ try {
     await context.close();
   }
 
+  // Deferred sections still honor direct arrivals from subpage navigation.
+  for (const reducedMotion of ["reduce", "no-preference"]) for (const id of ["pricing", "whatsapp"]) {
+    const context = await browser.newContext({ viewport: { width: 390, height: 900 }, reducedMotion });
+    const page = await context.newPage(); currentPage = page;
+    await page.goto(base + "/#" + id);
+    await page.locator("#" + id + " h2").waitFor();
+    await page.waitForFunction(id => {
+      const top = document.getElementById(id).getBoundingClientRect().top;
+      const header = document.querySelector(".site-header").getBoundingClientRect().height;
+      return top >= header && top <= header + 30;
+    }, id);
+    await overflow(page, "direct-anchor-" + id + "-" + reducedMotion);
+    report.motion.push({ directAnchor: id, reducedMotion, passed: true });
+    await context.close();
+  }
+
   for (const width of [320, 980, 1920, 2560]) {
     const context = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: "reduce" });
     const page = await context.newPage(); currentPage = page;

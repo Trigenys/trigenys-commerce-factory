@@ -55,7 +55,8 @@
 .landing-footer .footer-links a:hover { color: var(--landing-coral); }
 .landing-footer-bottom { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding-top: 20px; border-top: 1px solid var(--landing-line); font-size: 10px; line-height: 1.7; }
 .landing-footer-bottom small { font-size: inherit; }
-.landing-footer-bottom a { min-height: 44px; display: flex; align-items: center; gap: 14px; }
+.landing-footer-bottom :is(a,button) { min-height:44px; display:flex; align-items:center; gap:14px; }
+.landing-footer-bottom button { border:0; padding:0; background:transparent; color:inherit; font:inherit; cursor:pointer; }
 
 @media (max-width:1200px) {
   .landing-header .desktop-nav { display:none; }

@@ -2,9 +2,6 @@ export type LandingLanguage = "fr" | "en";
 
 export const landingCopy = {
   fr: {
-    metaTitle: "Commerce Factory par Trigenys",
-    metaDescription: "Créez une boutique à votre image, présentez vos produits et recevez des demandes précises sur WhatsApp. Thèmes, catalogue et gestion, pensés pour le mobile.",
-    skip: "Aller au contenu",
     create: "Créer ma boutique",
     howLabel: "01 / Votre boutique prend forme",
     howTitle: "De vos produits",
@@ -85,9 +82,6 @@ export const landingCopy = {
     launchNote: "Votre identité. Votre catalogue. Votre relation client.",
   },
   en: {
-    metaTitle: "Commerce Factory by Trigenys",
-    metaDescription: "Build a store with your own identity, showcase your products and receive useful WhatsApp inquiries. Themes, catalog and management, designed for mobile.",
-    skip: "Skip to content",
     create: "Create my store",
     howLabel: "01 / Your store takes shape",
     howTitle: "From your products",

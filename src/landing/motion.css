@@ -1,22 +1,3 @@
-.carousel-controls { display:flex; align-items:center; justify-content:flex-end; gap:8px; }
-.carousel-controls button { min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:0 12px; border:1px solid currentColor; border-radius:8px; background:transparent; color:inherit; font:700 11px "Plus Jakarta Sans",sans-serif; cursor:pointer; }
-.carousel-controls .carousel-rotation { min-width:96px; }
-.carousel-state-icon { display:inline-block; flex:none; }
-.carousel-state-icon.is-pause { width:9px; height:11px; border-inline:2px solid currentColor; }
-.carousel-state-icon.is-play { width:0; height:0; border-block:5px solid transparent; border-left:8px solid currentColor; }
-.carousel-controls button:disabled { opacity:.8; cursor:default; }
-.carousel-count { display:flex; align-items:center; gap:7px; font:700 11px "Space Grotesk",sans-serif; white-space:nowrap; }
-.carousel-count i { width:15px; height:1px; background:currentColor; opacity:.5; }
-.cfh-carousel-controls { position:absolute; z-index:7; top:65px; right:28px; color:#e7f2df; }
-.cfh-carousel-controls button { border-color:rgba(231,242,223,.32); background:rgba(10,37,28,.65); }
-.cfh-photo-window { width:100%; height:100%; overflow:clip; border-radius:12px; }
-.cfh-photo-plane { width:100%; height:100%; }
-.motion-enabled [data-parallax] { translate:0 var(--parallax-y,0px); }
-@media (prefers-reduced-motion:no-preference) { .cfh-photo-plane { scale:1.13; } }
-.motion-enabled [data-parallax].is-parallax-visible { will-change:translate; }
-.motion-enabled [data-reveal].reveal-ready { opacity:0; transform:translate3d(0,24px,0); transition:opacity .7s ease,transform .7s cubic-bezier(.16,1,.3,1); }
-.motion-enabled [data-reveal].is-revealed,.motion-enabled [data-reveal]:focus-within { opacity:1; transform:none; }
-.motion-enabled [data-reveal].reveal-ready:not(.is-revealed) { will-change:opacity,transform; }
 .showcase-carousel-controls { margin:0 0 18px; color:var(--ink); }
 .showcase-carousel .landing-concepts { display:block; }
 .showcase-carousel .landing-concept { display:grid; grid-template-columns:1.05fr .95fr; animation:concept-enter .45s ease-out; }
@@ -81,11 +62,6 @@
   .landing-pricing-clarity { grid-template-columns:1fr; gap:20px; }
 }
 @media (max-width:600px) {
-  .cfh-carousel-controls { top:48px; right:14px; gap:6px; }
-  .cfh-carousel-controls button { min-height:44px; min-width:44px; padding-inline:8px; font-size:9px; }
-  .cfh-carousel-controls .carousel-rotation { min-width:88px; }
-  .cfh-carousel-controls .carousel-count { font-size:9px; }
-  .cfh-photo-wrap { margin-top:110px; }
   .journey-controls-end { gap:10px; }
   .journey-skip { font-size:9px; gap:6px; }
   .journey-payment-note { font-size:11px; margin-top:0; }
