@@ -1,6 +1,9 @@
 .carousel-controls { display:flex; align-items:center; justify-content:flex-end; gap:8px; }
 .carousel-controls button { min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:0 12px; border:1px solid currentColor; border-radius:8px; background:transparent; color:inherit; font:700 11px "Plus Jakarta Sans",sans-serif; cursor:pointer; }
 .carousel-controls .carousel-rotation { min-width:96px; }
+.carousel-state-icon { display:inline-block; flex:none; }
+.carousel-state-icon.is-pause { width:9px; height:11px; border-inline:2px solid currentColor; }
+.carousel-state-icon.is-play { width:0; height:0; border-block:5px solid transparent; border-left:8px solid currentColor; }
 .carousel-controls button:disabled { opacity:.8; cursor:default; }
 .carousel-count { display:flex; align-items:center; gap:7px; font:700 11px "Space Grotesk",sans-serif; white-space:nowrap; }
 .carousel-count i { width:15px; height:1px; background:currentColor; opacity:.5; }
@@ -79,7 +82,7 @@
 }
 @media (max-width:600px) {
   .cfh-carousel-controls { top:48px; right:14px; gap:6px; }
-  .cfh-carousel-controls button { min-height:36px; min-width:36px; padding-inline:8px; font-size:9px; }
+  .cfh-carousel-controls button { min-height:44px; min-width:44px; padding-inline:8px; font-size:9px; }
   .cfh-carousel-controls .carousel-rotation { min-width:88px; }
   .cfh-carousel-controls .carousel-count { font-size:9px; }
   .cfh-photo-wrap { margin-top:110px; }
