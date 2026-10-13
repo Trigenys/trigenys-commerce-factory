@@ -37,5 +37,11 @@ export default function WorkspaceNavigation({ store, stores, language, page, pla
       </div>
     </>;
   }
-  return <><aside className="merchant-sidebar">{content()}</aside><dialog ref={dialog} className="merchant-drawer" id="merchant-navigation" aria-labelledby="merchant-navigation-title" onClose={onClose} onClick={event => { if (event.target === event.currentTarget && event.clientX > event.currentTarget.getBoundingClientRect().right) onClose(); }}><div className="merchant-drawer-heading"><h2 id="merchant-navigation-title">Navigation</h2><button type="button" className="workspace-icon-button" onClick={onClose} aria-label={fr ? "Fermer la navigation" : "Close navigation"}><AppIcon name="close" /></button></div>{content()}</dialog></>;
+  return <><aside className="merchant-sidebar">{content()}</aside><dialog ref={dialog} className="merchant-drawer" id="merchant-navigation" aria-labelledby="merchant-navigation-title" onClose={onClose} onKeyDown={event => {
+    if (event.key !== "Tab") return;
+    const items = [...event.currentTarget.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),select:not([disabled]),[tabindex="0"]')].filter(item => item.getClientRects().length > 0);
+    const first = items[0], last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  }} onClick={event => { if (event.target === event.currentTarget && event.clientX > event.currentTarget.getBoundingClientRect().right) onClose(); }}><div className="merchant-drawer-heading"><h2 id="merchant-navigation-title">Navigation</h2><button type="button" className="workspace-icon-button" onClick={onClose} aria-label={fr ? "Fermer la navigation" : "Close navigation"}><AppIcon name="close" /></button></div>{content()}</dialog></>;
 }

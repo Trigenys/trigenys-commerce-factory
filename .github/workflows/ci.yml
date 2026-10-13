@@ -38,8 +38,10 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - name: Install browser for storefront checks
+        id: browser-checks
         run: npx playwright install --with-deps chromium
       - name: Verify merchant app layout, navigation, roles and management actions
+        if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
         run: npm run test:workspace
       - name: Retain merchant app screenshots and report
         if: always()
@@ -48,6 +50,7 @@ jobs:
           name: commerce-workspace
           path: artifacts/workspace/
       - name: Verify interactive hero on desktop and mobile
+        if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
         run: npm run test:hero
       - name: Retain hero interaction screenshots
         if: always()
@@ -56,6 +59,7 @@ jobs:
           name: commerce-hero-interactions
           path: artifacts/hero/
       - name: Verify complete landing, navigation and responsive accessibility
+        if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
         run: npm run test:landing
       - name: Retain landing screenshots and report
         if: always()
@@ -64,6 +68,7 @@ jobs:
           name: commerce-landing
           path: artifacts/landing/
       - name: Verify motion, scrollytelling and shared page branding
+        if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
         run: npm run test:motion-brand
       - name: Retain motion and shared-brand screenshots
         if: always()
@@ -72,12 +77,16 @@ jobs:
           name: commerce-motion-brand
           path: artifacts/motion-brand/
       - name: Verify storefront themes and media transparency
+        if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
         run: npm run test:themes
       - name: Read-only live runtime diagnostic
+        if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
         run: node scripts/diagnose-runtime.mjs
       - name: Verify user journeys and accessibility
+        if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
         run: npm run test:journeys
       - name: Verify catalog controls, sticky navigation and visible notifications
+        if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
         run: npm run test:catalog
       - name: Retain catalog screenshots and report
         if: always()
@@ -86,6 +95,7 @@ jobs:
           name: commerce-catalog-ux
           path: artifacts/catalog/
       - name: Verify Google and merchant social imports
+        if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
         run: npm run test:social
       - name: Retain social journey screenshots and report
         if: always()
