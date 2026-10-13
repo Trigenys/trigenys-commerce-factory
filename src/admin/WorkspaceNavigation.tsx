@@ -12,10 +12,17 @@ export default function WorkspaceNavigation({ store, stores, language, page, pla
     const element = dialog.current;
     if (!element) return;
     const media = window.matchMedia("(max-width: 1023px)");
-    const closeOnDesktop = () => { if (!media.matches) onClose(); };
+    const overflow = document.body.style.overflow;
+    const closeOnDesktop = () => {
+      if (media.matches) return;
+      const wasOpen = element.open;
+      if (wasOpen) element.close();
+      document.body.style.overflow = overflow;
+      onClose();
+      if (wasOpen) document.querySelector<HTMLElement>('.merchant-sidebar [aria-current="page"]')?.focus({ preventScroll: true });
+    };
     if (open && media.matches) element.showModal();
     else if (element.open) element.close();
-    const overflow = document.body.style.overflow;
     if (open && media.matches) document.body.style.overflow = "hidden";
     media.addEventListener("change", closeOnDesktop);
     return () => { document.body.style.overflow = overflow; media.removeEventListener("change", closeOnDesktop); if (element.open) element.close(); };

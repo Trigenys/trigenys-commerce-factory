@@ -76,6 +76,7 @@ try {
     assert.equal(await page.getByRole("dialog").count(), 0, "Navigation closes after route change");
     await toggle.click(); await page.setViewportSize({ width: 1280, height: 900 });
     await page.locator(".merchant-sidebar").waitFor();
+    await page.waitForFunction(() => !document.querySelector(".merchant-drawer")?.open && document.body.style.overflow !== "hidden", { timeout: 3000 });
     assert.equal(await page.evaluate(() => document.body.style.overflow), "", "Resize releases body scroll lock");
     report.checks.push("Keyboard drawer and responsive navigation at " + width); await context.close();
   }
