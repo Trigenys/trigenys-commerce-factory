@@ -1,14 +1,14 @@
 import AppErrorBoundary from "./components/AppErrorBoundary";
 import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App";
-import ThemeGalleryApp from "./themes/ThemeGalleryApp";
 import { merchantAppHref } from "./merchant-navigation";
 import "./styles.css";
 import "./brand/brand.css";
 
-// The public landing must not download merchant-admin, storefront or
-// personalized-demo code before the visitor chooses one of those routes.
+// Each route downloads its own content and styles. Help, the showroom and
+// the merchant workspace do not need the landing's animated illustrations.
+const App = lazy(() => import("./App"));
+const ThemeGalleryApp = lazy(() => import("./themes/ThemeGalleryApp"));
 const PublicPages = lazy(() => import("./pages/PublicPages"));
 const OrderTrackingPage = lazy(() => import("./storefront/OrderTrackingPage"));
 const AdminApp = lazy(() => import("./admin/AdminApp"));
@@ -32,8 +32,9 @@ if (isMerchantApp && merchantHref !== "/app") {
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
       <AppErrorBoundary>
+      <Suspense fallback={<main role="status" aria-live="polite" style={{ padding: "2rem", minHeight: "40vh" }}>Chargement…</main>}>
       {isMerchantApp || isStorefront || isDemoStorefront || isThemeGallery || isInfoPage || isUnknownPage || isOrderTracking ? (
-        <Suspense fallback={<main role="status" aria-live="polite" style={{ padding: "2rem", minHeight: "40vh" }}>Chargement…</main>}>
+        <>
           {isOrderTracking ? <OrderTrackingPage /> : isInfoPage || isUnknownPage ? (
             <PublicPages />
           ) : isMerchantApp ? (
@@ -45,10 +46,11 @@ if (isMerchantApp && merchantHref !== "/app") {
           ) : (
             <DemoStorefrontApp />
           )}
-        </Suspense>
+        </>
       ) : (
         <App />
       )}
+      </Suspense>
       </AppErrorBoundary>
     </StrictMode>
   );

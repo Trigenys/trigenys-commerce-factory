@@ -6,23 +6,26 @@ export function useLandingMotion(root: RefObject<HTMLElement | null>) {
   useEffect(() => {
     const shell = root.current;
     if (!shell || reduced) return;
-    shell.classList.add("motion-enabled");
     const revealNodes = [...shell.querySelectorAll<HTMLElement>("[data-reveal]")];
+    // Read all positions together; interleaving each read with a class change
+    // forced repeated whole-page layouts before the first mobile paint.
+    const initiallyVisible = revealNodes.map(node => node.getBoundingClientRect().top < innerHeight * .94);
+    shell.classList.add("motion-enabled");
     const observer = new IntersectionObserver(entries => {
       for (const entry of entries) if (entry.isIntersecting) {
         entry.target.classList.add("is-revealed"); observer.unobserve(entry.target);
       }
     }, { rootMargin: "0px 0px -5% 0px", threshold: .08 });
-    for (const node of revealNodes) {
+    for (const [index, node] of revealNodes.entries()) {
       // First-screen content remains painted immediately, including the hero.
-      if (node.getBoundingClientRect().top < innerHeight * .94) node.classList.add("is-revealed");
+      if (initiallyVisible[index]) node.classList.add("is-revealed");
       else { node.classList.add("reveal-ready"); observer.observe(node); }
     }
     const layers = [...shell.querySelectorAll<HTMLElement>("[data-parallax]")].map(node => ({
       node, anchor: node.closest<HTMLElement>("[data-parallax-anchor]") ?? node,
       strength: Number(node.dataset.parallax) || 16, current: 0
     }));
-    let frame = 0, initial = true;
+    let frame = 0;
     const tick = () => {
       frame = 0;
       const height = innerHeight;
@@ -34,19 +37,18 @@ export function useLandingMotion(root: RefObject<HTMLElement | null>) {
       });
       let settling = false;
       for (const { layer, inView, target } of positions) {
-        layer.current = initial ? target : layer.current + (target - layer.current) * .16;
+        layer.current += (target - layer.current) * .16;
         if (Math.abs(target - layer.current) < .08) layer.current = target;
         else if (inView) settling = true;
         layer.node.style.setProperty("--parallax-y", layer.current.toFixed(2) + "px");
         layer.node.classList.toggle("is-parallax-visible", inView);
       }
-      initial = false;
       if (settling) frame = requestAnimationFrame(tick);
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(tick); };
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
-    schedule();
+    // Start the parallax on native scrolling, keeping the first image paint stable.
     return () => {
       observer.disconnect(); cancelAnimationFrame(frame);
       window.removeEventListener("scroll", schedule); window.removeEventListener("resize", schedule);

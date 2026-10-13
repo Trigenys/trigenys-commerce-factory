@@ -9,7 +9,7 @@
 .cfh-photo-window { width:100%; height:100%; overflow:clip; border-radius:12px; }
 .cfh-photo-plane { width:100%; height:100%; }
 .motion-enabled [data-parallax] { translate:0 var(--parallax-y,0px); }
-.motion-enabled .cfh-photo-plane { scale:1.13; }
+@media (prefers-reduced-motion:no-preference) { .cfh-photo-plane { scale:1.13; } }
 .motion-enabled [data-parallax].is-parallax-visible { will-change:translate; }
 .motion-enabled [data-reveal].reveal-ready { opacity:0; transform:translate3d(0,24px,0); transition:opacity .7s ease,transform .7s cubic-bezier(.16,1,.3,1); }
 .motion-enabled [data-reveal].is-revealed,.motion-enabled [data-reveal]:focus-within { opacity:1; transform:none; }

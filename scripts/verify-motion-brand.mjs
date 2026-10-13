@@ -101,6 +101,7 @@ try {
       if (phase === 3) assert.ok(await page.locator(".journey-message-reply").isVisible());
       await page.locator('.cfh-stage[data-running="false"]').waitFor();
       await overflow(page, "story-" + phase + "-" + width);
+      await delay(300); // Capture the selected state after its color transition.
       await screenshot(page, "story-" + phase + "-" + width);
       if (phase === 2) await axe(page, "story-normal-" + width);
     }
@@ -111,9 +112,21 @@ try {
     });
     assert.ok(await page.locator("#dashboard h2").isVisible(), "Native scroll leaves the story normally");
     await page.evaluate(() => document.getElementById("pricing").scrollIntoView({ behavior: "instant" }));
+    await page.locator("#pricing .landing-section-heading.is-revealed").waitFor();
+    await page.locator(".landing-pricing-clarity").evaluate(node => node.scrollIntoView({ behavior: "instant", block: "center" }));
     await page.locator(".landing-pricing-clarity.is-revealed").waitFor();
     assert.match(await page.locator(".landing-pricing-clarity").innerText(), /0 FCFA/);
     await screenshot(page, "pricing-normal-" + width);
+    if (width === 768) {
+      await page.locator(".showcase-carousel").evaluate(node => node.scrollIntoView({ behavior: "instant", block: "center" }));
+      await page.mouse.move(2, 2);
+      await page.locator('.showcase-carousel[data-running="true"]').waitFor();
+      await page.locator('.showcase-carousel .landing-concept:not([hidden]) h3').filter({ hasText: "TechPulse" }).waitFor({ timeout: 12000 });
+      await page.locator(".showcase-carousel-picker button").nth(2).click();
+      assert.equal(await page.locator(".showcase-carousel").getAttribute("data-playing"), "false");
+      assert.equal(await page.locator(".showcase-carousel .landing-concept:not([hidden])").count(), 1);
+      await screenshot(page, "showcase-auto-and-manual-" + width);
+    }
     assert.deepEqual(errors, [], "Normal-motion browser errors");
     report.motion.push({ width, scrollStory: true, reverse: true, skip: true, reveals: true, errors });
     await context.close();

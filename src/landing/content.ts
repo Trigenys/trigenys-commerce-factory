@@ -83,10 +83,6 @@ export const landingCopy = {
     launchBody: "Vos produits méritent mieux qu’une longue suite de messages. Donnez-leur une boutique que vos clients peuvent parcourir.",
     launchSecondary: "Explorer les thèmes d’abord",
     launchNote: "Votre identité. Votre catalogue. Votre relation client.",
-    footerBody: "Des boutiques à votre image. Des conversations qui commencent avec le bon produit.",
-    footerStatus: "Version bêta · Un produit Trigenys",
-    footerLinks: ["Comment ça marche", "Exemples", "Thèmes", "Offres", "Aide", "Contact", "Confidentialité", "Conditions"],
-    copyright: "Commerce Factory par Trigenys"
   },
   en: {
     metaTitle: "Commerce Factory by Trigenys",
@@ -170,10 +166,6 @@ export const landingCopy = {
     launchBody: "Your products deserve more than a long chain of messages. Give them a store your customers can explore.",
     launchSecondary: "Explore the themes first",
     launchNote: "Your identity. Your catalog. Your customer relationship.",
-    footerBody: "Stores with your own identity. Conversations that start with the right product.",
-    footerStatus: "Beta version · A Trigenys product",
-    footerLinks: ["How it works", "Examples", "Themes", "Offers", "Help", "Contact", "Privacy", "Terms"],
-    copyright: "Commerce Factory by Trigenys"
   }
 } as const;
 
