@@ -39,6 +39,14 @@ jobs:
       - run: npm run build
       - name: Install browser for storefront checks
         run: npx playwright install --with-deps chromium
+      - name: Verify merchant app layout, navigation, roles and management actions
+        run: npm run test:workspace
+      - name: Retain merchant app screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: commerce-workspace
+          path: artifacts/workspace/
       - name: Verify interactive hero on desktop and mobile
         run: npm run test:hero
       - name: Retain hero interaction screenshots

@@ -17,7 +17,8 @@
     "test:hero": "node scripts/verify-hero-story.mjs",
     "test:catalog": "node scripts/verify-catalog-ux.mjs",
     "test:landing": "node scripts/verify-landing.mjs",
-    "test:motion-brand": "node scripts/verify-motion-brand.mjs"
+    "test:motion-brand": "node scripts/verify-motion-brand.mjs",
+    "test:workspace": "node scripts/verify-workspace-layout.mjs"
   },
   "dependencies": {
     "@neondatabase/neon-js": "^0.7.0-beta",

@@ -1,6 +1,6 @@
 import { useLayoutEffect, type RefObject } from "react";
 
-type ChromeProperty = "--merchant-header-height" | "--merchant-mobile-nav-height" | "--merchant-notice-height";
+type ChromeProperty = "--merchant-header-height" | "--merchant-mobile-nav-height" | "--merchant-notice-height" | "--merchant-page-toolbar-height";
 
 export function useChromeHeight(ref: RefObject<HTMLElement | null>, property: ChromeProperty, mobileOnly = false) {
   useLayoutEffect(() => {

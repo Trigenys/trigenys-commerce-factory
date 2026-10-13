@@ -103,9 +103,9 @@ export default function SocialConnections({client,store,language,onUpdated}:{cli
   const descriptions=fr ? {facebook:"Choisissez une Page que vous gérez : nom, description, localisation et email disponibles.",instagram:"Compte professionnel lié à une Page Facebook : nom et biographie disponibles.",tiktok:"Profil autorisé : nom et biographie selon les permissions accordées. Le catalogue TikTok Shop demande un accès distinct."} : {facebook:"Choose a Page you manage: available name, description, location and email.",instagram:"Professional account linked to a Facebook Page: available name and biography.",tiktok:"Authorized profile: name and biography according to granted permissions. TikTok Shop catalogs need separate access."};
   const statuses={connected:fr ? "Connecté":"Connected",disconnected:fr ? "Non connecté":"Not connected",expired:fr ? "À reconnecter":"Reconnect",degraded:fr ? "À vérifier":"Needs attention"};
   return <section className="workspace-section social-workspace" aria-busy={loading || busy}>
-    <span className="admin-eyebrow">{fr ? "Vos comptes professionnels":"Your business accounts"}</span>
+    <header className="workspace-page-heading"><div>
     <h1>{fr ? "Connecter ma boutique":"Connect my store"}</h1>
-    <p>{fr ? "Récupérez les informations disponibles sur vos comptes, choisissez les champs utiles, puis confirmez leur import." : "Retrieve available account information, choose useful fields, then confirm their import."}</p>
+    <p>{fr ? "Récupérez les informations disponibles sur vos comptes, choisissez les champs utiles, puis confirmez leur import." : "Retrieve available account information, choose useful fields, then confirm their import."}</p></div></header>
     <p className="social-boundary">{fr ? "Chaque connexion demande votre autorisation. Les photos de publications, produits et commandes ne sont pas importés avec une simple connexion au profil." : "Each connection requires your authorization. Post photos, products and orders are not imported through profile access alone."}</p>
     {loading && <p role="status">{fr ? "Chargement des connexions…":"Loading connections…"}</p>}
     {error && <p role="alert" className="form-message error">{error}</p>}{message && <p role="status" className="form-message success">{message}</p>}

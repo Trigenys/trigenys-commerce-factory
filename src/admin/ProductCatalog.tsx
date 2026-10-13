@@ -1,6 +1,7 @@
 import { useDraft, useUnsavedChanges } from "../lib/drafts";
 import { FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import MerchantNotice, { useMerchantNotice } from "./MerchantNotice";
+import AppIcon from "./AppIcon";
 import { categoryChoices, categoryKey, stockChoices } from "./catalog-options";
 import type { CommerceAuthClient } from "./auth";
 import {
@@ -356,6 +357,14 @@ export default function ProductCatalog({
   const categoryHelpId = useId();
   const [mediaBusy, setMediaBusy] = useState(false);
   const [pendingDeleteUrls, setPendingDeleteUrls] = useState<string[]>([]);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const nameRef = useRef<HTMLInputElement>(null);
+  const focusEditor = useRef(false);
+  const newRequested = useRef(new URLSearchParams(window.location.search).get("new") === "1" && !editor);
+  useEffect(() => {
+    if (editor && focusEditor.current) { focusEditor.current = false; nameRef.current?.focus(); }
+  }, [editor?.id, Boolean(editor)]);
 
   const ordered = useMemo(
     () => [...products].sort((a, b) => {
@@ -367,6 +376,8 @@ export default function ProductCatalog({
   );
   const categories = useMemo(() => categoryChoices([editor?.category, ...products.map(product => product.category)], language), [editor?.category, products, language]);
   const stocks = stockChoices(editor?.stockLabel || "", language);
+  const normalizedQuery = query.trim().toLocaleLowerCase(language);
+  const visibleProducts = ordered.filter(product => (statusFilter === "all" || product.status === statusFilter) && (!normalizedQuery || [product.name, product.category, product.slug].some(value => value?.toLocaleLowerCase(language).includes(normalizedQuery))));
 
   useEffect(() => {
     if (addingCategory) categoryNameRef.current?.focus();
@@ -416,7 +427,13 @@ export default function ProductCatalog({
     (async () => {
       try {
         const next = await listProducts(client, store.id);
-        if (!cancelled) { setProducts(next); onProductsChange?.(next); }
+        if (!cancelled) {
+          setProducts(next); onProductsChange?.(next);
+          if (newRequested.current) {
+            newRequested.current = false; focusEditor.current = true;
+            setEditor(blankEditor(store, Math.max(0, ...next.map(product => product.sortOrder)) + 10));
+          }
+        }
       } catch {
         if (!cancelled) setError(t.loadError);
       } finally {
@@ -433,6 +450,7 @@ export default function ProductCatalog({
       0
     );
     setEditor(blankEditor(store, maxOrder + 10));
+    focusEditor.current = true;
     setSlugTouched(false);
     setError(null);
     dismiss();
@@ -444,6 +462,7 @@ export default function ProductCatalog({
     if (editor && !window.confirm(language === "fr" ? "Remplacer le brouillon en cours ?" : "Replace the current draft?")) return;
     if (product.status === "archived") return;
     setEditor(editorFromProduct(product));
+    focusEditor.current = true;
     setSlugTouched(true);
     setError(null);
     dismiss();
@@ -624,10 +643,9 @@ export default function ProductCatalog({
 
   return (
     <section className="catalog-panel" aria-labelledby="catalog-title">
-      <div className="catalog-heading">
+      <div className="catalog-heading workspace-page-heading">
         <div>
-          <span className="admin-eyebrow">{t.eyebrow}</span>
-          <h2 id="catalog-title">{t.title}</h2>
+          <h1 id="catalog-title">{t.title}</h1>
           <p>{t.body}</p>
         </div>
         <button
@@ -636,7 +654,7 @@ export default function ProductCatalog({
           onClick={startCreate}
           disabled={busy}
         >
-          + {t.add}
+          <AppIcon name="plus" />{t.add}
         </button>
       </div>
 
@@ -646,10 +664,12 @@ export default function ProductCatalog({
 
       {editor ? (
         <form className="catalog-editor" onSubmit={save}>
+          <div className="workspace-form-heading"><h2>{editor.id ? (language === "fr" ? "Modifier le produit" : "Edit product") : (language === "fr" ? "Nouveau produit" : "New product")}</h2><p>{language === "fr" ? "Renseignez les informations du produit, puis enregistrez." : "Enter product details, then save."}</p></div>
           <fieldset className="admin-form admin-form-grid catalog-fields" disabled={busy || mediaBusy} aria-label={language === "fr" ? "Informations du produit" : "Product details"}>
             <label className="span-2">
               <span>{t.name}</span>
               <input
+                ref={nameRef}
                 aria-label={t.name}
                 value={editor.name}
                 maxLength={180}
@@ -849,6 +869,7 @@ export default function ProductCatalog({
         </form>
       ) : null}
 
+      <div className="catalog-toolbar"><label className="workspace-search-field"><span>{language === "fr" ? "Rechercher un produit" : "Find a product"}</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={language === "fr" ? "Nom, catégorie ou adresse…" : "Name, category or address…"} /></label><label className="workspace-filter"><span>{language === "fr" ? "Statut du produit" : "Product status"}</span><select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="all">{language === "fr" ? "Tous les statuts" : "All statuses"}</option><option value="active">{t.active}</option><option value="draft">{t.draft}</option><option value="archived">{t.archived}</option></select></label><span className="catalog-result-count" role="status">{loading ? "…" : visibleProducts.length} {language === "fr" ? "produit(s)" : "product(s)"}</span></div>
       {loading ? (
         <div className="catalog-state">
           <span className="admin-loader" />
@@ -862,9 +883,9 @@ export default function ProductCatalog({
             {t.add}
           </button>
         </div>
-      ) : (
+      ) : visibleProducts.length === 0 ? <div className="catalog-state"><strong>{language === "fr" ? "Aucun produit ne correspond" : "No matching products"}</strong><button type="button" className="admin-secondary" onClick={() => { setQuery(""); setStatusFilter("all"); }}>{language === "fr" ? "Effacer les filtres" : "Clear filters"}</button></div> : (
         <div className="catalog-list">
-          {ordered.map((product, index) => {
+          {visibleProducts.map((product) => {
             const activeIndex = ordered
               .filter((item) => item.status !== "archived")
               .findIndex((item) => item.id === product.id);
@@ -922,7 +943,7 @@ export default function ProductCatalog({
                       type="button"
                       aria-label={t.moveUp}
                       onClick={() => move(product, -1)}
-                      disabled={busy || product.status === "archived" || activeIndex <= 0}
+                      disabled={busy || product.status === "archived" || activeIndex <= 0 || Boolean(normalizedQuery) || statusFilter !== "all"}
                     >↑</button>
                     <button
                       type="button"
@@ -933,6 +954,7 @@ export default function ProductCatalog({
                         product.status === "archived" ||
                         activeIndex < 0 ||
                         activeIndex >= activeCount - 1
+                        || Boolean(normalizedQuery) || statusFilter !== "all"
                       }
                     >↓</button>
                   </div>

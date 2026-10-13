@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useChromeHeight } from "./merchant-chrome";
-import { listProducts, merchantRequest, publishStore, type Product, type Store } from "./api";
+import { useEffect, useState, type ReactNode } from "react";
+import { merchantRequest, type Store } from "./api";
 import type { CommerceAuthClient } from "./auth";
 import ProductCatalog from "./ProductCatalog";
 import AnalyticsPanel from "./AnalyticsPanel";
@@ -8,33 +7,36 @@ import OrdersPanel from "./OrdersPanel";
 import TeamPanel from "./TeamPanel";
 import PlatformPanel from "./PlatformPanel";
 import SocialConnections from "./SocialConnections";
+import MerchantOverview from "./MerchantOverview";
+import WorkspaceNavigation from "./WorkspaceNavigation";
+import { workspacePage, workspaceRoute } from "./workspace-pages";
 import "./workspace.css";
 
-export default function MerchantWorkspace({client,store,stores,language,onUpdated,renderSettings}: {
-  client:CommerceAuthClient;store:Store;stores:Store[];language:"fr"|"en";onUpdated:(value:Store)=>void;
-  renderSettings:(section:"appearance"|"settings")=>ReactNode;
+export default function MerchantWorkspace({ client, store, stores, language, onUpdated, renderSettings, navigationOpen, onCloseNavigation }: {
+  client: CommerceAuthClient; store: Store; stores: Store[]; language: "fr" | "en"; onUpdated: (value: Store) => void;
+  renderSettings: (section: "appearance" | "settings") => ReactNode; navigationOpen: boolean; onCloseNavigation: () => void;
 }) {
-  const fr=language==="fr",owner=store.role!=="staff";
-  const sidebarRef = useRef<HTMLElement>(null);
-  useChromeHeight(sidebarRef, "--merchant-mobile-nav-height", true);
-  const page=window.location.pathname.split("/")[2] || "overview";
-  const[products,setProducts]=useState<Product[]>([]);const[loading,setLoading]=useState(true);const[busy,setBusy]=useState(false);const[error,setError]=useState("");const[platform,setPlatform]=useState(false);const[message,setMessage]=useState("");
-  const route=(name:string)=>"/app"+(name==="overview" ? "" : "/"+name)+"?store="+store.id;
-  async function load(){setLoading(true);setError("");try{setProducts(await listProducts(client,store.id));}catch{setError(fr ? "Le catalogue est temporairement inaccessible. Réessayez." : "The catalog is temporarily unavailable. Try again.");}finally{setLoading(false);}}
-  useEffect(()=>{if(page==="overview")void load();merchantRequest<{platform:boolean}>(client,"/v1/admin/me/access").then(v=>setPlatform(v.platform)).catch(()=>setPlatform(false));},[store.id,page]);
-  async function publish(){setBusy(true);setError("");try{onUpdated(await publishStore(client,store.id));setMessage(fr ? "Votre boutique est publiée." : "Your store is published.");}catch{setError(fr ? "La publication n’a pas abouti. Vérifiez qu’un produit est actif et réessayez." : "Publication did not complete. Make sure a product is active and try again.");}finally{setBusy(false);}}
-  const nav=[{id:"overview",label:fr ? "Tableau de bord" : "Dashboard"},{id:"products",label:fr ? "Produits" : "Products"},{id:"orders",label:fr ? "Commandes" : "Orders"},...(owner ? [{id:"appearance",label:fr ? "Apparence" : "Appearance"},{id:"settings",label:fr ? "Réglages" : "Settings"},{id:"analytics",label:fr ? "Statistiques" : "Analytics"},{id:"team",label:fr ? "Équipe" : "Team"},{id:"connections",label:fr ? "Comptes connectés" : "Connected accounts"}]:[]),...(platform ? [{id:"platform",label:fr ? "Support Trigenys" : "Trigenys support"}]:[])];
-  const restricted=!owner&&["appearance","settings","analytics","team","connections"].includes(page);
-  return <div className="merchant-workspace-shell"><aside ref={sidebarRef} className="merchant-sidebar"><div className="workspace-store"><span className="admin-eyebrow">{owner ? (fr ? "Propriétaire" : "Owner") : (fr ? "Collaborateur" : "Staff")}</span><strong>{store.name}</strong>
-    {stores.length>1 && <label>{fr ? "Boutique active" : "Active store"}<select aria-label={fr ? "Boutique active" : "Active store"} value={store.id} onChange={e=>window.location.assign("/app?store="+e.target.value)}>{stores.map(item=><option value={item.id} key={item.id}>{item.name}</option>)}</select></label>}
-  </div><label className="merchant-mobile-navigation"><span>{fr ? "Navigation" : "Navigation"}</span><select aria-label={fr ? "Navigation de l’espace marchand" : "Merchant workspace navigation"} value={nav.some(item=>item.id===page) ? page : "overview"} onChange={event=>window.location.assign(route(event.target.value))}>{nav.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label><nav aria-label={fr ? "Espace marchand" : "Merchant workspace"}>{nav.map(item=><a key={item.id} href={route(item.id)} aria-current={page===item.id ? "page" : undefined}>{item.label}</a>)}</nav><a className="workspace-help" href="/help">{fr ? "Aide et support" : "Help and support"} ↗</a></aside>
+  const fr = language === "fr", owner = store.role !== "staff", page = workspacePage();
+  const [platform, setPlatform] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void merchantRequest<{ platform: boolean }>(client, "/v1/admin/me/access").then(value => { if (!cancelled) setPlatform(value.platform); }).catch(() => { if (!cancelled) setPlatform(false); });
+    return () => { cancelled = true; };
+  }, [client]);
+  const restricted = !owner && ["appearance", "settings", "analytics", "team", "connections"].includes(page);
+  return <div className="merchant-workspace-shell">
+    <WorkspaceNavigation store={store} stores={stores} language={language} page={page} platform={platform} open={navigationOpen} onClose={onCloseNavigation} />
     <main className="workspace-main" id="merchant-main" tabIndex={-1}>
-      {restricted ? <section className="workspace-section"><h1>{fr ? "Accès réservé au propriétaire" : "Owner access required"}</h1><p>{fr ? "Votre rôle permet de gérer les produits et les commandes." : "Your role allows product and order management."}</p><a href={route("products")}>{fr ? "Gérer les produits" : "Manage products"}</a></section> : page==="overview" ? <section className="workspace-section"><span className="admin-eyebrow">{fr ? "Votre espace" : "Your workspace"}</span><h1>{fr ? "Votre boutique, étape par étape" : "Your store, step by step"}</h1><p>{store.name} · {store.status==="published" ? (fr ? "Publiée" : "Published") : (fr ? "Brouillon privé" : "Private draft")}</p>
-      {loading&&<p role="status">{fr ? "Chargement du catalogue…" : "Loading catalog…"}</p>}{error&&<p className="form-message error" role="alert">{error}</p>}{message&&<p className="form-message success" role="status">{message}</p>}
-      <div className="dashboard-cards"><article className="info-card"><span>{fr ? "Produits actifs" : "Active products"}</span><strong>{loading ? "…" : products.filter(p=>p.status==="active").length}</strong><a href={route("products")}>{fr ? "Gérer mon catalogue" : "Manage my catalog"}</a></article><article className="info-card"><span>{fr ? "Votre catalogue public" : "Your public catalog"}</span><strong>{store.status==="published" ? (fr ? "En ligne" : "Live") : (fr ? "À publier" : "Not published")}</strong>{store.status==="published" ? <a href={"/store/"+store.slug}>{fr ? "Ouvrir la boutique" : "Open store"}</a> : owner ? <button type="button" className="admin-primary" onClick={publish} disabled={busy||loading||!products.some(p=>p.status==="active")}>{fr ? "Publier la boutique" : "Publish store"}</button> : <p>{fr ? "Le propriétaire publie la boutique." : "The owner publishes the store."}</p>}</article></div>
-      <ol className="launch-checklist"><li><strong>{fr ? "Identité créée" : "Identity created"}</strong><p>{fr ? "Le nom et le numéro WhatsApp sont enregistrés." : "Your name and WhatsApp number are saved."}</p>{owner&&<a href={route("settings")}>{fr ? "Modifier les réglages" : "Update settings"}</a>}</li><li><strong>{fr ? "Ajouter vos produits" : "Add your products"}</strong><p>{fr ? "Photos, prix, catégories et variantes. Activez au moins un produit pour publier." : "Images, prices, categories and variants. Activate at least one product to publish."}</p><a href={route("products")}>{fr ? "Ouvrir les produits" : "Open products"}</a></li>{owner&&<li><strong>{fr ? "Choisir votre apparence" : "Choose your appearance"}</strong><p>{fr ? "Prévisualisez le thème avec votre catalogue avant d’enregistrer." : "Preview the theme with your catalog before saving."}</p><a href={route("appearance")}>{fr ? "Personnaliser" : "Customize"}</a></li>}<li><strong>{fr ? "Recevoir et traiter vos demandes" : "Receive and handle requests"}</strong><p>{fr ? "Partagez votre lien public, puis confirmez les commandes avec vos clients." : "Share your public link, then confirm orders with customers."}</p><a href={route("orders")}>{fr ? "Ouvrir les commandes" : "Open orders"}</a></li></ol>
-      {error&&<button type="button" className="admin-secondary" onClick={load}>{fr ? "Réessayer" : "Try again"}</button>}
-    </section> : page==="products" ? <section className="workspace-section"><h1>{fr ? "Vos produits" : "Your products"}</h1><ProductCatalog client={client} store={store} language={language} /></section> : page==="orders" ? <OrdersPanel client={client} store={store} language={language} /> : page==="appearance" || page==="settings" ? renderSettings(page) : page==="analytics" ? <section className="workspace-section"><h1>{fr ? "Statistiques de votre boutique" : "Store analytics"}</h1><AnalyticsPanel client={client} store={store} language={language} /></section> : page==="connections" ? <SocialConnections client={client} store={store} language={language} onUpdated={onUpdated} /> : page==="team" ? <TeamPanel client={client} store={store} language={language} /> : page==="platform" ? <PlatformPanel client={client} language={language} /> : <section className="workspace-section"><h1>{fr ? "Cette page n’existe pas" : "This page does not exist"}</h1><a href={route("overview")}>{fr ? "Retour au tableau de bord" : "Back to dashboard"}</a></section>}
+      {restricted ? <section className="workspace-section"><header className="workspace-page-heading"><div><h1>{fr ? "Accès réservé au propriétaire" : "Owner access required"}</h1><p>{fr ? "Votre rôle permet de gérer les produits et les commandes." : "Your role allows product and order management."}</p></div></header><a className="admin-primary" href={workspaceRoute(store.id, "products")}>{fr ? "Gérer les produits" : "Manage products"}</a></section>
+        : page === "overview" ? <MerchantOverview client={client} store={store} language={language} onUpdated={onUpdated} />
+          : page === "products" ? <section className="workspace-section"><ProductCatalog client={client} store={store} language={language} /></section>
+            : page === "orders" ? <OrdersPanel client={client} store={store} language={language} />
+              : page === "appearance" || page === "settings" ? renderSettings(page)
+                : page === "analytics" ? <section className="workspace-section"><AnalyticsPanel client={client} store={store} language={language} /></section>
+                  : page === "connections" ? <SocialConnections client={client} store={store} language={language} onUpdated={onUpdated} />
+                    : page === "team" ? <TeamPanel client={client} store={store} language={language} />
+                      : page === "platform" ? <PlatformPanel client={client} language={language} />
+                        : <section className="workspace-section"><h1>{fr ? "Cette page n’existe pas" : "This page does not exist"}</h1><a href={workspaceRoute(store.id, "overview")}>{fr ? "Retour au tableau de bord" : "Back to dashboard"}</a></section>}
     </main>
   </div>;
 }
