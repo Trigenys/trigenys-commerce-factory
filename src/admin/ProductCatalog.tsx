@@ -650,7 +650,7 @@ export default function ProductCatalog({
         </div>
         <button
           type="button"
-          className="admin-primary"
+          className={editor ? "admin-secondary" : "admin-primary"}
           onClick={startCreate}
           disabled={busy}
         >
@@ -869,19 +869,16 @@ export default function ProductCatalog({
         </form>
       ) : null}
 
-      <div className="catalog-toolbar"><label className="workspace-search-field"><span>{language === "fr" ? "Rechercher un produit" : "Find a product"}</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={language === "fr" ? "Nom, catégorie ou adresse…" : "Name, category or address…"} /></label><label className="workspace-filter"><span>{language === "fr" ? "Statut du produit" : "Product status"}</span><select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="all">{language === "fr" ? "Tous les statuts" : "All statuses"}</option><option value="active">{t.active}</option><option value="draft">{t.draft}</option><option value="archived">{t.archived}</option></select></label><span className="catalog-result-count" role="status">{loading ? "…" : visibleProducts.length} {language === "fr" ? "produit(s)" : "product(s)"}</span></div>
+      {ordered.length > 0 && <div className="catalog-toolbar"><label className="workspace-search-field"><span>{language === "fr" ? "Rechercher un produit" : "Find a product"}</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={language === "fr" ? "Nom, catégorie ou adresse…" : "Name, category or address…"} /></label><label className="workspace-filter"><span>{language === "fr" ? "Statut du produit" : "Product status"}</span><select aria-label={language === "fr" ? "Statut du produit" : "Product status"} value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="all">{language === "fr" ? "Tous les statuts" : "All statuses"}</option><option value="active">{t.active}</option><option value="draft">{t.draft}</option><option value="archived">{t.archived}</option></select></label><span className="catalog-result-count" role="status">{loading ? "…" : visibleProducts.length} {language === "fr" ? "produit(s)" : "product(s)"}</span></div>}
       {loading ? (
         <div className="catalog-state">
           <span className="admin-loader" />
           <p>{t.loading}</p>
         </div>
       ) : ordered.length === 0 ? (
-        <div className="catalog-state">
+        !editor && <div className="catalog-state">
           <strong>{t.emptyTitle}</strong>
           <p>{t.emptyBody}</p>
-          <button type="button" className="admin-primary" onClick={startCreate}>
-            {t.add}
-          </button>
         </div>
       ) : visibleProducts.length === 0 ? <div className="catalog-state"><strong>{language === "fr" ? "Aucun produit ne correspond" : "No matching products"}</strong><button type="button" className="admin-secondary" onClick={() => { setQuery(""); setStatusFilter("all"); }}>{language === "fr" ? "Effacer les filtres" : "Clear filters"}</button></div> : (
         <div className="catalog-list">

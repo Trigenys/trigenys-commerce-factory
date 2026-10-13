@@ -136,6 +136,9 @@ try {
     await page.getByLabel(labels.name, { exact: true }).waitFor();
     assert.equal(await category().inputValue(), "Mode urbaine");
     assert.equal(await stock().inputValue(), fr ? "Sur commande" : "Made to order");
+    // The save bar is now sticky. Scroll the actual form before testing a save
+    // notification so the scenario still proves the user's original friction.
+    await page.evaluate(() => scrollTo(0, 400));
     await page.getByRole("button", { name: labels.create, exact: true }).scrollIntoViewIfNeeded();
     const initialScroll = await page.evaluate(() => scrollY);
     assert.ok(initialScroll > 100, "Scenario submits from a scrolled product form");
