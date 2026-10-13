@@ -13,7 +13,7 @@ type WindowDays = 7 | 30 | 90;
 const copy = {
   fr: {
     eyebrow: "Intentions clients",
-    title: "Analytique de la boutique",
+    title: "Statistiques de votre boutique",
     body: "Mesurez ce que Commerce Factory peut réellement observer : vues et clics vers WhatsApp.",
     storeViews: "Vues boutique",
     productViews: "Vues produits",
@@ -120,10 +120,9 @@ export default function AnalyticsPanel({
 
   return (
     <section className="analytics-panel" aria-labelledby="analytics-title">
-      <div className="analytics-heading">
+      <div className="analytics-heading workspace-page-heading">
         <div>
-          <span className="admin-eyebrow">{t.eyebrow}</span>
-          <h2 id="analytics-title">{t.title}</h2>
+          <h1 id="analytics-title">{t.title}</h1>
           <p>{t.body}</p>
         </div>
 

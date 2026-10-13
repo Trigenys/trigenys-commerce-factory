@@ -43,6 +43,7 @@ export async function brandFixture(browser,base,{profile="owner",authenticated=t
     if(path===`/v1/admin/stores/${storeId}/team`)return send({members:[{id:storeId,subject:"owner",role:"owner",createdAt:now}],invitations:state.invitations});
     if(path===`/v1/admin/stores/${storeId}/team/invitations`){const invitation={id:crypto.randomUUID(),email:body.email,expiresAt:"2027-01-01T00:00:00.000Z",revokedAt:null,acceptedAt:null};state.invitations.push(invitation);return send({invitation,href:base+"/app/accept-invitation#token="+token},201);}
     if(path===`/v1/admin/stores/${storeId}/analytics`)return send({analytics:{windowDays:30,storeViews:12,productViews:8,whatsappClicks:3,clickThroughRate:.375,topProducts:[]}});
+    if(path===`/v1/admin/stores/${storeId}/connections`)return send({connections:["facebook","instagram","tiktok"].map(provider=>({provider,status:"disconnected",available:false,accountId:null,accountName:null,profileUrl:null,expiresAt:null,lastError:null,importedAt:null}))});
     if(path==="/v1/admin/invitations/accept"){state.hasStore=true;return send({storeId});}
     if(path==="/v1/admin/platform/stores")return profile==="support" ? send({stores:[{...state.store,createdAt:now,productCount:1}]}):send({error:"PLATFORM_ACCESS_REQUIRED"},403);
     if(path==="/v1/admin/platform/support")return profile==="support" ? send({tickets:state.tickets}):send({error:"PLATFORM_ACCESS_REQUIRED"},403);

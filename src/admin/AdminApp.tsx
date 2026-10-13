@@ -1,4 +1,8 @@
 import MerchantWorkspace from "./MerchantWorkspace";
+import AccountMenu from "./AccountMenu";
+import MerchantNotice, { useMerchantNotice } from "./MerchantNotice";
+import AppIcon from "./AppIcon";
+import { workspacePage, workspaceRoute, workspaceTitle } from "./workspace-pages";
 import WorkspaceFooter from "../brand/WorkspaceFooter";
 import InvitationAccept from "./InvitationAccept";
 import PlatformPanel from "./PlatformPanel";
@@ -7,7 +11,7 @@ import "../pages/public-pages.css";
 import AccountAccess from "./AccountAccess";
 import RecoveryState from "../components/RecoveryState";
 import { useDraft, useUnsavedChanges } from "../lib/drafts";
-import { FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useChromeHeight } from "./merchant-chrome";
 import type { CommerceAuthClient } from "./auth";
 import { canSignInWithGoogle, getAuthClient, getSessionSnapshot } from "./auth";
@@ -692,6 +696,14 @@ function StoreSettings({
   const [publishBusy, setPublishBusy] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
   const [previewProducts, setPreviewProducts] = useState<Product[]>([]);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  useChromeHeight(toolbarRef, "--merchant-page-toolbar-height");
+  const { notice, notify, dismiss } = useMerchantNotice();
+  useEffect(() => {
+    if (serverError) notify("error", serverError);
+    else if (message) notify("success", message);
+    else dismiss();
+  }, [serverError, message, notify, dismiss]);
 
   useEffect(() => {
     let cancelled = false;
@@ -818,8 +830,8 @@ function StoreSettings({
   return (
     <div className="settings-layout">
       <section className="settings-main">
-        <span className="admin-eyebrow">{t.settingsEyebrow}</span>
-        <div className="settings-title-row">
+        <MerchantNotice notice={notice} language={language} onDismiss={dismiss} />
+        <div ref={toolbarRef} className="settings-title-row workspace-page-heading">
           <div>
             <h1>{section === "appearance" ? (language === "fr" ? "L’apparence de votre boutique" : "Your store appearance") : t.settingsTitle}</h1>
             <p>{section === "appearance" ? (language === "fr" ? "Choisissez un thème, personnalisez son style et vérifiez l’aperçu de votre boutique." : "Choose a theme, customize its style and check your store preview.") : t.settingsBody}</p>
@@ -847,11 +859,15 @@ function StoreSettings({
                 {publishBusy ? t.publishing : t.publish}
               </button>
             )}
+            <button className="admin-primary" type="submit" form="merchant-settings" disabled={busy || logoBusy}>
+              {busy ? t.saving : t.save}
+            </button>
           </div>
         </div>
 
-        <form className="merchant-form-card settings-card" onSubmit={save}>
+        <form id="merchant-settings" className="merchant-form-card settings-card" onSubmit={save}>
           <div hidden={section === "appearance"}>
+          <div className="workspace-form-heading"><h2>{language === "fr" ? "Informations de la boutique" : "Store information"}</h2><p>{language === "fr" ? "L’identité et les coordonnées présentées à vos clients." : "The identity and contact details shown to your customers."}</p></div>
           <BusinessFields
             input={input}
             setInput={setInput}
@@ -862,7 +878,7 @@ function StoreSettings({
           />
 
           </div>
-          <div className="settings-divider" />
+          {section === "settings" && <div className="settings-divider" />}
 
           <div className="admin-form admin-form-grid">
             <label hidden={section === "appearance"}>
@@ -915,23 +931,19 @@ function StoreSettings({
             </div>
           </div>
 
-          <div className="settings-divider" />
+          {section === "appearance" && <div className="settings-divider" />}
           <div hidden={section !== "appearance"}>
           <ThemePicker value={input.theme} settings={input.themeSettings} language={language} imageUrl={previewProducts.find((product) => product.status === "active")?.imageUrls[0]} onChange={(theme, themeSettings) => setInput({ ...input, theme, themeSettings })} />
 
           </div>
           <p className="draft-note" role="status">{dirty ? (language === "fr" ? "Modifications non enregistrées · brouillon conservé dans cet onglet." : "Unsaved changes · draft kept in this tab.") : (language === "fr" ? "Vos réglages sont enregistrés." : "Your settings are saved.")}</p>
-          {serverError ? <p className="form-message error" role="alert">{serverError}</p> : null}
-          {message ? <p className="form-message success" role="status">{message}</p> : null}
 
           <div className="settings-actions">
             <span>
               <small>{t.publicUrl}</small>
               <strong>/store/{input.slug}</strong>
             </span>
-            <button className="admin-primary" type="submit" disabled={busy}>
-              {busy ? t.saving : t.save}
-            </button>
+            <span>{language === "fr" ? "Enregistrez depuis le haut de la page." : "Save using the action at the top of the page."}</span>
           </div>
         </form>
 
@@ -953,6 +965,8 @@ export default function AdminApp() {
   const [language, setLanguage] = useState<Language>(languageFromPreference);
   const [client, setClient] = useState<CommerceAuthClient | null>(null);
   const [sessionEmail, setSessionEmail] = useState("");
+  const [navigationOpen, setNavigationOpen] = useState(false);
+  const closeNavigation = useCallback(() => setNavigationOpen(false), []);
   const [authenticated, setAuthenticated] = useState(false);
   const [store, setStore] = useState<Store | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
@@ -1016,12 +1030,24 @@ export default function AdminApp() {
     return () => window.removeEventListener("merchant-session-expired", expire);
   }, []);
 
+  const workspaceMode = authenticated && Boolean(store) && !loading && !fatalError && window.location.pathname !== "/app/accept-invitation";
+  const signOut = useCallback(async () => {
+    if (!client) return;
+    try { const result = await client.signOut(); if (result.error) throw new Error("SIGN_OUT_FAILED"); }
+    catch { setFatalError(language === "fr" ? "La déconnexion n’a pas abouti. Réessayez." : "Sign out did not complete. Try again."); return; }
+    try { for (const key of Object.keys(sessionStorage)) if (/^commerce-(onboarding|settings|product):/.test(key)) sessionStorage.removeItem(key); } catch { /* Optional storage. */ }
+    closeNavigation(); setAuthenticated(false); setStore(null); setSessionEmail("");
+  }, [client, language, closeNavigation]);
   const header = useMemo(() => (
     <header ref={headerRef} className="admin-header">
       <a className="skip-link" href="#merchant-main">{language === "fr" ? "Aller au contenu" : "Skip to content"}</a>
-      <a href="/" className="admin-brand">
+      <div className="admin-header-left">
+      {workspaceMode && <button type="button" className="workspace-icon-button workspace-navigation-toggle" aria-label={language === "fr" ? "Ouvrir la navigation" : "Open navigation"} aria-expanded={navigationOpen} aria-controls="merchant-navigation" aria-haspopup="dialog" onClick={() => setNavigationOpen(true)}><AppIcon name="menu" /></button>}
+      <a href={workspaceMode && store ? workspaceRoute(store.id, "overview") : "/"} className="admin-brand">
         <img src="/commerce-factory-logo-v3.png?v=3" alt="Commerce Factory" width={500} height={159} />
       </a>
+      </div>
+      {workspaceMode && <nav className="admin-breadcrumb" aria-label={language === "fr" ? "Fil d’Ariane" : "Breadcrumb"}><span>{language === "fr" ? "Mon espace" : "Workspace"}</span><span aria-hidden="true">/</span><span aria-current="page">{workspaceTitle(workspacePage(), language)}</span></nav>}
       <div className="admin-header-actions">
         <a className="admin-back" href="/help">{language === "fr" ? "Aide" : "Help"}</a>
         <div className="admin-language">
@@ -1038,26 +1064,12 @@ export default function AdminApp() {
             onClick={() => setLanguage("en")}
           >EN</button>
         </div>
-        {authenticated && client ? (
-          <button
-            type="button"
-            className="admin-signout"
-            onClick={async () => {
-              try { const result=await client.signOut();if(result.error)throw new Error("SIGN_OUT_FAILED"); } catch { setFatalError(language === "fr" ? "La déconnexion n’a pas abouti. Réessayez." : "Sign out did not complete. Try again.");return; }
-              try { for (const key of Object.keys(sessionStorage)) if (/^commerce-(onboarding|settings|product):/.test(key)) sessionStorage.removeItem(key); } catch { /* Optional storage. */ }
-              setAuthenticated(false);
-              setStore(null);
-              setSessionEmail("");
-            }}
-          >
-            {t.signOut}
-          </button>
-        ) : (
+        {authenticated && client ? <AccountMenu email={sessionEmail} language={language} onSignOut={signOut} /> : (
           <a href="/" className="admin-back">{t.back}</a>
         )}
       </div>
     </header>
-  ), [authenticated, client, language, t]);
+  ), [authenticated, client, language, t, workspaceMode, store, navigationOpen, sessionEmail, signOut]);
 
   if (loading) {
     return (
@@ -1083,7 +1095,7 @@ export default function AdminApp() {
   }
 
   return (
-    <div className="admin-shell brand-page">
+    <div className={"admin-shell brand-page" + (workspaceMode ? " workspace-mode" : "")}>
       {header}
       {!authenticated ? (
         <AccountAccess
@@ -1101,6 +1113,7 @@ export default function AdminApp() {
         <main id="merchant-main" tabIndex={-1}><PlatformPanel client={client} language={language} /></main>
       ) : store ? (
         <MerchantWorkspace client={client} store={store} stores={stores.length ? stores : [store]} language={language} onUpdated={setStore}
+          navigationOpen={navigationOpen} onCloseNavigation={closeNavigation}
           renderSettings={(section) => <StoreSettings key={store.id+section} client={client} store={store} language={language} section={section} onUpdated={setStore} />} />
       ) : (
         <Onboarding

@@ -76,11 +76,14 @@ async function capture(page, label) {
 
 async function sticky(page, width) {
   const header = await page.locator(".admin-header").boundingBox();
-  const nav = await page.locator(".merchant-sidebar").boundingBox();
   assert.ok(header && Math.abs(header.y) <= 1, "Header stays at the top after scroll");
-  assert.ok(nav && Math.abs(nav.y - header.height) <= 2, "Merchant navigation stays below the header");
-  if (width <= 850) assert.ok(await page.locator(".merchant-mobile-navigation select").isVisible());
-  return width <= 850 ? nav.y + nav.height : header.height;
+  if (width < 1024) {
+    assert.ok(await page.getByRole("button", { name: /Ouvrir la navigation|Open navigation/ }).isVisible(), "Mobile navigation is available in the sticky header");
+  } else {
+    const nav = await page.locator(".merchant-sidebar").boundingBox();
+    assert.ok(nav && Math.abs(nav.y - header.height) <= 2, "Merchant navigation stays below the header");
+  }
+  return header.height;
 }
 
 async function noticePosition(page, width) {
@@ -98,7 +101,7 @@ try {
   browser = await chromium.launch({ headless: true });
   for (const language of ["fr", "en"]) for (const width of [1440, 390]) {
     const fr = language === "fr";
-    const labels = { category: fr ? "Catégorie" : "Category", stock: fr ? "Indication de stock" : "Stock label", name: fr ? "Nom du produit" : "Product name", price: fr ? "Prix" : "Price", save: fr ? "Enregistrer" : "Save", create: fr ? "Créer le produit" : "Create product", add: fr ? "+ Ajouter un produit" : "+ Add product", edit: fr ? "Modifier" : "Edit", categoryName: fr ? "Nouvelle catégorie" : "New category", addCategory: fr ? "Ajouter une catégorie…" : "Add a category…", close: fr ? "Fermer la notification" : "Dismiss notification" };
+    const labels = { category: fr ? "Catégorie" : "Category", stock: fr ? "Indication de stock" : "Stock label", name: fr ? "Nom du produit" : "Product name", price: fr ? "Prix" : "Price", save: fr ? "Enregistrer" : "Save", create: fr ? "Créer le produit" : "Create product", add: fr ? "Ajouter un produit" : "Add product", edit: fr ? "Modifier" : "Edit", categoryName: fr ? "Nouvelle catégorie" : "New category", addCategory: fr ? "Ajouter une catégorie…" : "Add a category…", close: fr ? "Fermer la notification" : "Dismiss notification" };
     const { context, page, state } = await fixture(language, width);
     await page.goto(base + "/app/products?store=" + storeId);
     await page.getByRole("button", { name: labels.edit, exact: true }).click();
@@ -133,6 +136,9 @@ try {
     await page.getByLabel(labels.name, { exact: true }).waitFor();
     assert.equal(await category().inputValue(), "Mode urbaine");
     assert.equal(await stock().inputValue(), fr ? "Sur commande" : "Made to order");
+    // The save bar is now sticky. Scroll the actual form before testing a save
+    // notification so the scenario still proves the user's original friction.
+    await page.evaluate(() => scrollTo(0, 400));
     await page.getByRole("button", { name: labels.create, exact: true }).scrollIntoViewIfNeeded();
     const initialScroll = await page.evaluate(() => scrollY);
     assert.ok(initialScroll > 100, "Scenario submits from a scrolled product form");
@@ -173,13 +179,9 @@ try {
     await page.getByRole("button", { name: labels.close, exact: true }).focus();
     await page.keyboard.press("Enter");
     assert.equal(await page.locator('.merchant-notice[data-visible="true"]').count(), 0);
-    if (width <= 850) {
-      await page.getByLabel(fr ? "Navigation de l’espace marchand" : "Merchant workspace navigation", { exact: true }).selectOption("orders");
-      await page.getByRole("heading", { name: fr ? "Commandes" : "Orders", level: 1, exact: true }).waitFor();
-    } else {
-      await page.getByRole("link", { name: fr ? "Commandes" : "Orders", exact: true }).click();
-      await page.getByRole("heading", { name: fr ? "Commandes" : "Orders", level: 1, exact: true }).waitFor();
-    }
+    if (width < 1024) await page.getByRole("button", { name: fr ? "Ouvrir la navigation" : "Open navigation", exact: true }).click();
+    await page.getByRole("navigation", { name: fr ? "Espace marchand" : "Merchant workspace", exact: true }).getByRole("link", { name: fr ? "Commandes" : "Orders", exact: true }).click();
+    await page.getByRole("heading", { name: fr ? "Commandes" : "Orders", level: 1, exact: true }).waitFor();
     assert.deepEqual(state.errors, [], "No browser exceptions");
     report.checks.push(`${language}/${width}: native lists, legacy values, language switch, custom category keyboard/focus, draft reload, sticky navigation, visible failure/success, pending save, failed refresh without duplicate, keyboard dismissal and navigation`);
     await context.close();
@@ -188,7 +190,8 @@ try {
     const { context, page } = await fixture("fr", 390, "staff");
     await page.goto(base + "/app/products?store=" + storeId);
     await page.getByRole("button", { name: "Modifier", exact: true }).waitFor();
-    assert.deepEqual(await page.locator(".merchant-mobile-navigation option").evaluateAll(options => options.map(option => option.value)), ["overview", "products", "orders"]);
+    await page.getByRole("button", { name: "Ouvrir la navigation", exact: true }).click();
+    assert.deepEqual(await page.getByRole("dialog", { name: "Navigation" }).locator("nav a").evaluateAll(links => links.map(link => new URL(link.href).pathname.split("/")[2] || "overview")), ["overview", "orders", "products"]);
     await page.goto(base + "/app/team?store=" + storeId);
     await page.getByRole("heading", { name: "Accès réservé au propriétaire", exact: true }).waitFor();
     report.checks.push("Staff mobile navigation retains the existing role restrictions");
