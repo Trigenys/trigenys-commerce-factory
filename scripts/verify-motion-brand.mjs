@@ -212,14 +212,15 @@ try {
     for (const authenticated of [false, true]) {
       const { page, context } = await brandFixture(browser, base, { width, language, authenticated, hasStore: false });
       currentPage = page;
-      await page.goto(base + "/app"); await ready(page);
+      await page.goto(base + (authenticated ? "/app" : "/app/login")); await ready(page);
       await page.locator(authenticated ? ".merchant-form-card" : ".auth-card").waitFor();
       await overflow(page, "account-" + authenticated + "-" + language + "-" + width);
       await axe(page, "account-" + authenticated + "-" + language + "-" + width);
       await screenshot(page, (authenticated ? "onboarding" : "account") + "-" + language + "-" + width, true);
       if (!authenticated) {
-        await page.locator(".auth-tabs button").nth(1).click();
+        await page.locator(".auth-tabs").getByRole("button", { name: language === "fr" ? "Créer un compte" : "Create an account", exact: true }).click();
         await page.locator("#account-consent").waitFor();
+        assert.equal(await page.locator("#account-consent").isChecked(), false, "Signup consent starts unchecked");
         await overflow(page, "signup-" + language + "-" + width);
         await axe(page, "signup-" + language + "-" + width);
         await screenshot(page, "signup-" + language + "-" + width, true);

@@ -81,3 +81,4 @@
 }
 
 .brand-page .recovery-actions button { background:var(--ink); }
+.brand-page .admin-form :is(input,textarea,select):not([type="checkbox"]):not([type="radio"]):not([aria-invalid="true"]):not(:focus) { border-color:#7b8b7c; }

@@ -11,6 +11,8 @@
 .info-shell.brand-page .admin-eyebrow { color:var(--landing-coral); }
 .info-shell.brand-page .admin-form { max-width:700px; padding:clamp(24px,4vw,40px); background:var(--landing-paper); border:1px solid var(--admin-line); border-radius:18px; box-shadow:0 20px 45px rgba(20,45,37,.05); }
 .info-shell.brand-page .admin-form :is(input,textarea,select) { font-size:14px; background:#fffefa; }
+.info-shell.brand-page .admin-form p { font-size:13px; line-height:1.75; }
+.info-shell.brand-page .admin-form p a { color:var(--admin-primary); text-decoration:underline; text-underline-offset:3px; }
 .info-shell.brand-page .admin-primary { background:var(--ink); box-shadow:none; min-height:48px; }
 .info-shell.brand-page .admin-secondary { background:transparent; border-color:#8f9d8e; }
 @media (max-width:760px) {
