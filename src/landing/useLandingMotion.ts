@@ -7,20 +7,18 @@ export function useLandingMotion(root: RefObject<HTMLElement | null>) {
     const shell = root.current;
     if (!shell || reduced) return;
     const revealNodes = [...shell.querySelectorAll<HTMLElement>("[data-reveal]")];
-    // Read all positions together; interleaving each read with a class change
-    // forced repeated whole-page layouts before the first mobile paint.
-    const initiallyVisible = revealNodes.map(node => node.getBoundingClientRect().top < innerHeight * .94);
     shell.classList.add("motion-enabled");
     const observer = new IntersectionObserver(entries => {
-      for (const entry of entries) if (entry.isIntersecting) {
-        entry.target.classList.add("is-revealed"); observer.unobserve(entry.target);
+      for (const entry of entries) {
+        // The observer supplies positions without forcing a synchronous layout
+        // of every below-fold section during the first mobile render.
+        if (entry.isIntersecting || entry.boundingClientRect.top < innerHeight * .94) {
+          entry.target.classList.add("is-revealed"); observer.unobserve(entry.target);
+        } else entry.target.classList.add("reveal-ready");
       }
     }, { rootMargin: "0px 0px -5% 0px", threshold: .08 });
-    for (const [index, node] of revealNodes.entries()) {
-      // First-screen content remains painted immediately, including the hero.
-      if (initiallyVisible[index]) node.classList.add("is-revealed");
-      else { node.classList.add("reveal-ready"); observer.observe(node); }
-    }
+    // First-screen content is visible immediately, including direct anchor arrivals.
+    for (const node of revealNodes) observer.observe(node);
     const layers = [...shell.querySelectorAll<HTMLElement>("[data-parallax]")].map(node => ({
       node, anchor: node.closest<HTMLElement>("[data-parallax-anchor]") ?? node,
       strength: Number(node.dataset.parallax) || 16, current: 0
