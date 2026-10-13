@@ -52,6 +52,7 @@ try {
     assert.equal(await page.getByRole("button", { name: "Publier la boutique", exact: true }).isEnabled(), false);
     const add = page.getByRole("link", { name: "Ajouter un produit", exact: true });
     assert.ok((await add.boundingBox()).y < 350, "Primary action is available in the first viewport");
+    assert.equal(await add.evaluate(node=>getComputedStyle(node).color), "rgb(255, 253, 248)", "Primary link text stays legible against its dark background");
     await capture(page, "dashboard-empty-" + width);
     state.products = [structuredClone(product)]; await page.reload(); await ready(page);
     await page.getByText("2/3 étapes terminées", { exact: true }).waitFor();
@@ -62,7 +63,7 @@ try {
   // Navigation uses a real modal dialog on mobile, with focus containment/restoration.
   for (const width of [320, 390, 768]) {
     const { context, page } = await fixture({ width }); await page.goto(base + "/app/products"); await ready(page);
-    const toggle = page.getByRole("button", { name: "Ouvrir la navigation", exact: true });
+    const toggle = page.locator(".workspace-navigation-toggle");
     await toggle.focus(); await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "Navigation", exact: true }); await dialog.waitFor();
     assert.equal(await toggle.getAttribute("aria-expanded"), "true");
@@ -121,7 +122,6 @@ try {
   // Account utility exposes the current identity, supports Escape, and signs out.
   {
     const { context, page, state } = await fixture({ width: 390 }); await page.goto(base + "/app"); await ready(page);
-    const summary = page.getByText("Mon compte", { exact: true }).locator("..");
     await page.locator(".admin-account>summary").click(); await page.getByText("owner@example.com", { exact: true }).waitFor();
     await capture(page, "account-menu"); await page.keyboard.press("Escape"); assert.equal(await page.locator(".admin-account").getAttribute("open"), null);
     await page.locator(".admin-account>summary").click(); await page.getByRole("button", { name: "Se déconnecter", exact: true }).click();
