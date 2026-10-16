@@ -65,6 +65,40 @@ describe("persisted Commerce Factory user journeys",()=>{
     for(const payload of [input({lines:[]}),input({trackingToken:"short"}),input({lines:[{productId,quantity:100,variants:{}}]}),input({lines:[input().lines[0],input().lines[0]]}),input({customerPhone:"no"})])assert.equal(parseOrderInput(payload),null);
     const response=await createOrder({lines:[{productId,quantity:2,variants:{Size:"XXL"}}]});assert.equal(response.status,409);
   });
+  test("draft media previews use real membership permissions without public access",async()=>{
+    const repository = createNeonRepository("",tag);
+    const ids = [crypto.randomUUID(), crypto.randomUUID()];
+    const bytes = new Uint8Array([82,73,70,70,0,0,0,0,87,69,66,80]);
+    const bucket = { put: async()=>{}, delete: async()=>{}, get: async()=>({body:new Blob([bytes]).stream()}) };
+    await query("INSERT INTO store_members (store_id,auth_subject,role) VALUES ($1,'preview-staff','staff')",[storeId]);
+    await query("UPDATE stores SET status='draft' WHERE id=$1",[storeId]);
+    await query("UPDATE products SET status='draft' WHERE id=$1",[productId]);
+    try {
+      for(const [index,kind] of (["product","logo"] as const).entries()) {
+        const media = await repository.createOwnedMediaObject("owner", {id:crypto.randomUUID(),publicId:ids[index],storeId,productId:kind === "product" ? productId : null,kind,objectKey:`test/${ids[index]}.webp`,contentType:"image/webp",byteSize:bytes.byteLength});
+        assert.ok(media);
+      }
+      const preview = (publicId:string,subject?:string,requestedStoreId=storeId) => app().request(`/v1/admin/stores/${requestedStoreId}/media/public/${publicId}`,{headers:subject ? {Authorization:"Bearer "+subject}:{}},{...env,MEDIA_BUCKET:bucket});
+      for(const id of ids) {
+        const own = await preview(id,"owner");
+        assert.equal(own.status,200); assert.equal(own.headers.get("Cache-Control"),"private, no-store");
+        assert.equal((await own.arrayBuffer()).byteLength,bytes.byteLength);
+        assert.equal((await preview(id)).status,401);
+        assert.equal((await preview(id,"stranger")).status,404);
+        assert.equal((await preview(id,"owner",crypto.randomUUID())).status,404);
+        assert.equal((await request(`/v1/media/${id}`)).status,404);
+      }
+      assert.equal((await preview(ids[0],"preview-staff")).status,200);
+      assert.equal((await preview(ids[1],"preview-staff")).status,404);
+      await query("DELETE FROM store_members WHERE store_id=$1 AND auth_subject='preview-staff'",[storeId]);
+      assert.equal((await preview(ids[0],"preview-staff")).status,404);
+    } finally {
+      await query("DELETE FROM media_objects WHERE public_id=ANY($1::uuid[])",[ids]);
+      await query("DELETE FROM store_members WHERE store_id=$1 AND auth_subject='preview-staff'",[storeId]);
+      await query("UPDATE stores SET status='published' WHERE id=$1",[storeId]);
+      await query("UPDATE products SET status='active' WHERE id=$1",[productId]);
+    }
+  });
   test("concurrent retry saves one order and exposes no buyer data in private tracking",async()=>{
     const [a,b]=await Promise.all([createOrder(),createOrder()]);assert.ok([200,201].includes(a.status),await a.clone().text());assert.ok([200,201].includes(b.status),await b.clone().text());
     const first=await a.json() as any,second=await b.json() as any;order=first.order;assert.equal(order.id,second.order.id);assert.equal(order.total,"2501.10");assert.match(first.href,/^https:\/\/wa\.me\/237670000001\?text=/);
@@ -157,3 +191,4 @@ describe("persisted Commerce Factory user journeys",()=>{
     assert.equal((await query("SELECT count(*)::int AS count FROM commerce_orders")).rows[0].count,count);
   });
 });
+

@@ -119,3 +119,12 @@ jobs:
           TEST_DATABASE_URL: postgresql://postgres:ci-test-only@localhost:5432/commerce_journeys
         working-directory: backend
         run: npm run check
+      - name: Bundle the checked Worker for isolated deployment
+        working-directory: backend
+        run: npx wrangler deploy --config wrangler.production.jsonc --dry-run --outdir ../artifacts/worker
+      - name: Retain the checked Worker bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: commerce-worker-bundle
+          path: artifacts/worker/
+

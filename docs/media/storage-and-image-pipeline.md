@@ -22,6 +22,7 @@ The product Worker receives the bucket as the `MEDIA_BUCKET` binding and is the 
 5. The Worker accepts only `image/webp`, verifies the WebP RIFF signature and rejects anything above 2 MiB.
 6. The Worker generates the object key; the browser never chooses the R2 key.
 7. The object is written to R2 and its tenant-owned metadata is committed to Neon.
+8. The product editor previews the uploaded object privately. Click Save to attach its stable public URL to the product; uploading alone does not save the product form. Successful files remain in the draft if a later file in the same selection fails.
 
 Source files above 12 MiB are rejected before browser decoding.
 
@@ -66,6 +67,16 @@ A media object is served only when:
 Responses are WebP, immutable-cacheable and include `X-Content-Type-Options: nosniff`.
 
 The R2 object key is never exposed as a public URL.
+
+## Authenticated merchant preview
+
+`GET /v1/admin/stores/{storeId}/media/public/{publicId}` streams an existing media object after validating the merchant session and store membership. The owner can preview product media and logos; a collaborator can preview product media only. Draft, unpublished and not-yet-attached uploads stay unavailable through the public route.
+
+Private responses use `Cache-Control: private, no-store` and vary on Authorization/Origin. The browser sends its JWT in the Authorization header, creates a temporary object URL from the WebP response, and revokes it on source/store/session change or unmount. Tokens and temporary URLs are never stored in product data. The editor, catalog thumbnails, logo and appearance preview share this path and expose loading/failure/retry states.
+
+Validation covers real SQL membership checks (including collaborator restrictions and revocation), missing/invalid sessions, cross-store access, public-route denial, binary delivery, upload/save/reload, partial-upload recovery and object-URL cleanup. Browser cases use isolated fixtures, not a real merchant's products.
+
+RAIDER — Risk: exposing private draft media or persisting a temporary URL. Assumption: an uploaded object can exist before the product form is saved. Issue: public delivery deliberately rejects those objects. Dependencies: existing Auth, membership lookup and R2 binding; no schema or dependency changes. Evidence: media API, PostgreSQL integration and rendered catalog checks. Result: private merchant previews with stable saved references and unchanged public visibility rules.
 
 ## Cleanup
 
@@ -124,3 +135,4 @@ The AppFactory Cloudflare resource token must include:
 `Workers R2 Storage Edit`
 
 Without that permission, AppFactory fails closed before Worker deployment.
+

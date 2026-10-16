@@ -38,7 +38,8 @@ import "../brand/workspace-brand.css";
 import { isStoreTheme, parseThemeSettings, resolveStoreTheme, themeFonts } from "../../shared/store-themes";
 import { themeShellProps } from "../storefront/theme-style";
 import ThemePicker from "../themes/ThemePicker";
-import LiveThemePreview from "../themes/LiveThemePreview";
+import MerchantThemePreview from "./MerchantThemePreview";
+import MerchantImage from "./MerchantImage";
 
 type Language = "fr" | "en";
 type OnboardingStep = 0 | 1 | 2 | 3;
@@ -896,7 +897,7 @@ function StoreSettings({
               <div className="store-logo-row">
                 <div className="store-logo-preview">
                   {store.logoUrl ? (
-                    <img src={store.logoUrl} alt="" />
+                    <MerchantImage client={client} storeId={store.id} url={store.logoUrl} language={language} />
                   ) : (
                     <span>{initials(store.name).toUpperCase()}</span>
                   )}
@@ -947,7 +948,7 @@ function StoreSettings({
           </div>
         </form>
 
-        {section === "appearance" && <LiveThemePreview language={language} storefront={{
+        {section === "appearance" && <MerchantThemePreview client={client} storeId={store.id} language={language} storefront={{
           store: { ...store, ...input, logoUrl: store.logoUrl },
           products: previewProducts.filter((product) => product.status === "active").sort((a, b) => a.sortOrder - b.sortOrder)
         }} />}
@@ -1127,3 +1128,4 @@ export default function AdminApp() {
     </div>
   );
 }
+

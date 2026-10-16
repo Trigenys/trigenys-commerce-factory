@@ -21,7 +21,13 @@ async function fixture(language, width, role = "owner") {
   const context = await browser.newContext({ viewport: { width, height: 900 }, locale: language === "fr" ? "fr-FR" : "en-GB", reducedMotion: "reduce" });
   await context.addInitScript(language => localStorage.setItem("commerce-factory-language", language), language);
   const page = await context.newPage();
-  const state = { products: [structuredClone(product)], calls: [], errors: [], rejectSave: false, failRead: false, gate: null };
+  const state = { products: [structuredClone(product)], calls: [], errors: [], rejectSave: false, failRead: false, gate: null, media: new Map(), uploads: 0, failUploadAt: 0, failPreview: false };
+  await page.addInitScript(() => {
+    window.mediaLifecycle = { created: [], revoked: [] };
+    const create = URL.createObjectURL.bind(URL), revoke = URL.revokeObjectURL.bind(URL);
+    URL.createObjectURL = value => { const url = create(value); window.mediaLifecycle.created.push(url); return url; };
+    URL.revokeObjectURL = url => { window.mediaLifecycle.revoked.push(url); revoke(url); };
+  });
   currentPage = page; currentState = state;
   page.on("dialog", dialog => dialog.accept());
   page.on("pageerror", error => state.errors.push(error.message));
@@ -39,7 +45,7 @@ async function fixture(language, width, role = "owner") {
   });
   await page.route("**/v1/**", async route => {
     const endpoint = new URL(route.request().url()).pathname, method = route.request().method();
-    const body = route.request().postData() ? route.request().postDataJSON() : undefined;
+    const body = route.request().headers()["content-type"]?.includes("application/json") && route.request().postData() ? route.request().postDataJSON() : undefined;
     const send = (json, status = 200) => route.fulfill({ status, json, headers: { "Access-Control-Allow-Origin": "*" } });
     if (method === "OPTIONS") return route.fulfill({ status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" } });
     state.calls.push({ path: endpoint, method, body });
@@ -47,6 +53,27 @@ async function fixture(language, width, role = "owner") {
     if (endpoint === "/v1/admin/me/stores") return send({ stores: [{ ...store, role }] });
     if (endpoint === "/v1/admin/me/access") return send({ platform: false, email: `${role}@example.com`, emailVerified: true });
     if (endpoint === `/v1/admin/stores/${storeId}/orders`) return send({ orders: [] });
+    if (endpoint === `/v1/admin/stores/${storeId}/media` && method === "POST") {
+      state.uploads++;
+      if (state.uploads === state.failUploadAt) return send({ error: "MEDIA_UPLOAD_FAILED" }, 502);
+      const request = new Request(route.request().url(), { method, headers: route.request().headers(), body: route.request().postDataBuffer() });
+      const form = await request.formData();
+      const file = form.get("file");
+      assert.equal(file.type, "image/webp");
+      const publicId = crypto.randomUUID();
+      const media = { id: crypto.randomUUID(), publicId, storeId, productId: form.get("productId"), kind: form.get("kind"), publicUrl: `http://127.0.0.1:8787/v1/media/${publicId}` };
+      state.media.set(publicId, { media, bytes: Buffer.from(await file.arrayBuffer()) });
+      return send({ media }, 201);
+    }
+    if (endpoint.startsWith(`/v1/admin/stores/${storeId}/media/public/`)) {
+      assert.match(route.request().headers().authorization || "", /^Bearer /, "Private previews carry the merchant JWT in a header");
+      const publicId = endpoint.split("/").pop(), value = state.media.get(publicId);
+      if (!value) return send({ error: "MEDIA_NOT_FOUND" }, 404);
+      if (method === "DELETE") { state.media.delete(publicId); return route.fulfill({ status: 204, headers: { "Access-Control-Allow-Origin": "*" } }); }
+      if (state.failPreview) return send({ error: "UNAVAILABLE" }, 503);
+      return route.fulfill({ body: value.bytes, contentType: "image/webp", headers: { "Access-Control-Allow-Origin": "*", "Cache-Control": "private, no-store" } });
+    }
+    if (endpoint.startsWith("/v1/media/")) return send({ error: "MEDIA_NOT_FOUND" }, 404);
     if (endpoint === path && method === "GET") return state.failRead ? send({ error: "UNAVAILABLE" }, 503) : send({ products: state.products });
     if ((endpoint === path && method === "POST") || (endpoint.startsWith(path + "/") && method === "PATCH")) {
       if (state.gate) await state.gate;
@@ -186,6 +213,54 @@ try {
     report.checks.push(`${language}/${width}: native lists, legacy values, language switch, custom category keyboard/focus, draft reload, sticky navigation, visible failure/success, pending save, failed refresh without duplicate, keyboard dismissal and navigation`);
     await context.close();
   }
+  for (const [language, width] of [["fr", 390], ["en", 1440]]) {
+    const { context, page, state } = await fixture(language, width);
+    const fr = language === "fr";
+    await page.goto(base + "/app/products?store=" + storeId);
+    await page.getByRole("button", { name: fr ? "Modifier" : "Edit", exact: true }).click();
+    const png = await page.evaluate(() => {
+      const canvas = document.createElement("canvas"); canvas.width = canvas.height = 200;
+      const context = canvas.getContext("2d"); context.fillStyle = "#142d25"; context.fillRect(0, 0, 200, 200);
+      context.fillStyle = "#f9cf79"; context.font = "bold 64px sans-serif"; context.fillText("237", 38, 125);
+      return canvas.toDataURL("image/png").split(",")[1];
+    });
+    state.failUploadAt = 2;
+    await page.getByLabel(fr ? "Ajouter des images" : "Add images", { exact: true }).setInputFiles([
+      { name: "urban-237.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") },
+      { name: "second.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") }
+    ]);
+    await page.locator('.merchant-notice [role="alert"]').waitFor();
+    await page.waitForFunction(() => document.querySelector(".catalog-media-grid img")?.naturalWidth > 0);
+    assert.equal(await page.locator(".catalog-media-grid img").count(), 1, "The first successful image survives a later upload failure");
+    assert.equal(state.products[0].imageUrls.length, 0, "Uploading does not silently save the product draft");
+    await capture(page, `private-media-upload-${language}-${width}`);
+    await page.getByRole("button", { name: fr ? "Enregistrer" : "Save", exact: true }).click();
+    await page.locator('.merchant-notice [role="status"]').filter({ hasText: fr ? "Produit enregistré." : "Product saved." }).waitFor();
+    assert.equal(state.products[0].imageUrls.length, 1);
+    assert.match(state.products[0].imageUrls[0], /\/v1\/media\/[0-9a-f-]{36}$/);
+    assert.ok(state.calls.filter(call => call.method === "PATCH").every(call => !JSON.stringify(call.body).includes("blob:")), "Object URLs are never persisted");
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector(".catalog-thumb img")?.naturalWidth > 0);
+    await page.getByRole("button", { name: fr ? "Modifier" : "Edit", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector(".catalog-media-grid img")?.naturalWidth > 0);
+    await capture(page, `private-media-reloaded-${language}-${width}`);
+    state.failPreview = true;
+    await page.reload();
+    await page.locator(".catalog-media-grid").getByRole("button", { name: fr ? "Réessayer" : "Retry", exact: true }).waitFor();
+    state.failPreview = false;
+    await page.locator(".catalog-media-grid").getByRole("button", { name: fr ? "Réessayer" : "Retry", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector(".catalog-media-grid img")?.naturalWidth > 0);
+    await page.getByRole("button", { name: fr ? "Retirer" : "Remove", exact: true }).click();
+    await page.getByRole("button", { name: fr ? "Enregistrer" : "Save", exact: true }).click();
+    await page.locator('.merchant-notice [role="status"]').filter({ hasText: fr ? "Produit enregistré." : "Product saved." }).waitFor();
+    assert.equal(state.products[0].imageUrls.length, 0);
+    assert.equal(state.media.size, 0, "Saved removal deletes the uploaded media");
+    await page.waitForFunction(() => window.mediaLifecycle.created.length === window.mediaLifecycle.revoked.length);
+    assert.equal(state.calls.filter(call => call.path.startsWith("/v1/media/")).length, 0, "The merchant view never requests the gated public draft URL");
+    assert.deepEqual(state.errors, []);
+    report.checks.push(`${language}/${width}: authenticated draft preview, partial-upload recovery, stable-URL save/reload, error/retry, removal and blob cleanup`);
+    await context.close();
+  }
   {
     const { context, page } = await fixture("fr", 390, "staff");
     await page.goto(base + "/app/products?store=" + storeId);
@@ -208,3 +283,4 @@ try {
   await writeFile(output + "/report.json", JSON.stringify(report, null, 2));
   throw error;
 } finally { await browser?.close(); server.kill("SIGTERM"); }
+

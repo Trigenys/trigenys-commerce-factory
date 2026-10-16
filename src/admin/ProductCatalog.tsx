@@ -2,6 +2,7 @@ import { useDraft, useUnsavedChanges } from "../lib/drafts";
 import { FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import MerchantNotice, { useMerchantNotice } from "./MerchantNotice";
 import AppIcon from "./AppIcon";
+import MerchantImage from "./MerchantImage";
 import { categoryChoices, categoryKey, stockChoices } from "./catalog-options";
 import type { CommerceAuthClient } from "./auth";
 import {
@@ -53,7 +54,7 @@ const copy = {
     active: "Actif",
     archived: "Archivé",
     images: "Images",
-    imagesHint: "JPEG, PNG ou WebP. Nous optimisons automatiquement en WebP, max 8 images.",
+    imagesHint: "JPEG, PNG ou WebP. Nous optimisons automatiquement en WebP, max 8 images. Après l’envoi, cliquez sur Enregistrer pour associer les images au produit.",
     uploadImages: "Ajouter des images",
     uploading: "Optimisation et envoi…",
     removeImage: "Retirer",
@@ -113,7 +114,7 @@ const copy = {
     active: "Active",
     archived: "Archived",
     images: "Images",
-    imagesHint: "JPEG, PNG or WebP. We optimize automatically to WebP, maximum 8 images.",
+    imagesHint: "JPEG, PNG or WebP. We optimize automatically to WebP, maximum 8 images. After uploading, click Save to attach the images to the product.",
     uploadImages: "Add images",
     uploading: "Optimizing and uploading…",
     removeImage: "Remove",
@@ -444,6 +445,7 @@ export default function ProductCatalog({
   }, [client, store.id, language, onProductsChange, setError]);
 
   function startCreate() {
+    if (busy || mediaBusy) return;
     if (editor && !window.confirm(language === "fr" ? "Remplacer le brouillon en cours ?" : "Replace the current draft?")) return;
     const maxOrder = products.reduce(
       (max, product) => Math.max(max, product.sortOrder),
@@ -459,6 +461,7 @@ export default function ProductCatalog({
   }
 
   function startEdit(product: Product) {
+    if (busy || mediaBusy) return;
     if (editor && !window.confirm(language === "fr" ? "Remplacer le brouillon en cours ?" : "Replace the current draft?")) return;
     if (product.status === "archived") return;
     setEditor(editorFromProduct(product));
@@ -495,8 +498,8 @@ export default function ProductCatalog({
           editor.id
         );
         next.push(media.publicUrl);
+        setEditor({ ...editor, imageText: next.join("\n") });
       }
-      setEditor({ ...editor, imageText: next.join("\n") });
     } catch (cause) {
       if (cause instanceof MediaPreparationError) {
         setError(
@@ -652,7 +655,7 @@ export default function ProductCatalog({
           type="button"
           className={editor ? "admin-secondary" : "admin-primary"}
           onClick={startCreate}
-          disabled={busy}
+          disabled={busy || mediaBusy}
         >
           <AppIcon name="plus" />{t.add}
         </button>
@@ -805,7 +808,7 @@ export default function ProductCatalog({
                   .filter(Boolean)
                   .map((url) => (
                     <div className="catalog-media-item" key={url}>
-                      <img src={url} alt="" loading="lazy" />
+                      <MerchantImage client={client} storeId={store.id} url={url} language={language} />
                       <button
                         type="button"
                         onClick={() => removeImage(url)}
@@ -899,7 +902,7 @@ export default function ProductCatalog({
               >
                 <div className="catalog-thumb">
                   {product.imageUrls[0] ? (
-                    <img src={product.imageUrls[0]} alt="" loading="lazy" />
+                    <MerchantImage client={client} storeId={store.id} url={product.imageUrls[0]} language={language} />
                   ) : (
                     <span>{t.imagePending}</span>
                   )}
@@ -940,14 +943,14 @@ export default function ProductCatalog({
                       type="button"
                       aria-label={t.moveUp}
                       onClick={() => move(product, -1)}
-                      disabled={busy || product.status === "archived" || activeIndex <= 0 || Boolean(normalizedQuery) || statusFilter !== "all"}
+                      disabled={busy || mediaBusy || product.status === "archived" || activeIndex <= 0 || Boolean(normalizedQuery) || statusFilter !== "all"}
                     >↑</button>
                     <button
                       type="button"
                       aria-label={t.moveDown}
                       onClick={() => move(product, 1)}
                       disabled={
-                        busy ||
+                        busy || mediaBusy ||
                         product.status === "archived" ||
                         activeIndex < 0 ||
                         activeIndex >= activeCount - 1
@@ -958,14 +961,14 @@ export default function ProductCatalog({
                   <button
                     type="button"
                     onClick={() => startEdit(product)}
-                    disabled={busy || product.status === "archived"}
+                    disabled={busy || mediaBusy || product.status === "archived"}
                   >
                     {t.edit}
                   </button>
                   <button
                     type="button"
                     onClick={() => duplicate(product)}
-                    disabled={busy || product.status === "archived"}
+                    disabled={busy || mediaBusy || product.status === "archived"}
                   >
                     {t.duplicate}
                   </button>
@@ -973,7 +976,7 @@ export default function ProductCatalog({
                     type="button"
                     className="catalog-danger"
                     onClick={() => archive(product)}
-                    disabled={busy || product.status === "archived"}
+                    disabled={busy || mediaBusy || product.status === "archived"}
                   >
                     {t.archive}
                   </button>
@@ -986,3 +989,4 @@ export default function ProductCatalog({
     </section>
   );
 }
+
