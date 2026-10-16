@@ -867,6 +867,34 @@ export function createApp(dependencies: AppDependencies = {}) {
     }
   });
 
+  app.get("/v1/admin/stores/:storeId/media/public/:publicId", async (c) => {
+    c.header("Cache-Control", "private, no-store");
+    c.header("Vary", "Authorization, Origin");
+    const storeId = c.req.param("storeId");
+    const publicId = c.req.param("publicId");
+    if (!validUuid(storeId) || !validUuid(publicId)) {
+      return c.json({ error: "MEDIA_NOT_FOUND" }, 404);
+    }
+
+    const media = await repositoryFactory(c.env).getOwnedMediaObjectByPublicId(
+      c.get("identity").subject, storeId, publicId
+    );
+    if (!media) return c.json({ error: "MEDIA_NOT_FOUND" }, 404);
+
+    let bucket;
+    try {
+      bucket = requiredMediaBucket(c.env);
+    } catch {
+      return c.json({ error: "MEDIA_STORAGE_NOT_CONFIGURED" }, 503);
+    }
+    const object = await bucket.get(media.objectKey);
+    if (!object?.body) return c.json({ error: "MEDIA_NOT_FOUND" }, 404);
+    c.header("Content-Type", media.contentType);
+    c.header("Content-Length", String(media.byteSize));
+    c.header("X-Content-Type-Options", "nosniff");
+    return c.body(object.body);
+  });
+
   app.delete("/v1/admin/stores/:storeId/media/:mediaId", async (c) => {
     const storeId = c.req.param("storeId");
     const mediaId = c.req.param("mediaId");
@@ -1244,3 +1272,4 @@ export function createApp(dependencies: AppDependencies = {}) {
 
   return app;
 }
+

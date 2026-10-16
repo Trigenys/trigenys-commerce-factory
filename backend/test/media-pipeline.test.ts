@@ -380,3 +380,40 @@ test("owner can delete by stable public id while another tenant cannot", async (
   assert.equal(bucket.objects.size, 0);
   assert.equal(repository.media.size, 0);
 });
+
+test("an uploaded draft has a private preview before attaching or publishing", async () => {
+  const repository = new FakeMediaRepository();
+  const bucket = new FakeMediaBucket();
+  const { app, env } = mediaApp(repository, bucket);
+  const uploaded = await upload(app, env, "merchant-1", webpBlob());
+  const { media } = await uploaded.json() as { media: MediaObject };
+  const path = `/v1/admin/stores/${storeId}/media/public/${media.publicId}`;
+  const preview = await app.request(path, { headers: { Authorization: "Bearer merchant-1" } }, env);
+  assert.equal(preview.status, 200);
+  assert.equal(preview.headers.get("content-type"), "image/webp");
+  assert.equal(preview.headers.get("cache-control"), "private, no-store");
+  assert.match(preview.headers.get("vary") || "", /Authorization/i);
+  assert.equal(preview.headers.get("x-content-type-options"), "nosniff");
+  assert.equal((await preview.arrayBuffer()).byteLength, 64);
+  assert.equal((await app.request(`/v1/media/${media.publicId}`, {}, env)).status, 404);
+  assert.equal((await app.request(path, {}, env)).status, 401);
+  assert.equal((await app.request(path, { headers: { Authorization: "Bearer invalid" } }, env)).status, 401);
+  const denied = await app.request(path, { headers: { Authorization: "Bearer merchant-2" } }, env);
+  assert.equal(denied.status, 404);
+  assert.equal(denied.headers.get("cache-control"), "private, no-store");
+  assert.equal((await app.request(path.replace(storeId, crypto.randomUUID()), { headers: { Authorization: "Bearer merchant-1" } }, env)).status, 404);
+  assert.equal((await app.request(path.replace(media.publicId, "bad-id"), { headers: { Authorization: "Bearer merchant-1" } }, env)).status, 404);
+  bucket.objects.clear();
+  assert.equal((await app.request(path, { headers: { Authorization: "Bearer merchant-1" } }, env)).status, 404);
+});
+
+test("a logo can be previewed privately before its store is published", async () => {
+  const repository = new FakeMediaRepository();
+  const bucket = new FakeMediaBucket();
+  const { app, env } = mediaApp(repository, bucket);
+  const uploaded = await upload(app, env, "merchant-1", webpBlob(), "logo");
+  const { media } = await uploaded.json() as { media: MediaObject };
+  assert.equal((await app.request(`/v1/admin/stores/${storeId}/media/public/${media.publicId}`, { headers: { Authorization: "Bearer merchant-1" } }, env)).status, 200);
+  assert.equal((await app.request(`/v1/media/${media.publicId}`, {}, env)).status, 404);
+});
+

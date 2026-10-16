@@ -45,11 +45,11 @@ export class ApiError extends Error {
   }
 }
 
-export async function merchantRequest<T>(
+async function merchantResponse(
   client: CommerceAuthClient,
   path: string,
   init: RequestInit = {}
-): Promise<T> {
+): Promise<Response> {
   let token: string;
   try { token = await getApiToken(client); }
   catch { window.dispatchEvent(new Event("merchant-session-expired")); throw new ApiError(401,"AUTH_REQUIRED"); }
@@ -77,8 +77,34 @@ export async function merchantRequest<T>(
     throw new ApiError(response.status, code);
   }
 
+  return response;
+}
+
+export async function merchantRequest<T>(
+  client: CommerceAuthClient,
+  path: string,
+  init: RequestInit = {}
+): Promise<T> {
+  const response = await merchantResponse(client, path, init);
   if (response.status === 204) return undefined as T;
   return await response.json() as T;
+}
+
+export async function fetchMediaPreview(
+  client: CommerceAuthClient,
+  storeId: string,
+  publicId: string,
+  signal: AbortSignal
+): Promise<Blob> {
+  const response = await merchantResponse(
+    client,
+    "/v1/admin/stores/" + encodeURIComponent(storeId) + "/media/public/" + encodeURIComponent(publicId),
+    { headers: { Accept: "image/webp" }, cache: "no-store", signal }
+  );
+  if (response.headers.get("Content-Type")?.split(";")[0].trim() !== "image/webp") {
+    throw new ApiError(502, "INVALID_MEDIA_PREVIEW");
+  }
+  return await response.blob();
 }
 
 export async function listStores(
@@ -365,3 +391,4 @@ export async function updateStoreLogo(
   );
   return body.store;
 }
+
