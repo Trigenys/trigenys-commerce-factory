@@ -61,7 +61,7 @@ async function fixture(language, width, role = "owner") {
       const file = form.get("file");
       assert.equal(file.type, "image/webp");
       const publicId = crypto.randomUUID();
-      const media = { id: crypto.randomUUID(), publicId, storeId, productId: form.get("productId"), kind: form.get("kind"), publicUrl: `http://127.0.0.1:8787/v1/media/${publicId}` };
+      const media = { id: crypto.randomUUID(), publicId, storeId, productId: form.get("productId"), kind: form.get("kind"), publicUrl: `https://media.example.test/v1/media/${publicId}` };
       state.media.set(publicId, { media, bytes: Buffer.from(await file.arrayBuffer()) });
       return send({ media }, 201);
     }
