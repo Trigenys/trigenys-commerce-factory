@@ -31,7 +31,7 @@ export default function ThemeGalleryWorkspace({ language = "fr" }: { language?: 
           const parts = url.pathname.split("/").filter(Boolean);
           event.preventDefault(); setProductSlug(parts[2] === "p" ? parts[3] || null : url.searchParams.get("product")); window.history.replaceState(null, "", url);
         }}>
-          <StorefrontView storefront={storefront} language={language} productSlug={productSlug} homeHref={"/themes/" + theme} productHref={(product) => "/themes/" + theme + "/p/" + product.slug} preview />
+          <StorefrontView key={theme} storefront={storefront} language={language} productSlug={productSlug} homeHref={"/themes/" + theme} productHref={(product) => "/themes/" + theme + "/p/" + product.slug} preview />
         </div>
       </section>
   </div>;

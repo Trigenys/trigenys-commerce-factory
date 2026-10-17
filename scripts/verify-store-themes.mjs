@@ -238,10 +238,16 @@ try {
   await page.unroute("**/src/themes/ThemeGalleryWorkspace.tsx*");
   await page.locator(".theme-choice").first().waitFor();
   assert.equal(await page.locator(".theme-choice").count(), storeThemeIds.length);
+  // A curated sector change must clear the previous sector's product/filter state.
+  await page.locator('.theme-product-switcher button').nth(1).click();
+  await page.locator('.public-category-filter button', { hasText: "Coffrets cadeaux" }).click();
+  assert.equal(await page.locator('.public-product-card').count(), 1);
   await page.getByLabel("Secteur d’activité").selectOption("sport");
   assert.equal(await page.locator(".theme-choice").count(), 2);
   await page.getByRole("button", { name: /Stadium/ }).click();
   assert.equal(await page.locator("[data-theme]").getAttribute("data-theme"), "sport-stadium");
+  assert.equal(await page.locator('.theme-spotlight-copy h1').textContent(), "Maillot Tricolore", "A new sector starts on its own featured product");
+  assert.equal(await page.locator('.public-product-card').count(), 3, "A filter from the previous sector cannot empty the new catalog");
   await page.getByLabel("Typographie").selectOption("serif");
   await page.getByLabel("Images des produits").selectOption("contain");
   await page.locator(".theme-spotlight-image").click();
