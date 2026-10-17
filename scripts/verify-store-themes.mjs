@@ -31,6 +31,7 @@ const products = [
 let theme = "clean";
 let empty = false;
 let single = false;
+let themeSettings = { accent: "#ffcc33" };
 let handoffBody;
 const store = { name: "Atelier des essentiels de Douala", slug: "theme-test", whatsappNumber: "+237670000001", countryCode: "CM", currencyCode: "XAF", description: "Des essentiels bien choisis. Des détails qui font la différence.", businessLocation: "Douala, Cameroun", logoUrl: null };
 
@@ -54,7 +55,7 @@ try {
   const page = await browser.newPage({ locale: "fr-FR", reducedMotion: "reduce" });
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.route("**/v1/public/stores/theme-test", (route) => route.fulfill({ json: { store: { ...store, theme, themeSettings: { accent: "#ffcc33" } }, products: empty ? [] : single ? products.slice(0, 1) : products } }));
+  await page.route("**/v1/public/stores/theme-test", (route) => route.fulfill({ json: { store: { ...store, theme, themeSettings }, products: empty ? [] : single ? products.slice(0, 1) : products } }));
   await page.route("**/v1/public/events", (route) => route.fulfill({ status: 202, json: {} }));
   await page.route("**/v1/public/stores/theme-test/products/sac-signature/whatsapp", (route) => {
     handoffBody = route.request().postDataJSON();
@@ -88,10 +89,50 @@ try {
   }
 
   await mkdir("artifacts/themes", { recursive: true });
+  // Review real compositions with their native palette, not only the shared test accent.
+  const directions = ["beauty-ecrin", "fashion-editorial", "sport-club", "home-habitat", "tech-precision", "food-menu", "gifts-celebration"];
+  themeSettings = {};
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (theme of directions) {
+      await page.goto(base + "/store/theme-test");
+      await page.locator('.theme-hero').waitFor();
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+        await Promise.all([...document.images].map((image) => image.decode().catch(() => {})));
+      });
+      await checkPage(page, `${theme}/${width}/art-direction`);
+      await page.screenshot({ path: `artifacts/themes/direction-${theme}-${width}.png`, fullPage: true });
+      // Photos and their product metadata must stay separate at every width.
+      for (const card of await page.locator('.theme-feature-card, .theme-panel, .theme-catalog-picks > a').all()) {
+        const image = await card.locator('.theme-feature-visual, .theme-panel-visual, .theme-catalog-visual').boundingBox();
+        const copy = await card.locator(':scope > div').boundingBox();
+        assert.ok(image && copy, "Featured products expose a visible photo and visible metadata");
+        assert.ok(copy.y >= image.y + image.height - 1 || copy.x >= image.x + image.width - 1, `${theme}: product text never covers its photo`);
+      }
+      if (theme === "fashion-editorial" && width === 1440) {
+        const photo = await page.locator('.theme-editorial-image').boundingBox();
+        const story = await page.locator('.theme-introduction').boundingBox();
+        assert.ok(photo && story && photo.x < story.x, "Editorial spread leads with photography on desktop");
+      }
+      if (theme === "beauty-ecrin") {
+        await page.getByRole('button', { name: "Collection de soins", exact: true }).click();
+        assert.equal(await page.locator('.theme-spotlight-copy h1').textContent(), "Collection de soins");
+        assert.ok((await page.locator('.theme-spotlight-copy .theme-cta').getAttribute('href'))?.endsWith('/collection-soins'));
+      }
+      await page.goto(base + "/store/theme-test/p/sac-signature");
+      await page.locator('.product-detail-copy').waitFor();
+      await checkPage(page, `${theme}/${width}/product-art-direction`);
+      await page.evaluate(async () => { await document.fonts.ready; await Promise.all([...document.images].map((image) => image.decode().catch(() => {}))); });
+      await page.screenshot({ path: `artifacts/themes/product-${theme}-${width}.png` });
+    }
+  }
+  themeSettings = { accent: "#ffcc33" };
   single = true;
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 844 });
     for (theme of ["clean", "fashion-editorial", "fashion-collection", "beauty-ecrin", "food-menu", "gifts-celebration"]) {
+      themeSettings = theme === "gifts-celebration" ? { accent: "#cf24db", font: "sans", imageFit: "contain" } : {};
       await page.goto(base + "/store/theme-test");
       await page.locator('.theme-hero[data-products="1"]').waitFor();
       await page.evaluate(() => document.fonts.ready);
@@ -102,14 +143,17 @@ try {
         const card = await page.locator('.theme-feature-card').first().boundingBox();
         assert.ok(visual && card && Math.abs(visual.width - card.width) < 1, "The product scene fills its card instead of leaving an empty side strip");
       }
+      await page.screenshot({ path: `artifacts/themes/single-${theme}-${width}.png` });
       if (theme === "gifts-celebration") {
+        assert.equal(await page.locator('[data-theme]').getAttribute('data-image-fit'), "contain");
+        const fit = await page.locator('.theme-feature-visual img').evaluate((image) => getComputedStyle(image).objectFit);
+        assert.equal(fit, "contain", "Custom artwork keeps its full image instead of inheriting a crop");
         const price = await page.locator('.theme-feature-caption > strong').boundingBox();
         const action = await page.locator('.theme-card-link').boundingBox();
         assert.ok(price && price.y + price.height < 844, "Single-product name/price appear in the first viewport");
         assert.ok(action && action.y + action.height < 844, "The first viewport contains a product action");
         assert.equal(await page.locator('.theme-kicker').textContent(), "Mode", "The merchant category replaces the template's sample sector");
       }
-      await page.screenshot({ path: `artifacts/themes/single-${theme}-${width}.png` });
     }
   }
   single = false;

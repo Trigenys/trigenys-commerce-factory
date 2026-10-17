@@ -32,7 +32,7 @@ export default function ThemePicker({ value, settings, language, onChange, image
         const props = themeShellProps({ theme: key });
         const fallbackImage = "/landing/" + (theme.sector === "beauty" ? "beauty" : ["fashion", "accessories", "kids"].includes(theme.sector) ? "fashion" : theme.sector === "jewelry" ? "watch" : "electronics") + "-480.webp";
         return <button className="theme-choice" type="button" key={key} aria-pressed={key === value} onClick={() => onChange(key, key === value ? settings : {})}>
-          <span className="theme-thumbnail" data-layout={theme.layout} style={props.style} aria-hidden="true">
+          <span className="theme-thumbnail" data-layout={theme.layout} data-sector={theme.sector} style={props.style} aria-hidden="true">
             <span className="theme-thumbnail-title">{theme.name}<i /></span>
             <img src={imageUrl || fallbackImage} alt="" loading="lazy" width="160" height="160" />
             <span className="theme-thumbnail-detail"><i /><i /><i /></span>

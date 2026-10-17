@@ -22,6 +22,8 @@ export function themeShellProps(store: Pick<PublicStorefront["store"], "theme" |
     className: "public-store-shell",
     "data-theme": theme.id,
     "data-layout": theme.layout,
+    "data-sector": theme.sector,
+    "data-image-fit": theme.imageFit,
     style
   };
 }

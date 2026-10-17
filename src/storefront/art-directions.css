@@ -1,0 +1,164 @@
+/* Sector identity extends through catalog, product and checkout. No merchant content is fabricated. */
+.public-store-shell[data-theme] .public-store-header { padding-inline: max(18px, calc((100cqw - 1280px) / 2)); }
+.public-store-shell[data-theme] .public-store-brand strong { font-family: var(--theme-font); font-size: 16px; }
+.public-store-shell[data-theme] .public-store-brand small { font-size: 10px; }
+.public-store-shell[data-theme] :is(.public-store-brand > img, .public-store-brand > span, .store-cart-link, .store-language button, .public-category-filter button, .product-variant-group button, .public-share-button, .public-wa-button, .cart-primary, .cart-secondary, .cart-text-button, .cart-form, .cart-receipt, .cart-form input, .cart-form select, .cart-form textarea, .product-cart-actions input, .product-gallery-main, .product-gallery-thumbs button) { border-radius: var(--theme-radius); }
+.public-store-shell[data-theme] .public-catalog-section { max-width: 1316px; padding-block: clamp(48px, 6cqw, 86px); }
+.public-store-shell[data-theme] .public-catalog-heading { padding-bottom: 22px; border-bottom: 1px solid var(--shop-line); }
+.public-store-shell[data-theme] .public-catalog-heading h2 { font-size: clamp(30px, 3.8cqw, 48px); font-weight: 500; letter-spacing: -.045em; }
+.public-store-shell[data-theme] .public-product-grid { gap: 28px 20px; }
+.public-store-shell[data-theme] .public-product-card { min-width: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.public-store-shell[data-theme] .public-product-image { height: auto; aspect-ratio: 1; border-radius: var(--theme-radius); }
+.public-store-shell[data-theme] .public-product-copy { padding: 18px 0 0; }
+.public-store-shell[data-theme] .public-product-copy h3 { font-family: var(--theme-font); font-size: 21px; font-weight: 500; letter-spacing: -.025em; }
+.public-store-shell[data-theme] .public-product-copy > strong { font: 700 16px/1.4 "Plus Jakarta Sans", sans-serif; }
+.public-store-shell[data-theme] .public-product-copy .public-product-link { display: flex; width: fit-content; align-items: center; gap: 24px; min-height: 44px; margin-top: 10px; border-bottom: 1px solid var(--shop-line); font-size: 12px; font-weight: 700; }
+.public-product-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+.public-store-shell[data-theme] .product-detail-grid { gap: clamp(30px, 5cqw, 72px); }
+.public-store-shell[data-theme] .product-detail-copy h1 { font-size: clamp(36px, 4.7cqw, 66px); font-weight: 500; }
+.public-store-shell[data-theme] .product-detail-price { padding-bottom: 22px; border-bottom: 1px solid var(--shop-line); }
+.public-store-shell[data-theme] .product-description { max-width: 540px; }
+.public-store-shell[data-theme] .public-store-footer { background: color-mix(in srgb, var(--theme-scene) 8%, var(--shop-bg)); border-color: var(--shop-line); padding-block: 36px; }
+
+/* Beauty: warm spotlight, botanical arches and fine framing. */
+.public-store-shell[data-sector="beauty"] { --theme-radius: 999px; }
+.public-store-shell[data-sector="beauty"] .theme-spotlight { border: 1px solid color-mix(in srgb, var(--shop-primary) 35%, transparent); }
+.public-store-shell[data-sector="beauty"] .theme-spotlight::after { content: ""; position: absolute; width: 42%; aspect-ratio: .9; left: 34%; top: 10%; border: 1px solid color-mix(in srgb, var(--shop-primary) 30%, transparent); border-radius: 48% 48% 0 0; z-index: -1; }
+.public-store-shell[data-sector="beauty"] .theme-lookbook-grid .theme-feature-visual { border-radius: 46% 46% 5px 5px; }
+.public-store-shell[data-sector="beauty"] :is(.public-product-image, .product-gallery-main) { border-radius: 48% 48% 8px 8px; }
+.public-store-shell[data-sector="beauty"] .theme-product-switcher button { border-radius: 10px; }
+
+/* Jewelry: quiet monumental type, an orbital stage and square gallery frames. */
+.public-store-shell[data-sector="jewelry"] { --theme-radius: 0px; }
+.public-store-shell[data-sector="jewelry"] .theme-spotlight { border-radius: 0; padding-block: 70px; }
+.public-store-shell[data-sector="jewelry"] .theme-spotlight h1 { font-style: italic; font-size: clamp(44px, 5.2cqw, 76px); }
+.public-store-shell[data-sector="jewelry"] .theme-spotlight-image::before { content: ""; position: absolute; inset: 3%; border: 1px solid color-mix(in srgb, var(--shop-primary) 55%, transparent); border-radius: 50%; transform: rotate(-24deg) scaleX(.8); }
+.public-store-shell[data-sector="jewelry"] .theme-product-stage { width: 54%; height: 5%; background: color-mix(in srgb, var(--shop-primary) 35%, var(--theme-scene)); }
+.public-store-shell[data-sector="jewelry"] .public-product-image { padding: 16px; border: 1px solid var(--shop-line); }
+.public-store-shell[data-sector="jewelry"] .theme-editorial .theme-feature-visual { aspect-ratio: .95; }
+
+/* Fashion: magazine spread or high-contrast collection wall. */
+.public-store-shell[data-sector="fashion"] { --theme-radius: 0px; }
+.public-store-shell[data-sector="fashion"] .theme-editorial .theme-introduction h1 { font-style: italic; }
+.public-store-shell[data-sector="fashion"] .theme-editorial .theme-feature-visual { aspect-ratio: .9; }
+.public-store-shell[data-sector="fashion"] .public-product-image { aspect-ratio: .78; }
+.public-store-shell[data-sector="fashion"] .theme-panels .theme-panel-heading { border-bottom: 8px solid var(--shop-primary); }
+.public-store-shell[data-sector="fashion"] .theme-panels .theme-panel-number { font-size: 50px; font-weight: 500; }
+
+/* Sport: pitch lines and diagonal blocks rather than the beauty pedestal. */
+.public-store-shell[data-sector="sport"] { --theme-radius: 3px; }
+.public-store-shell[data-sector="sport"] .theme-hero { border-radius: 0; }
+.public-store-shell[data-sector="sport"] .theme-hero h1 { font-weight: 800; text-transform: uppercase; font-style: italic; letter-spacing: -.07em; }
+.public-store-shell[data-sector="sport"] .theme-spotlight .theme-scene-ornament { background: linear-gradient(118deg, transparent 43%, color-mix(in srgb, var(--shop-primary) 22%, transparent) 43% 71%, transparent 71%), repeating-linear-gradient(90deg, transparent 0 99px, #ffffff0a 100px 101px); }
+.public-store-shell[data-sector="sport"] .theme-spotlight-image::before { content: ""; position: absolute; inset: 4% 10%; border: 1px solid #ffffff44; border-radius: 50%; }
+.public-store-shell[data-sector="sport"] .theme-product-stage { display: none; }
+.public-store-shell[data-sector="sport"] .theme-spotlight-price strong { font-weight: 800; }
+.public-store-shell[data-sector="sport"] .theme-panel-visual { background-image: linear-gradient(125deg, transparent 45%, color-mix(in srgb, var(--shop-primary) 20%, transparent) 45% 80%, transparent 80%); }
+.public-store-shell[data-sector="sport"] .theme-panel-number { font-size: 50px; font-style: italic; background: var(--shop-primary); color: var(--theme-on-accent); padding: 6px 12px; }
+.public-store-shell[data-sector="sport"] .public-product-copy h3 { font-weight: 700; text-transform: uppercase; }
+
+/* Technology and automotive: blueprints, squared controls and technical rows. */
+.public-store-shell:is([data-sector="tech"], [data-sector="auto"]) { --theme-radius: 4px; }
+.public-store-shell:is([data-sector="tech"], [data-sector="auto"]) .theme-catalog-hero .theme-scene-ornament { background-image: linear-gradient(#ffffff08 1px, transparent 1px), linear-gradient(90deg, #ffffff08 1px, transparent 1px); background-size: 36px 36px; }
+.public-store-shell[data-sector="tech"] .theme-spotlight { background-image: radial-gradient(ellipse at 60% 20%, #ffffffcc, transparent 65%), linear-gradient(130deg, transparent 48%, #ffffff55 48% 49%, transparent 49%); }
+.public-store-shell[data-sector="tech"] .theme-product-stage { height: 9%; border-radius: 3px; transform: skewY(-4deg); background: linear-gradient(180deg, #ffffff, #9ba0aa); }
+.public-store-shell[data-sector="auto"] .theme-spotlight .theme-scene-ornament { background: repeating-linear-gradient(125deg, transparent 0 70px, #ffffff07 71px 73px); }
+.public-store-shell[data-sector="auto"] .theme-spotlight h1 { text-transform: uppercase; font-weight: 800; }
+.public-store-shell[data-sector="auto"] .theme-product-stage { height: 5%; border-radius: 0; transform: skewX(-20deg); background: var(--shop-primary); }
+.public-store-shell:is([data-sector="tech"], [data-sector="auto"]) .public-product-card { border: 1px solid var(--shop-line); border-radius: 4px; background: var(--shop-card); }
+.public-store-shell:is([data-sector="tech"], [data-sector="auto"]) .public-product-copy { padding: 20px; border-top: 1px solid var(--shop-line); }
+.public-store-shell:is([data-sector="tech"], [data-sector="auto"]) .public-product-image { border-radius: 0; }
+.public-store-shell:is([data-sector="tech"], [data-sector="auto"]) .public-product-copy > strong { font-family: var(--theme-font); font-size: 22px; }
+
+/* Home: an art gallery with spacious, paper-like image mounts. */
+.public-store-shell[data-sector="home"] { --theme-radius: 0px; }
+.public-store-shell[data-sector="home"] .theme-lookbook .theme-feature-visual { border: 12px solid var(--shop-card); box-shadow: 0 9px 24px color-mix(in srgb, var(--shop-ink) 7%, transparent); }
+.public-store-shell[data-sector="home"] .theme-lookbook-grid > a:first-child { transform: translateY(16px); }
+.public-store-shell[data-sector="home"] .public-product-image { aspect-ratio: 1.12; border: 10px solid var(--shop-card); }
+.public-store-shell[data-sector="home"] .theme-editorial .theme-introduction { padding-left: 28px; border-left: 1px solid var(--shop-line); }
+
+/* Accessories: bold street panels or an arched signature gallery. */
+.public-store-shell[data-sector="accessories"] { --theme-radius: 0px; }
+.public-store-shell[data-sector="accessories"] .theme-panels h1 { font-weight: 800; text-transform: uppercase; }
+.public-store-shell[data-sector="accessories"] .theme-panels .theme-panel-heading { padding-block: 40px; }
+.public-store-shell[data-sector="accessories"] .theme-panel-number { font-size: 56px; background: var(--shop-primary); color: var(--theme-on-accent); }
+.public-store-shell[data-sector="accessories"] .theme-lookbook .theme-feature-visual { border-radius: 50% 50% 0 0; }
+.public-store-shell[data-sector="accessories"] .public-product-image { aspect-ratio: .9; }
+
+/* Grocery: market framing and immediately scannable pricing. */
+.public-store-shell[data-sector="grocery"] { --theme-radius: 8px; }
+.public-store-shell[data-sector="grocery"] .theme-catalog-hero { border: 0; border-top: 5px solid var(--shop-primary); border-bottom: 1px solid var(--shop-line); }
+.public-store-shell[data-sector="grocery"] .theme-catalog-picks { gap: 12px; border: 0; background: transparent; }
+.public-store-shell[data-sector="grocery"] .theme-catalog-picks > a { border: 1px solid var(--shop-line); border-radius: 8px; overflow: hidden; }
+.public-store-shell[data-sector="grocery"] .public-product-copy > strong { font-size: 24px; letter-spacing: -.05em; }
+.public-store-shell[data-sector="grocery"] .public-product-image { border-bottom: 3px solid var(--shop-primary); }
+
+/* Food: warm menu rules and rounded imagery. */
+.public-store-shell[data-sector="food"] { --theme-radius: 999px; }
+.public-store-shell[data-sector="food"] .theme-menu-hero .theme-scene-ornament { background: radial-gradient(ellipse at 74% 48%, var(--theme-scene) 0 28%, transparent 28.2%); }
+.public-store-shell[data-sector="food"] .theme-menu-hero h1 { font-size: clamp(44px, 5.5cqw, 80px); }
+.public-store-shell[data-sector="food"] .theme-lookbook .theme-feature-visual { border-radius: 46% 46% 12px 12px; }
+.public-store-shell[data-layout="menu"] .public-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; }
+.public-store-shell[data-layout="menu"] .public-product-card { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 24px; align-items: center; padding-block: 24px; border-bottom: 1px solid var(--shop-line); }
+.public-store-shell[data-layout="menu"] .public-product-image { aspect-ratio: 1; border-radius: 50%; }
+.public-store-shell[data-layout="menu"] .public-product-copy { padding: 0; }
+.public-store-shell[data-layout="menu"] .public-product-copy .public-product-link { margin-top: 2px; border: 0; }
+
+/* Kids: soft corners and playful geometry, still with readable content. */
+.public-store-shell[data-sector="kids"] { --theme-radius: 18px; }
+.public-store-shell[data-sector="kids"] .theme-hero { border-radius: 26px; }
+.public-store-shell[data-sector="kids"] .theme-editorial .theme-feature-visual { border-radius: 42% 42% 18px 18px; }
+.public-store-shell[data-sector="kids"] .theme-panel-visual { border-radius: 70px 16px 16px 16px; margin: 14px 14px 0; }
+.public-store-shell[data-sector="kids"] .theme-panels .theme-panel-grid { gap: 12px; padding: 12px; background: transparent; }
+.public-store-shell[data-sector="kids"] .theme-panel { border-radius: 20px; overflow: hidden; }
+.public-store-shell[data-sector="kids"] .theme-panel > div { border: 0; }
+.public-store-shell[data-sector="kids"] .theme-panel-number { border-radius: 50%; background: var(--shop-primary); color: var(--theme-on-accent); }
+
+/* Gifts: a generous organic product vignette with the merchant's accent. */
+.public-store-shell[data-sector="gifts"] { --theme-radius: 999px; }
+.public-store-shell[data-sector="gifts"] .theme-lookbook .theme-scene-ornament { inset: 0 0 0 39%; border-radius: 45% 45% 8% 8%; background: color-mix(in srgb, var(--shop-primary) 10%, var(--shop-bg)); transform: rotate(-5deg); }
+.public-store-shell[data-sector="gifts"] .theme-lookbook .theme-feature-visual { border-radius: 42% 42% 12px 12px; border: 1px solid var(--shop-line); }
+.public-store-shell[data-sector="gifts"] .theme-lookbook-grid:has(> a:only-child) .theme-feature-visual { border-radius: 46% 46% 12px 12px; }
+.public-store-shell[data-sector="gifts"] .theme-lookbook .theme-introduction h1 { font-size: clamp(40px, 5.2cqw, 74px); }
+.public-store-shell[data-sector="gifts"] .public-product-image { border-radius: 38% 38% 8px 8px; }
+.public-store-shell[data-sector="gifts"][data-layout="menu"] .theme-menu-plate { border-radius: 45% 45% 10px 10px; box-shadow: none; }
+.public-store-shell[data-sector="gifts"][data-layout="menu"] .public-product-image { border-radius: 12px; }
+
+/* Dark scene product pages inherit the same stage, while forms stay legible. */
+.public-store-shell[data-layout="spotlight"] .product-detail-grid { padding: clamp(22px, 4cqw, 50px); border-radius: 12px; background: var(--theme-scene); color: var(--theme-scene-ink); }
+.public-store-shell[data-layout="spotlight"] .product-detail-copy :is(.public-overline, .product-detail-price) { color: var(--theme-scene-ink); }
+.public-store-shell[data-layout="spotlight"] .product-detail-copy :is(.product-stock, .product-description), .public-store-shell[data-layout="spotlight"] .product-variant-group > small { color: var(--theme-scene-muted); }
+.public-store-shell[data-layout="spotlight"] .product-detail-price { border-color: color-mix(in srgb, var(--theme-scene-ink) 25%, transparent); }
+.public-store-shell[data-layout="spotlight"] .product-gallery-main { background: radial-gradient(ellipse at center, color-mix(in srgb, var(--shop-primary) 16%, transparent), transparent 70%); }
+.public-store-shell[data-layout="spotlight"] .product-gallery-main img { padding: 8%; filter: drop-shadow(0 20px 18px #0002); }
+.public-store-shell[data-layout="editorial"] .product-gallery-main { aspect-ratio: .9; }
+.public-store-shell[data-layout="lookbook"] .product-gallery-main { border-radius: 40% 40% 8px 8px; }
+.public-store-shell[data-layout="catalog"] .product-gallery-main { border: 1px solid var(--shop-line); }
+.public-store-shell[data-layout="panels"] .product-detail-price { border-bottom: 4px solid var(--shop-primary); }
+
+@container storefront (max-width: 960px) {
+  .public-store-shell[data-theme] .public-product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .public-store-shell[data-layout="menu"] .public-product-grid { grid-template-columns: 1fr; }
+}
+@container storefront (max-width: 680px) {
+  .public-store-shell[data-theme] .public-store-brand strong { font-size: 14px; }
+  .public-store-shell[data-theme] .public-catalog-section { padding-top: 48px; }
+  .public-store-shell[data-theme] .public-catalog-heading { align-items: stretch; gap: 18px; }
+  .public-store-shell[data-theme] .public-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px 12px; }
+  .public-store-shell[data-theme] .public-product-copy h3 { font-size: 18px; }
+  .public-store-shell[data-theme] .public-product-copy > strong { font-size: 15px; }
+  .public-store-shell:is([data-sector="tech"], [data-sector="auto"]) .public-product-copy { padding: 12px; }
+  .public-store-shell[data-sector="jewelry"] .theme-spotlight { padding-block: 28px; }
+  .public-store-shell[data-sector="jewelry"] .theme-spotlight h1, .public-store-shell[data-sector="food"] .theme-menu-hero h1, .public-store-shell[data-sector="gifts"] .theme-lookbook .theme-introduction h1 { font-size: 36px; }
+  .public-store-shell[data-sector="home"] .theme-lookbook-grid > a:first-child { transform: none; }
+  .public-store-shell[data-sector="home"] .theme-editorial .theme-introduction { padding-left: 0; border: 0; }
+  .public-store-shell[data-sector="gifts"] .theme-lookbook .theme-scene-ornament { inset: 35% 0 0 5%; transform: none; }
+  .public-store-shell[data-layout="menu"] .public-product-grid { grid-template-columns: 1fr; }
+  .public-store-shell[data-layout="menu"] .public-product-card { grid-template-columns: 95px minmax(0, 1fr); gap: 18px; }
+  .public-store-shell[data-layout="spotlight"] .product-detail-grid { gap: 24px; }
+}
+
+/* Inscribe uncropped merchant artwork inside organic frames. */
+.public-store-shell[data-image-fit="contain"]:is([data-sector="beauty"], [data-sector="gifts"], [data-sector="kids"], [data-sector="accessories"], [data-sector="food"]) :is(.theme-feature-visual, .public-product-image, .product-gallery-main) img { padding: 15%; }
+
+.public-store-shell[data-image-fit="contain"][data-layout="lookbook"] .product-gallery-main img { padding: 15%; }

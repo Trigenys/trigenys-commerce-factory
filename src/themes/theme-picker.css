@@ -49,3 +49,20 @@
 .theme-preview-products input { width: 20px; height: 20px; accent-color: #006948; flex: 0 0 auto; }
 .theme-preview-products p { margin: 6px 0; color: #56645e; font-size: 12px; }
 .theme-preview-products a { color: #006948; font-weight: 700; text-underline-offset: 3px; }
+
+/* Miniatures reflect the six real storefront compositions. */
+.theme-thumbnail[data-layout="editorial"] { grid-template-columns: 1.1fr 1fr; background: var(--shop-bg); border-bottom: 1px solid var(--theme-scene-ink); }
+.theme-thumbnail[data-layout="editorial"] img { grid-column: 1; grid-row: 1; height: 98px; border-radius: 0; }
+.theme-thumbnail[data-layout="editorial"] .theme-thumbnail-title { grid-column: 2; grid-row: 1; white-space: normal; font-style: italic; color: var(--shop-ink); }
+.theme-thumbnail[data-layout="lookbook"] { background: var(--shop-bg); color: var(--shop-ink); }
+.theme-thumbnail[data-layout="lookbook"] img { border-radius: 45% 45% 3px 3px; height: 100px; transform: rotate(3deg); }
+.theme-thumbnail[data-layout="panels"] { border-radius: 0; }
+.theme-thumbnail[data-layout="panels"] img { border-radius: 0; border-bottom: 8px solid var(--shop-primary); }
+.theme-thumbnail[data-layout="catalog"] { background-image: linear-gradient(#ffffff0a 1px, transparent 1px), linear-gradient(90deg, #ffffff0a 1px, transparent 1px); background-size: 16px 16px; }
+.theme-thumbnail[data-layout="catalog"] img { border-radius: 0; border: 1px solid color-mix(in srgb, var(--shop-ink) 20%, transparent); }
+.theme-thumbnail[data-layout="menu"] { background: var(--shop-bg); color: var(--shop-ink); }
+.theme-thumbnail[data-layout="menu"] img { aspect-ratio: 1; height: auto; border-radius: 50%; padding: 7px; border: 1px solid color-mix(in srgb, var(--shop-ink) 20%, transparent); background: var(--shop-card); }
+.theme-thumbnail[data-sector="sport"] { background-image: linear-gradient(120deg, transparent 40%, color-mix(in srgb, var(--shop-primary) 20%, transparent) 40% 80%, transparent 80%); }
+.theme-thumbnail[data-sector="sport"] .theme-thumbnail-title { text-transform: uppercase; font-style: italic; }
+.theme-thumbnail[data-sector="jewelry"] img { border: 1px solid color-mix(in srgb, var(--shop-primary) 45%, transparent); border-radius: 50%; }
+.theme-thumbnail[data-sector="kids"] img { border-radius: 30px 8px 8px 8px; }
