@@ -35,6 +35,16 @@ let themeSettings = { accent: "#ffcc33" };
 let handoffBody;
 const store = { name: "Atelier des essentiels de Douala", slug: "theme-test", whatsappNumber: "+237670000001", countryCode: "CM", currencyCode: "XAF", description: "Des essentiels bien choisis. Des détails qui font la différence.", businessLocation: "Douala, Cameroun", logoUrl: null };
 
+async function prepareScreenshot(page) {
+  await page.waitForFunction(() => document.fonts.status === "loaded");
+  // Offscreen picker thumbnails intentionally remain lazy. Only the storefront
+  // being captured needs its images loaded; give failures a bounded timeout.
+  await page.locator('.public-store-shell img').evaluateAll((images) => {
+    for (const image of images) image.loading = "eager";
+  });
+  await page.waitForFunction(() => [...document.querySelectorAll('.public-store-shell img')].every((image) => image.complete), null, { timeout: 15000 });
+}
+
 async function checkPage(page, label) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
   assert.equal(overflow, false, label + ": horizontal overflow");
@@ -97,10 +107,7 @@ try {
     for (theme of directions) {
       await page.goto(base + "/store/theme-test");
       await page.locator('.theme-hero').waitFor();
-      await page.evaluate(async () => {
-        await document.fonts.ready;
-        await Promise.all([...document.images].map((image) => image.decode().catch(() => {})));
-      });
+      await prepareScreenshot(page);
       await checkPage(page, `${theme}/${width}/art-direction`);
       await page.screenshot({ path: `artifacts/themes/direction-${theme}-${width}.png`, fullPage: true });
       // Photos and their product metadata must stay separate at every width.
@@ -123,7 +130,7 @@ try {
       await page.goto(base + "/store/theme-test/p/sac-signature");
       await page.locator('.product-detail-copy').waitFor();
       await checkPage(page, `${theme}/${width}/product-art-direction`);
-      await page.evaluate(async () => { await document.fonts.ready; await Promise.all([...document.images].map((image) => image.decode().catch(() => {}))); });
+      await prepareScreenshot(page);
       await page.screenshot({ path: `artifacts/themes/product-${theme}-${width}.png` });
       if (["tech-precision", "food-menu", "gifts-celebration"].includes(theme)) {
         await page.getByRole("button", { name: "Noir", exact: true }).click();
@@ -204,7 +211,7 @@ try {
     for (const [preset, productName, imagePath] of sectorExamples) {
       await page.goto(base + "/themes/" + preset);
       await page.locator('.theme-hero img').first().waitFor();
-      await page.evaluate(async () => { await document.fonts.ready; await Promise.all([...document.images].map((image) => image.decode().catch(() => {}))); });
+      await prepareScreenshot(page);
       assert.ok((await page.locator('.theme-hero img').first().getAttribute('src'))?.endsWith(imagePath), preset + ": sector-appropriate hero image");
       assert.ok((await page.locator('.theme-hero').getByText(productName, { exact: true }).count()) > 0, preset + ": sector-appropriate product");
       await checkPage(page, `${preset}/${width}/curated-showroom`);
