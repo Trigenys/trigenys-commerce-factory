@@ -1017,7 +1017,11 @@ export function createApp(dependencies: AppDependencies = {}) {
       return c.json({ error: "INVALID_JSON" }, 400);
     }
 
-    const input = safeProductInput(payload);
+    const statusOnly = payload && typeof payload === "object" && !Array.isArray(payload)
+      && Object.keys(payload).length === 1 && "status" in payload
+      && (payload.status === "draft" || payload.status === "active")
+      ? { status: payload.status } as Pick<ProductInput, "status"> : null;
+    const input = statusOnly ?? safeProductInput(payload);
     if (!input) return c.json({ error: "INVALID_PRODUCT_INPUT" }, 400);
 
     const repository = repositoryFactory(c.env);

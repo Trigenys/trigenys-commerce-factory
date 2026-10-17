@@ -24,13 +24,14 @@ export default function ThemePicker({ value, settings, language, onChange, image
         {Object.entries(themeSectors).map(([key, label]) => <option key={key} value={key}>{label[language]}</option>)}
       </select>
       <small>{language === "fr" ? "Tous les thèmes acceptent votre catalogue." : "Every theme works with your catalog."}</small>
+      <small>{language === "fr" ? "Changer de thème applique ses couleurs et sa typographie. Vous pourrez ensuite les personnaliser." : "Switching themes applies its colors and typography. You can customize them afterwards."}</small>
     </div>
     <div className="theme-picker-grid" role="group" aria-label={language === "fr" ? "Thèmes disponibles" : "Available themes"}>
       {themes.map((key) => {
         const theme = resolveStoreTheme(key);
         const props = themeShellProps({ theme: key });
         const fallbackImage = "/landing/" + (theme.sector === "beauty" ? "beauty" : ["fashion", "accessories", "kids"].includes(theme.sector) ? "fashion" : theme.sector === "jewelry" ? "watch" : "electronics") + "-480.webp";
-        return <button className="theme-choice" type="button" key={key} aria-pressed={key === value} onClick={() => onChange(key, settings)}>
+        return <button className="theme-choice" type="button" key={key} aria-pressed={key === value} onClick={() => onChange(key, key === value ? settings : {})}>
           <span className="theme-thumbnail" data-layout={theme.layout} style={props.style} aria-hidden="true">
             <span className="theme-thumbnail-title">{theme.name}<i /></span>
             <img src={imageUrl || fallbackImage} alt="" loading="lazy" width="160" height="160" />

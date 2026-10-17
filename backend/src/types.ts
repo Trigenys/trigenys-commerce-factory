@@ -174,7 +174,7 @@ export interface CommerceRepository {
     authSubject: string,
     storeId: string,
     productId: string,
-    input: ProductInput
+    input: ProductInput | Pick<ProductInput, "status">
   ): Promise<ProductUpdateResult>;
   archiveOwnedProduct(
     authSubject: string,

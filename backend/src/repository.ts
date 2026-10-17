@@ -631,7 +631,27 @@ export function createNeonRepository(connectionString: string, client?: ReturnTy
       }
     },
 
-    async updateOwnedProduct(authSubject, storeId, productId, input: ProductInput) {
+    async updateOwnedProduct(authSubject, storeId, productId, input) {
+      // A visibility change must not overwrite another editor's product fields.
+      if (!("name" in input)) {
+        const rows = await sql`
+          UPDATE products p
+          SET status = ${input.status}, updated_at = now()
+          FROM store_members sm
+          WHERE p.id = ${productId}
+            AND p.store_id = ${storeId}
+            AND sm.store_id = p.store_id
+            AND sm.auth_subject = ${authSubject}
+            AND sm.role IN ('owner', 'staff')
+            AND p.status <> 'archived'
+          RETURNING p.id, p.store_id, p.name, p.slug, p.description,
+            p.price::text AS price, p.currency_code, p.category, p.stock_label,
+            p.status, p.sort_order, p.image_urls, p.variants
+        ` as ProductRow[];
+        return rows[0]
+          ? { kind: "updated" as const, product: mapProduct(rows[0]) }
+          : { kind: "not_found" as const };
+      }
       const json = productJson(input);
       try {
         const rows = await sql`

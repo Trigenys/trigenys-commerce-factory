@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright";
 import { storeThemeIds } from "../shared/store-themes.ts";
@@ -30,6 +30,7 @@ const products = [
 ];
 let theme = "clean";
 let empty = false;
+let single = false;
 let handoffBody;
 const store = { name: "Atelier des essentiels de Douala", slug: "theme-test", whatsappNumber: "+237670000001", countryCode: "CM", currencyCode: "XAF", description: "Des essentiels bien choisis. Des détails qui font la différence.", businessLocation: "Douala, Cameroun", logoUrl: null };
 
@@ -53,7 +54,7 @@ try {
   const page = await browser.newPage({ locale: "fr-FR", reducedMotion: "reduce" });
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.route("**/v1/public/stores/theme-test", (route) => route.fulfill({ json: { store: { ...store, theme, themeSettings: { accent: "#ffcc33" } }, products: empty ? [] : products } }));
+  await page.route("**/v1/public/stores/theme-test", (route) => route.fulfill({ json: { store: { ...store, theme, themeSettings: { accent: "#ffcc33" } }, products: empty ? [] : single ? products.slice(0, 1) : products } }));
   await page.route("**/v1/public/events", (route) => route.fulfill({ status: 202, json: {} }));
   await page.route("**/v1/public/stores/theme-test/products/sac-signature/whatsapp", (route) => {
     handoffBody = route.request().postDataJSON();
@@ -85,6 +86,37 @@ try {
       assert.ok((await page.locator(".product-gallery-main img").getAttribute("src"))?.includes("watch"));
     }
   }
+
+  await mkdir("artifacts/themes", { recursive: true });
+  single = true;
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (theme of ["clean", "fashion-editorial", "fashion-collection", "beauty-ecrin", "food-menu", "gifts-celebration"]) {
+      await page.goto(base + "/store/theme-test");
+      await page.locator('.theme-hero[data-products="1"]').waitFor();
+      await page.evaluate(() => document.fonts.ready);
+      await checkPage(page, `${theme}/${width}/single-product`);
+      assert.equal(await page.locator('.theme-hero').getByText("Sac Signature", { exact: true }).count() > 0, true, "A single product is featured, including Clean");
+      if (theme === "gifts-celebration") {
+        const price = await page.locator('.theme-feature-caption > strong').boundingBox();
+        const action = await page.locator('.theme-card-link').boundingBox();
+        assert.ok(price && price.y + price.height < 844, "Single-product name/price appear in the first viewport");
+        assert.ok(action && action.y + action.height < 844, "The first viewport contains a product action");
+        assert.equal(await page.locator('.theme-kicker').textContent(), "Mode", "The merchant category replaces the template's sample sector");
+      }
+      await page.screenshot({ path: `artifacts/themes/single-${theme}-${width}.png` });
+    }
+  }
+  single = false;
+  theme = "gifts-celebration";
+  empty = true;
+  await page.goto(base + "/store/theme-test");
+  await page.locator('.theme-empty-hero').waitFor();
+  assert.equal(await page.locator('[data-theme]').getAttribute('data-theme'), theme);
+  assert.equal(await page.locator('.theme-empty-hero .theme-cta').count(), 0, "An empty store has no collection CTA leading to nothing");
+  await checkPage(page, "branded empty theme");
+  await page.screenshot({ path: "artifacts/themes/empty-theme-390.png" });
+  empty = false;
 
   theme = "sport-stadium";
   await page.goto(base + "/store/theme-test/p/sac-signature");

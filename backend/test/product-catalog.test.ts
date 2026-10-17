@@ -77,16 +77,16 @@ class ProductRepository implements CommerceRepository {
     subject: string,
     storeId: string,
     productId: string,
-    input: ProductInput
+    input: ProductInput | Pick<ProductInput, "status">
   ) {
     const index = this.products.findIndex(
       (product) =>
         product.id === productId &&
         product.storeId === storeId &&
-        subject === "merchant-1"
+        subject === "merchant-1" && product.status !== "archived"
     );
     if (index < 0) return { kind: "not_found" as const };
-    if (
+    if ("slug" in input &&
       this.products.some(
         (product, candidate) =>
           candidate !== index && product.slug === input.slug
@@ -95,8 +95,7 @@ class ProductRepository implements CommerceRepository {
       return { kind: "slug_taken" as const };
     }
     const product: ProductSummary = {
-      id: productId,
-      storeId,
+      ...this.products[index],
       ...input
     };
     this.products[index] = product;
