@@ -31,8 +31,19 @@ const products = [
 let theme = "clean";
 let empty = false;
 let single = false;
+let themeSettings = { accent: "#ffcc33" };
 let handoffBody;
 const store = { name: "Atelier des essentiels de Douala", slug: "theme-test", whatsappNumber: "+237670000001", countryCode: "CM", currencyCode: "XAF", description: "Des essentiels bien choisis. Des détails qui font la différence.", businessLocation: "Douala, Cameroun", logoUrl: null };
+
+async function prepareScreenshot(page) {
+  await page.waitForFunction(() => document.fonts.status === "loaded");
+  // Offscreen picker thumbnails intentionally remain lazy. Only the storefront
+  // being captured needs its images loaded; give failures a bounded timeout.
+  await page.locator('.public-store-shell img').evaluateAll((images) => {
+    for (const image of images) image.loading = "eager";
+  });
+  await page.waitForFunction(() => [...document.querySelectorAll('.public-store-shell img')].every((image) => image.complete), null, { timeout: 15000 });
+}
 
 async function checkPage(page, label) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
@@ -54,7 +65,7 @@ try {
   const page = await browser.newPage({ locale: "fr-FR", reducedMotion: "reduce" });
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.route("**/v1/public/stores/theme-test", (route) => route.fulfill({ json: { store: { ...store, theme, themeSettings: { accent: "#ffcc33" } }, products: empty ? [] : single ? products.slice(0, 1) : products } }));
+  await page.route("**/v1/public/stores/theme-test", (route) => route.fulfill({ json: { store: { ...store, theme, themeSettings }, products: empty ? [] : single ? products.slice(0, 1) : products } }));
   await page.route("**/v1/public/events", (route) => route.fulfill({ status: 202, json: {} }));
   await page.route("**/v1/public/stores/theme-test/products/sac-signature/whatsapp", (route) => {
     handoffBody = route.request().postDataJSON();
@@ -88,13 +99,60 @@ try {
   }
 
   await mkdir("artifacts/themes", { recursive: true });
+  // Review real compositions with their native palette, not only the shared test accent.
+  const directions = ["beauty-ecrin", "fashion-editorial", "sport-club", "home-habitat", "tech-precision", "food-menu", "gifts-celebration"];
+  themeSettings = {};
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (theme of directions) {
+      await page.goto(base + "/store/theme-test");
+      await page.locator('.theme-hero').waitFor();
+      await prepareScreenshot(page);
+      await checkPage(page, `${theme}/${width}/art-direction`);
+      await page.screenshot({ path: `artifacts/themes/direction-${theme}-${width}.png`, fullPage: true });
+      // Photos and their product metadata must stay separate at every width.
+      for (const card of await page.locator('.theme-feature-card, .theme-panel, .theme-catalog-picks > a').all()) {
+        const image = await card.locator('.theme-feature-visual, .theme-panel-visual, .theme-catalog-visual').boundingBox();
+        const copy = await card.locator(':scope > div').boundingBox();
+        assert.ok(image && copy, "Featured products expose a visible photo and visible metadata");
+        assert.ok(copy.y >= image.y + image.height - 1 || copy.x >= image.x + image.width - 1, `${theme}: product text never covers its photo`);
+      }
+      if (theme === "fashion-editorial" && width === 1440) {
+        const photo = await page.locator('.theme-editorial-image').boundingBox();
+        const story = await page.locator('.theme-introduction').boundingBox();
+        assert.ok(photo && story && photo.x < story.x, "Editorial spread leads with photography on desktop");
+      }
+      if (theme === "beauty-ecrin") {
+        await page.getByRole('button', { name: "Collection de soins", exact: true }).click();
+        assert.equal(await page.locator('.theme-spotlight-copy h1').textContent(), "Collection de soins");
+        assert.ok((await page.locator('.theme-spotlight-copy .theme-cta').getAttribute('href'))?.endsWith('/collection-soins'));
+      }
+      await page.goto(base + "/store/theme-test/p/sac-signature");
+      await page.locator('.product-detail-copy').waitFor();
+      await checkPage(page, `${theme}/${width}/product-art-direction`);
+      await prepareScreenshot(page);
+      await page.screenshot({ path: `artifacts/themes/product-${theme}-${width}.png` });
+      if (["tech-precision", "food-menu", "gifts-celebration"].includes(theme)) {
+        await page.getByRole("button", { name: "Noir", exact: true }).click();
+        await page.getByRole("button", { name: "Ajouter au panier", exact: true }).click();
+        await page.goto(base + "/store/theme-test/cart");
+        await page.locator('.cart-form').waitFor();
+        await checkPage(page, `${theme}/${width}/checkout-art-direction`);
+        const formCorner = await page.locator('.cart-form').evaluate((form) => parseFloat(getComputedStyle(form).borderTopLeftRadius));
+        assert.ok(formCorner <= 24, "Checkout remains a readable panel rather than a pill-shaped surface");
+        await page.screenshot({ path: `artifacts/themes/cart-${theme}-${width}.png`, fullPage: true });
+      }
+    }
+  }
+  themeSettings = { accent: "#ffcc33" };
   single = true;
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 844 });
     for (theme of ["clean", "fashion-editorial", "fashion-collection", "beauty-ecrin", "food-menu", "gifts-celebration"]) {
+      themeSettings = theme === "gifts-celebration" ? { accent: "#cf24db", font: "sans", imageFit: "contain" } : {};
       await page.goto(base + "/store/theme-test");
       await page.locator('.theme-hero[data-products="1"]').waitFor();
-      await page.evaluate(() => document.fonts.ready);
+      await prepareScreenshot(page);
       await checkPage(page, `${theme}/${width}/single-product`);
       assert.equal(await page.locator('.theme-hero').getByText("Sac Signature", { exact: true }).count() > 0, true, "A single product is featured, including Clean");
       if (await page.locator('.theme-feature-visual').count()) {
@@ -102,14 +160,25 @@ try {
         const card = await page.locator('.theme-feature-card').first().boundingBox();
         assert.ok(visual && card && Math.abs(visual.width - card.width) < 1, "The product scene fills its card instead of leaving an empty side strip");
       }
+      await page.screenshot({ path: `artifacts/themes/single-${theme}-${width}.png` });
       if (theme === "gifts-celebration") {
+        assert.equal(await page.locator('[data-theme]').getAttribute('data-image-fit'), "contain");
+        const fit = await page.locator('.theme-feature-visual img').evaluate((image) => getComputedStyle(image).objectFit);
+        assert.equal(fit, "contain", "Custom artwork keeps its full image instead of inheriting a crop");
         const price = await page.locator('.theme-feature-caption > strong').boundingBox();
         const action = await page.locator('.theme-card-link').boundingBox();
         assert.ok(price && price.y + price.height < 844, "Single-product name/price appear in the first viewport");
         assert.ok(action && action.y + action.height < 844, "The first viewport contains a product action");
         assert.equal(await page.locator('.theme-kicker').textContent(), "Mode", "The merchant category replaces the template's sample sector");
+        const cornersVisible = await page.locator('.theme-feature-visual img').evaluate((image) => {
+          const box = image.getBoundingClientRect();
+          const scale = Math.min(box.width / image.naturalWidth, box.height / image.naturalHeight);
+          const width = image.naturalWidth * scale, height = image.naturalHeight * scale;
+          const left = box.x + (box.width - width) / 2, top = box.y + (box.height - height) / 2;
+          return [[left + 2, top + 2], [left + width - 2, top + 2], [left + 2, top + height - 2], [left + width - 2, top + height - 2]].every(([x, y]) => document.elementFromPoint(x, y) === image);
+        });
+        assert.equal(cornersVisible, true, "Whole-product mode leaves all four content corners visible");
       }
-      await page.screenshot({ path: `artifacts/themes/single-${theme}-${width}.png` });
     }
   }
   single = false;
@@ -133,6 +202,42 @@ try {
   await page.locator(".public-empty-catalog").waitFor();
   await checkPage(page, "empty catalog");
 
+  const sectorExamples = [
+    ["beauty-ecrin", "Collection de soins", "/themes/beauty-v1-960.webp"],
+    ["fashion-editorial", "Ensemble en lin", "/landing/fashion-960.webp"],
+    ["sport-stadium", "Maillot Tricolore", "/themes/sport-v1-960.webp"],
+    ["home-habitat", "Fauteuil Raphia", "/themes/home-v1-960.webp"],
+    ["tech-precision", "Casque Studio", "/landing/headphones-960.webp"],
+    ["food-menu", "L’Assiette Maison", "/themes/food-v1-960.webp"],
+    ["grocery-marche", "Panier fraîcheur", "/themes/grocery-v1-960.webp"],
+    ["gifts-celebration", "Coffret Jolis Instants", "/themes/gifts-v1-960.webp"],
+    ["kids-play", "Coffret Petits Soleils", "/themes/kids-v1-960.webp"],
+    ["auto-performance", "Roue Graphite", "/themes/auto-v1-960.webp"],
+    ["accessories-street", "Sac Sillage", "/themes/accessories-v1-960.webp"],
+    ["jewelry-joaillerie", "Montre Atelier", "/landing/watch-960.webp"]
+  ];
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const [preset, productName, imagePath] of sectorExamples) {
+      await page.goto(base + "/themes/" + preset);
+      await page.locator('.theme-hero img').first().waitFor();
+      await prepareScreenshot(page);
+      assert.ok((await page.locator('.theme-hero img').first().getAttribute('src'))?.endsWith(imagePath), preset + ": sector-appropriate hero image");
+      assert.ok((await page.locator('.theme-hero').getByText(productName, { exact: true }).count()) > 0, preset + ": sector-appropriate product");
+      await checkPage(page, `${preset}/${width}/curated-showroom`);
+      await page.locator('.public-store-shell').screenshot({ path: `artifacts/themes/showroom-${preset}-${width}.png` });
+    }
+  }
+  // WCAG reflow width: the public store also fits a narrow 320px viewport.
+  await page.setViewportSize({ width: 320, height: 844 });
+  empty = false;
+  for (theme of ["beauty-ecrin", "fashion-editorial", "sport-club", "home-habitat", "tech-precision", "food-menu"]) {
+    await page.goto(base + "/store/theme-test");
+    await page.locator('.theme-hero').waitFor();
+    await checkPage(page, theme + "/320/reflow");
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+
   // The showroom's introduction and creation link must work while its
   // interactive workspace is still downloading, including reduced motion.
   let releaseWorkspace;
@@ -150,10 +255,16 @@ try {
   await page.unroute("**/src/themes/ThemeGalleryWorkspace.tsx*");
   await page.locator(".theme-choice").first().waitFor();
   assert.equal(await page.locator(".theme-choice").count(), storeThemeIds.length);
+  // A curated sector change must clear the previous sector's product/filter state.
+  await page.locator('.theme-product-switcher button').nth(1).click();
+  await page.locator('.public-category-filter button', { hasText: "Coffrets cadeaux" }).click();
+  assert.equal(await page.locator('.public-product-card').count(), 1);
   await page.getByLabel("Secteur d’activité").selectOption("sport");
   assert.equal(await page.locator(".theme-choice").count(), 2);
   await page.getByRole("button", { name: /Stadium/ }).click();
   assert.equal(await page.locator("[data-theme]").getAttribute("data-theme"), "sport-stadium");
+  assert.equal(await page.locator('.theme-spotlight-copy h1').textContent(), "Maillot Tricolore", "A new sector starts on its own featured product");
+  assert.equal(await page.locator('.public-product-card').count(), 3, "A filter from the previous sector cannot empty the new catalog");
   await page.getByLabel("Typographie").selectOption("serif");
   await page.getByLabel("Images des produits").selectOption("contain");
   await page.locator(".theme-spotlight-image").click();
