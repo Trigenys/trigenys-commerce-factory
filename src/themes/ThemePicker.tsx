@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { resolveStoreTheme, storeThemes, storeThemeIds, themeSectors, type StoreTheme, type ThemeSettings, type ThemeLanguage, type ThemeSector } from "../../shared/store-themes";
 import { themeShellProps } from "../storefront/theme-style";
+import { themeSampleImage } from "./sample-images";
 import "./theme-picker.css";
 
 export default function ThemePicker({ value, settings, language, onChange, imageUrl, customization = true }: {
@@ -30,7 +31,7 @@ export default function ThemePicker({ value, settings, language, onChange, image
       {themes.map((key) => {
         const theme = resolveStoreTheme(key);
         const props = themeShellProps({ theme: key });
-        const fallbackImage = "/landing/" + (theme.sector === "beauty" ? "beauty" : ["fashion", "accessories", "kids"].includes(theme.sector) ? "fashion" : theme.sector === "jewelry" ? "watch" : "electronics") + "-480.webp";
+        const fallbackImage = themeSampleImage(theme.sector);
         return <button className="theme-choice" type="button" key={key} aria-pressed={key === value} onClick={() => onChange(key, key === value ? settings : {})}>
           <span className="theme-thumbnail" data-layout={theme.layout} data-sector={theme.sector} style={props.style} aria-hidden="true">
             <span className="theme-thumbnail-title">{theme.name}<i /></span>

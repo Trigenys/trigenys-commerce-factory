@@ -216,7 +216,7 @@ function ProductCard({
         </a>
         <strong>{formatMoney(product.price, product.currencyCode, language)}</strong>
         {product.stockLabel ? <p>{product.stockLabel}</p> : null}
-        <a className="public-product-link" href={href}>{language === "fr" ? "Voir le produit" : "View product"}<span aria-hidden="true">↗</span></a>
+        <a className="public-product-link" href={href} aria-label={(language === "fr" ? "Voir le produit : " : "View product: ") + product.name}>{language === "fr" ? "Voir le produit" : "View product"}<span aria-hidden="true">↗</span></a>
       </div>
     </article>
   );

@@ -158,7 +158,10 @@
   .public-store-shell[data-layout="spotlight"] .product-detail-grid { gap: 24px; }
 }
 
-/* Inscribe uncropped merchant artwork inside organic frames. */
-.public-store-shell[data-image-fit="contain"]:is([data-sector="beauty"], [data-sector="gifts"], [data-sector="kids"], [data-sector="accessories"], [data-sector="food"]) :is(.theme-feature-visual, .public-product-image, .product-gallery-main) img { padding: 15%; }
+/* Whole-product mode uses rectangular frames so merchant artwork stays large and uncropped. */
+.public-store-shell[data-image-fit="contain"] :is(.theme-feature-visual, .theme-panel-visual, .public-product-image, .product-gallery-main) { border-radius: min(var(--theme-radius), 12px); }
 
-.public-store-shell[data-image-fit="contain"][data-layout="lookbook"] .product-gallery-main img { padding: 15%; }
+/* Large surfaces retain modest corners even in themes with pill-shaped actions. */
+.public-store-shell[data-theme] :is(.cart-form, .cart-receipt) { border-radius: min(var(--theme-radius), 18px); }
+.public-store-shell[data-theme] :is(.cart-form input, .cart-form textarea, .cart-form select, .cart-receipt input, .product-cart-actions input) { border-radius: min(var(--theme-radius), 12px); }
+.public-store-shell[data-theme] .public-store-brand > img { border-radius: min(var(--theme-radius), 10px); object-fit: contain; }

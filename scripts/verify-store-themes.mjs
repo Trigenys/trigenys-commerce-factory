@@ -125,6 +125,14 @@ try {
       await checkPage(page, `${theme}/${width}/product-art-direction`);
       await page.evaluate(async () => { await document.fonts.ready; await Promise.all([...document.images].map((image) => image.decode().catch(() => {}))); });
       await page.screenshot({ path: `artifacts/themes/product-${theme}-${width}.png` });
+      if (["tech-precision", "food-menu", "gifts-celebration"].includes(theme)) {
+        await page.getByRole("button", { name: "Noir", exact: true }).click();
+        await page.getByRole("button", { name: "Ajouter au panier", exact: true }).click();
+        await page.goto(base + "/store/theme-test/cart");
+        await page.locator('.cart-form').waitFor();
+        await checkPage(page, `${theme}/${width}/checkout-art-direction`);
+        await page.screenshot({ path: `artifacts/themes/cart-${theme}-${width}.png`, fullPage: true });
+      }
     }
   }
   themeSettings = { accent: "#ffcc33" };
@@ -176,6 +184,42 @@ try {
   await page.goto(base + "/store/theme-test");
   await page.locator(".public-empty-catalog").waitFor();
   await checkPage(page, "empty catalog");
+
+  const sectorExamples = [
+    ["beauty-ecrin", "Collection de soins", "/themes/beauty-v1-960.webp"],
+    ["fashion-editorial", "Ensemble en lin", "/landing/fashion-960.webp"],
+    ["sport-stadium", "Maillot Tricolore", "/themes/sport-v1-960.webp"],
+    ["home-habitat", "Fauteuil Raphia", "/themes/home-v1-960.webp"],
+    ["tech-precision", "Casque Studio", "/landing/headphones-960.webp"],
+    ["food-menu", "L’Assiette Maison", "/themes/food-v1-960.webp"],
+    ["grocery-marche", "Panier fraîcheur", "/themes/grocery-v1-960.webp"],
+    ["gifts-celebration", "Coffret Jolis Instants", "/themes/gifts-v1-960.webp"],
+    ["kids-play", "Coffret Petits Soleils", "/themes/kids-v1-960.webp"],
+    ["auto-performance", "Roue Graphite", "/themes/auto-v1-960.webp"],
+    ["accessories-street", "Sac Sillage", "/themes/accessories-v1-960.webp"],
+    ["jewelry-joaillerie", "Montre Atelier", "/landing/watch-960.webp"]
+  ];
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const [preset, productName, imagePath] of sectorExamples) {
+      await page.goto(base + "/themes/" + preset);
+      await page.locator('.theme-hero img').first().waitFor();
+      await page.evaluate(async () => { await document.fonts.ready; await Promise.all([...document.images].map((image) => image.decode().catch(() => {}))); });
+      assert.ok((await page.locator('.theme-hero img').first().getAttribute('src'))?.endsWith(imagePath), preset + ": sector-appropriate hero image");
+      assert.ok((await page.locator('.theme-hero').getByText(productName, { exact: true }).count()) > 0, preset + ": sector-appropriate product");
+      await checkPage(page, `${preset}/${width}/curated-showroom`);
+      await page.locator('.public-store-shell').screenshot({ path: `artifacts/themes/showroom-${preset}-${width}.png` });
+    }
+  }
+  // WCAG reflow width: the public store also fits a narrow 320px viewport.
+  await page.setViewportSize({ width: 320, height: 844 });
+  empty = false;
+  for (theme of ["beauty-ecrin", "fashion-editorial", "sport-club", "home-habitat", "tech-precision", "food-menu"]) {
+    await page.goto(base + "/store/theme-test");
+    await page.locator('.theme-hero').waitFor();
+    await checkPage(page, theme + "/320/reflow");
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
 
   // The showroom's introduction and creation link must work while its
   // interactive workspace is still downloading, including reduced motion.
