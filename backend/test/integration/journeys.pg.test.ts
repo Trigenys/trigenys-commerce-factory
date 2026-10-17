@@ -65,6 +65,39 @@ describe("persisted Commerce Factory user journeys",()=>{
     for(const payload of [input({lines:[]}),input({trackingToken:"short"}),input({lines:[{productId,quantity:100,variants:{}}]}),input({lines:[input().lines[0],input().lines[0]]}),input({customerPhone:"no"})])assert.equal(parseOrderInput(payload),null);
     const response=await createOrder({lines:[{productId,quantity:2,variants:{Size:"XXL"}}]});assert.equal(response.status,409);
   });
+  test("visibility-only updates preserve product data and enforce membership on real SQL",async()=>{
+    const path = `/v1/admin/stores/${storeId}/products`;
+    const created = await request(path,"POST",{name:"Visibility sample",slug:"visibility-sample",price:"9500",currencyCode:"XAF",description:"Preserved description",category:"Mode",stockLabel:"Sur commande",status:"draft",sortOrder:37,imageUrls:["https://images.example.com/sample.webp"],variants:[{name:"Size",value:"M"}]},"owner");
+    assert.equal(created.status,201);
+    const original = (await created.json() as any).product;
+    const endpoint = path + "/" + original.id;
+    await query("INSERT INTO store_members (store_id,auth_subject,role) VALUES ($1,'visibility-staff','staff')",[storeId]);
+    try {
+      const visible = async () => (await request("/v1/public/stores/atelier").then(r=>r.json()) as any).products.some((p:any)=>p.id===original.id);
+      assert.equal(await visible(),false);
+      assert.equal((await request(endpoint,"PATCH",{status:"active"})).status,401);
+      assert.equal((await request(endpoint,"PATCH",{status:"active"},"stranger")).status,404);
+      assert.equal((await request(`/v1/admin/stores/${crypto.randomUUID()}/products/${original.id}`,"PATCH",{status:"active"},"owner")).status,404);
+      const activated = await request(endpoint,"PATCH",{status:"active"},"owner");
+      assert.equal(activated.status,200);
+      assert.deepEqual((await activated.json() as any).product,{...original,status:"active"});
+      assert.equal(await visible(),true);
+      const hidden = await request(endpoint,"PATCH",{status:"draft"},"visibility-staff");
+      assert.equal(hidden.status,200);
+      assert.deepEqual((await hidden.json() as any).product,original);
+      assert.equal(await visible(),false);
+      for(const body of [{status:"archived"},{status:"published"},{status:"active",sortOrder:0},{status:"active",storeId:crypto.randomUUID()}]) {
+        assert.equal((await request(endpoint,"PATCH",body,"owner")).status,400);
+      }
+      await query("DELETE FROM store_members WHERE store_id=$1 AND auth_subject='visibility-staff'",[storeId]);
+      assert.equal((await request(endpoint,"PATCH",{status:"active"},"visibility-staff")).status,404);
+      assert.equal((await request(endpoint,"DELETE",undefined,"owner")).status,204);
+      assert.equal((await request(endpoint,"PATCH",{status:"active"},"owner")).status,404);
+    } finally {
+      await query("DELETE FROM products WHERE id=$1",[original.id]);
+      await query("DELETE FROM store_members WHERE store_id=$1 AND auth_subject='visibility-staff'",[storeId]);
+    }
+  });
   test("draft media previews use real membership permissions without public access",async()=>{
     const repository = createNeonRepository("",tag);
     const ids = [crypto.randomUUID(), crypto.randomUUID()];

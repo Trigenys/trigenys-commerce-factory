@@ -14,6 +14,7 @@ import {
   listProducts,
   managedMediaPublicId,
   updateProduct,
+  setProductStatus,
   uploadMedia,
   type Product,
   type ProductInput,
@@ -52,6 +53,17 @@ const copy = {
     status: "Visibilité",
     draft: "Brouillon",
     active: "Actif",
+    activate: "Activer",
+    hide: "Mettre en brouillon",
+    changingVisibility: "Mise à jour…",
+    activated: "Produit activé.",
+    hidden: "Produit mis en brouillon. Il est masqué de la boutique publique.",
+    publishFirst: "Publiez la boutique pour le rendre visible aux clients.",
+    visible: "Visible sur la boutique",
+    notVisible: "Masqué de la boutique publique",
+    notPublished: "Actif · boutique non publiée",
+    closeEditorForStatus: "Enregistrez ou fermez la fiche pour changer sa visibilité ici.",
+    viewProduct: "Voir le produit",
     archived: "Archivé",
     images: "Images",
     imagesHint: "JPEG, PNG ou WebP. Nous optimisons automatiquement en WebP, max 8 images. Après l’envoi, cliquez sur Enregistrer pour associer les images au produit.",
@@ -112,6 +124,17 @@ const copy = {
     status: "Visibility",
     draft: "Draft",
     active: "Active",
+    activate: "Activate",
+    hide: "Move to draft",
+    changingVisibility: "Updating…",
+    activated: "Product activated.",
+    hidden: "Product moved to draft. It is hidden from the public store.",
+    publishFirst: "Publish the store to make it visible to customers.",
+    visible: "Visible in the store",
+    notVisible: "Hidden from the public store",
+    notPublished: "Active · store not published",
+    closeEditorForStatus: "Save or close the editor to change visibility here.",
+    viewProduct: "View product",
     archived: "Archived",
     images: "Images",
     imagesHint: "JPEG, PNG or WebP. We optimize automatically to WebP, maximum 8 images. After uploading, click Save to attach the images to the product.",
@@ -345,6 +368,7 @@ export default function ProductCatalog({
   const [slugTouched, setSlugTouched] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [visibilityBusy, setVisibilityBusy] = useState<string | null>(null);
   const [error, setInlineError] = useState<string | null>(null);
   const { notice, notify, dismiss } = useMerchantNotice();
   const setError = useCallback((value: string | null) => {
@@ -575,6 +599,24 @@ export default function ProductCatalog({
         setError(t.genericError);
       }
     } finally {
+      setBusy(false);
+    }
+  }
+
+  async function changeVisibility(product: Product) {
+    if (busy || mediaBusy || product.status === "archived" || editor?.id === product.id) return;
+    const status = product.status === "active" ? "draft" : "active";
+    setBusy(true);
+    setVisibilityBusy(product.id);
+    setError(null);
+    dismiss();
+    try {
+      cacheProduct(await setProductStatus(client, store.id, product.id, status));
+      await refreshAfterMutation(status === "draft" ? t.hidden : t.activated + (store.status === "published" ? "" : " " + t.publishFirst));
+    } catch {
+      setError(t.genericError);
+    } finally {
+      setVisibilityBusy(null);
       setBusy(false);
     }
   }
@@ -934,10 +976,21 @@ export default function ProductCatalog({
                   </p>
                   {product.status === "archived" ? (
                     <small className="catalog-archived-note">{t.archivedHint}</small>
-                  ) : null}
+                  ) : <small className="catalog-visibility-hint">
+                    {editor?.id === product.id ? t.closeEditorForStatus : product.status === "active" ? (store.status === "published" ? t.visible : t.notPublished) : t.notVisible}
+                    {product.status === "active" && store.status === "published" && <a href={"/store/" + encodeURIComponent(store.slug) + "/p/" + encodeURIComponent(product.slug)} target="_blank" rel="noreferrer">{t.viewProduct} ↗</a>}
+                  </small>}
                 </div>
 
                 <div className="catalog-actions">
+                  {product.status !== "archived" && <button
+                    type="button"
+                    className={"catalog-visibility-action" + (product.status === "draft" ? " activate" : "")}
+                    aria-label={(product.status === "active" ? t.hide : t.activate) + " · " + product.name}
+                    aria-busy={visibilityBusy === product.id}
+                    onClick={() => changeVisibility(product)}
+                    disabled={busy || mediaBusy || editor?.id === product.id}
+                  >{visibilityBusy === product.id ? t.changingVisibility : product.status === "active" ? t.hide : t.activate}</button>}
                   <div className="catalog-order-actions">
                     <button
                       type="button"

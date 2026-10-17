@@ -21,7 +21,7 @@ async function fixture(language, width, role = "owner") {
   const context = await browser.newContext({ viewport: { width, height: 900 }, locale: language === "fr" ? "fr-FR" : "en-GB", reducedMotion: "reduce" });
   await context.addInitScript(language => localStorage.setItem("commerce-factory-language", language), language);
   const page = await context.newPage();
-  const state = { products: [structuredClone(product)], calls: [], errors: [], rejectSave: false, failRead: false, gate: null, media: new Map(), uploads: 0, failUploadAt: 0, failPreview: false };
+  const state = { store: structuredClone(store), products: [structuredClone(product)], calls: [], errors: [], rejectSave: false, failRead: false, gate: null, media: new Map(), uploads: 0, failUploadAt: 0, failPreview: false };
   await page.addInitScript(() => {
     window.mediaLifecycle = { created: [], revoked: [] };
     const create = URL.createObjectURL.bind(URL), revoke = URL.revokeObjectURL.bind(URL);
@@ -50,8 +50,11 @@ async function fixture(language, width, role = "owner") {
     if (method === "OPTIONS") return route.fulfill({ status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "*" } });
     state.calls.push({ path: endpoint, method, body });
     if (endpoint === "/v1/config") return send({ authBaseUrl: "https://auth.example.test/neondb/auth" });
-    if (endpoint === "/v1/admin/me/stores") return send({ stores: [{ ...store, role }] });
+    if (endpoint === "/v1/admin/me/stores") return send({ stores: [{ ...state.store, role }] });
     if (endpoint === "/v1/admin/me/access") return send({ platform: false, email: `${role}@example.com`, emailVerified: true });
+    if (endpoint === `/v1/admin/stores/${storeId}` && method === "PATCH") {
+      state.store = { ...state.store, ...body }; return send({ store: { ...state.store, role } });
+    }
     if (endpoint === `/v1/admin/stores/${storeId}/orders`) return send({ orders: [] });
     if (endpoint === `/v1/admin/stores/${storeId}/media` && method === "POST") {
       state.uploads++;
@@ -259,6 +262,97 @@ try {
     assert.equal(state.calls.filter(call => call.path.startsWith("/v1/media/")).length, 0, "The merchant view never requests the gated public draft URL");
     assert.deepEqual(state.errors, []);
     report.checks.push(`${language}/${width}: authenticated draft preview, partial-upload recovery, stable-URL save/reload, error/retry, removal and blob cleanup`);
+    await context.close();
+  }
+  // Direct visibility actions are reversible and never send stale product fields.
+  for (const [language, width, role] of [["fr", 1440, "owner"], ["en", 390, "staff"]]) {
+    const fr = language === "fr";
+    const { context, page, state } = await fixture(language, width, role);
+    const activate = () => page.getByRole("button", { name: (fr ? "Activer" : "Activate") + " · " + product.name, exact: true });
+    const hide = () => page.getByRole("button", { name: (fr ? "Mettre en brouillon" : "Move to draft") + " · " + product.name, exact: true });
+    await page.goto(base + "/app/products?store=" + storeId);
+    await activate().waitFor();
+    state.rejectSave = true;
+    await activate().click();
+    await page.locator('.merchant-notice [role="alert"]').waitFor();
+    assert.equal(state.products[0].status, "draft", "A failed activation leaves the product in draft");
+    state.rejectSave = false;
+    let release;
+    state.gate = new Promise(resolve => release = resolve);
+    await activate().click();
+    await page.getByRole("button", { name: fr ? "Modifier" : "Edit", exact: true }).isDisabled().then(value => assert.equal(value, true));
+    release(); state.gate = null;
+    await hide().waitFor();
+    assert.deepEqual(state.products[0], { ...product, status: "active" });
+    assert.deepEqual(state.calls.filter(call => call.method === "PATCH").at(-1).body, { status: "active" });
+    await page.locator('.catalog-visibility-hint').filter({ hasText: fr ? "boutique non publiée" : "store not published" }).waitFor();
+    await capture(page, `visibility-active-${language}-${width}-${role}`);
+    await hide().click(); await activate().waitFor();
+    assert.deepEqual(state.products[0], product);
+    await page.getByRole("button", { name: fr ? "Modifier" : "Edit", exact: true }).click();
+    assert.equal(await activate().isDisabled(), true, "An open editor cannot silently reverse a list visibility change on save");
+    await page.getByRole("button", { name: fr ? "Annuler" : "Cancel", exact: true }).click();
+    await page.getByRole("combobox", { name: fr ? "Statut du produit" : "Product status", exact: true }).selectOption("draft");
+    await activate().click();
+    await page.getByRole("button", { name: fr ? "Effacer les filtres" : "Clear filters", exact: true }).waitFor();
+    await page.getByRole("button", { name: fr ? "Effacer les filtres" : "Clear filters", exact: true }).click();
+    await hide().waitFor();
+    state.failRead = true;
+    await hide().click(); await activate().waitFor();
+    await page.locator('.merchant-notice [role="status"]').filter({ hasText: fr ? "actualisé" : "refreshed" }).waitFor();
+    assert.equal(state.products[0].status, "draft");
+    assert.deepEqual(state.errors, []);
+    report.checks.push(`${language}/${width}/${role}: direct activation/hiding, narrow status PATCH, failure/retry, pending lock, editor protection, filters and failed-read recovery`);
+    await context.close();
+  }
+  // A merchant can preview an unpublished draft without publishing it. Theme
+  // defaults, saved settings and the real shared renderer survive a reload.
+  for (const [language, width] of [["fr", 1440], ["en", 390]]) {
+    const fr = language === "fr";
+    const { context, page, state } = await fixture(language, width);
+    state.store.theme = "gifts-celebration";
+    state.store.themeSettings = { accent: "#cf24db", font: "sans", imageFit: "contain" };
+    state.products[0].imageUrls = ["/landing/fashion-480.webp"];
+    await page.goto(base + "/app/appearance?store=" + storeId);
+    const preview = page.locator(".theme-preview-frame");
+    const drafts = page.getByRole("checkbox", { name: fr ? "Inclure les brouillons dans l’aperçu privé" : "Include drafts in the private preview", exact: true });
+    await preview.locator('.theme-feature-card h2').filter({ hasText: product.name }).waitFor();
+    assert.equal(await drafts.isChecked(), true);
+    assert.equal(state.products[0].status, "draft");
+    assert.equal(state.store.status, "draft");
+    await page.waitForFunction(() => document.querySelector(".theme-preview-frame .theme-feature-visual img")?.naturalWidth > 0);
+    await preview.scrollIntoViewIfNeeded();
+    await capture(page, `draft-theme-preview-${language}-${width}`);
+    await drafts.uncheck();
+    await preview.locator('.public-empty-catalog').waitFor();
+    assert.equal(await preview.locator("[data-theme]").getAttribute("data-theme"), "gifts-celebration", "An empty preview retains the selected theme");
+    await drafts.check();
+    await preview.locator('.theme-feature-card h2').waitFor();
+    await preview.locator('.theme-feature-card').first().click();
+    await preview.locator('.product-detail-copy').waitFor();
+    assert.equal(await preview.locator('.public-wa-button').isDisabled(), true);
+    await drafts.uncheck();
+    await preview.locator('.public-empty-catalog').waitFor();
+    await drafts.check();
+    await page.getByRole("button", { name: /Éditorial/ }).click();
+    assert.equal(await page.getByLabel(fr ? "Typographie" : "Typography", { exact: true }).inputValue(), "", "Switching themes resets the previous typography override");
+    assert.equal(await page.getByLabel(fr ? "Images des produits" : "Product images", { exact: true }).inputValue(), "");
+    await page.getByRole("button", { name: fr ? "Enregistrer" : "Save changes", exact: true }).click();
+    await page.locator('.merchant-notice [role="status"]').waitFor();
+    assert.equal(state.store.theme, "fashion-editorial");
+    assert.deepEqual(state.store.themeSettings, {});
+    await page.reload();
+    await page.locator('.theme-preview-frame [data-theme="fashion-editorial"]').waitFor();
+    await page.locator('.theme-preview-context').filter({ hasText: fr ? "Thème enregistré" : "Saved theme" }).waitFor();
+    assert.equal(state.products[0].status, "draft", "Preview and theme saving do not activate a product");
+    state.failRead = true;
+    await page.reload();
+    await page.locator('.merchant-theme-preview [role="alert"]').waitFor();
+    state.failRead = false;
+    await page.locator('.merchant-theme-preview').getByRole("button", { name: fr ? "Réessayer" : "Retry", exact: true }).click();
+    await page.locator('.theme-preview-frame [data-theme="fashion-editorial"]').waitFor();
+    assert.deepEqual(state.errors, []);
+    report.checks.push(`${language}/${width}: private draft inclusion, active-only empty state, disabled ordering, theme reset/save/reload and catalog retry`);
     await context.close();
   }
   {

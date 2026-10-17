@@ -40,23 +40,12 @@
 .theme-preview-frame.mobile { max-width: 390px; margin: 0 auto; }
 .theme-preview-frame .public-store-header { position: relative; padding: 10px 18px; }
 .theme-preview-frame .public-store-shell { min-height: 0; }
-.theme-preview-frame .theme-hero { margin: 12px; padding: 24px; }
-.theme-preview-frame .theme-hero h1 { font-size: 40px; }
-.theme-preview-frame .theme-spotlight { grid-template-columns: 1fr 1fr; min-height: 0; }
-.theme-preview-frame .theme-spotlight-price { grid-column: 1 / -1; }
-.theme-preview-frame .theme-panel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.theme-preview-frame .theme-panel { min-height: 280px; }
-.theme-preview-frame .theme-catalog-hero { grid-template-columns: 1fr; }
-.theme-preview-frame .product-detail-grid { grid-template-columns: 1fr; gap: 24px; }
-.theme-preview-frame .product-detail-copy { position: static; }
-.theme-preview-frame .public-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.theme-preview-frame .public-product-image { height: 180px; }
-.theme-preview-frame.mobile :is(.theme-spotlight, .theme-editorial, .theme-menu-hero, .theme-lookbook-grid) { display: flex; flex-direction: column; align-items: stretch; }
-.theme-preview-frame.mobile .theme-spotlight-image { width: 100%; }
-.theme-preview-frame.mobile .theme-lookbook-grid > a { aspect-ratio: 1; }
-.theme-preview-frame.mobile .theme-catalog-picks { grid-template-columns: 1fr; }
-.theme-preview-frame.mobile .public-catalog-heading { flex-direction: column; align-items: stretch; }
-.theme-preview-frame.mobile .theme-panel-heading { display: grid; }
-.theme-preview-frame.mobile .public-store-shell[data-layout="menu"] .public-product-grid { grid-template-columns: 1fr; }
-.theme-preview-frame.mobile .public-store-shell[data-layout="menu"] .public-product-card { grid-template-columns: 100px minmax(0, 1fr); }
 @media (max-width: 460px) { .theme-customization { grid-template-columns: 1fr; } .theme-live-preview { padding: 12px; } }
+
+.theme-preview-context { padding: 16px 18px; border: 1px solid #d8e1da; border-radius: 12px; background: #f3f7f4; color: #24382f; font-size: 13px; line-height: 1.6; }
+.theme-preview-context p { margin: 6px 0 0; color: #56645e; }
+.theme-preview-products { padding: 16px 0 0; color: #24382f; font-size: 13px; line-height: 1.6; }
+.theme-preview-products label { min-height: 44px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.theme-preview-products input { width: 20px; height: 20px; accent-color: #006948; flex: 0 0 auto; }
+.theme-preview-products p { margin: 6px 0; color: #56645e; font-size: 12px; }
+.theme-preview-products a { color: #006948; font-weight: 700; text-underline-offset: 3px; }

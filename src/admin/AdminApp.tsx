@@ -38,6 +38,7 @@ import "../brand/workspace-brand.css";
 import { isStoreTheme, parseThemeSettings, resolveStoreTheme, themeFonts } from "../../shared/store-themes";
 import { themeShellProps } from "../storefront/theme-style";
 import ThemePicker from "../themes/ThemePicker";
+import { useMerchantMedia } from "./use-merchant-media";
 import MerchantThemePreview from "./MerchantThemePreview";
 import MerchantImage from "./MerchantImage";
 
@@ -697,6 +698,10 @@ function StoreSettings({
   const [publishBusy, setPublishBusy] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
   const [previewProducts, setPreviewProducts] = useState<Product[]>([]);
+  const [previewState, setPreviewState] = useState<"loading" | "ready" | "error">("loading");
+  const [previewReload, setPreviewReload] = useState(0);
+  const previewImage = previewProducts.find(product => product.status !== "archived" && product.imageUrls.length)?.imageUrls[0];
+  const { sources: themeImages } = useMerchantMedia(client, store.id, previewImage ? [previewImage] : []);
   const toolbarRef = useRef<HTMLDivElement>(null);
   useChromeHeight(toolbarRef, "--merchant-page-toolbar-height");
   const { notice, notify, dismiss } = useMerchantNotice();
@@ -708,9 +713,14 @@ function StoreSettings({
 
   useEffect(() => {
     let cancelled = false;
-    if (section === "appearance") listProducts(client, store.id).then(value => { if (!cancelled) setPreviewProducts(value); }).catch(() => { if (!cancelled) setServerError(t.genericError); });
+    if (section === "appearance") {
+      setPreviewState("loading");
+      listProducts(client, store.id).then(value => {
+        if (!cancelled) { setPreviewProducts(value); setPreviewState("ready"); }
+      }).catch(() => { if (!cancelled) setPreviewState("error"); });
+    }
     return () => { cancelled = true; };
-  }, [client, store.id, section]);
+  }, [client, store.id, section, previewReload]);
 
   async function publishCurrentStore() {
     setPublishBusy(true);
@@ -934,7 +944,7 @@ function StoreSettings({
 
           {section === "appearance" && <div className="settings-divider" />}
           <div hidden={section !== "appearance"}>
-          <ThemePicker value={input.theme} settings={input.themeSettings} language={language} imageUrl={previewProducts.find((product) => product.status === "active")?.imageUrls[0]} onChange={(theme, themeSettings) => setInput({ ...input, theme, themeSettings })} />
+          <ThemePicker value={input.theme} settings={input.themeSettings} language={language} imageUrl={previewImage ? themeImages[previewImage] : undefined} onChange={(theme, themeSettings) => setInput({ ...input, theme, themeSettings })} />
 
           </div>
           <p className="draft-note" role="status">{dirty ? (language === "fr" ? "Modifications non enregistrées · brouillon conservé dans cet onglet." : "Unsaved changes · draft kept in this tab.") : (language === "fr" ? "Vos réglages sont enregistrés." : "Your settings are saved.")}</p>
@@ -948,10 +958,10 @@ function StoreSettings({
           </div>
         </form>
 
-        {section === "appearance" && <MerchantThemePreview client={client} storeId={store.id} language={language} storefront={{
-          store: { ...store, ...input, logoUrl: store.logoUrl },
-          products: previewProducts.filter((product) => product.status === "active").sort((a, b) => a.sortOrder - b.sortOrder)
-        }} />}
+        {section === "appearance" && <MerchantThemePreview client={client} storeId={store.id} language={language}
+          store={{ ...store, ...input, logoUrl: store.logoUrl }} products={previewProducts}
+          published={store.status === "published"} dirty={dirty} catalogState={previewState}
+          onRetryProducts={() => setPreviewReload(value => value + 1)} />}
 
       </section>
 

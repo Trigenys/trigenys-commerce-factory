@@ -79,6 +79,12 @@ jobs:
       - name: Verify storefront themes and media transparency
         if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
         run: npm run test:themes
+      - name: Retain storefront theme screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: commerce-store-themes
+          path: artifacts/themes/
       - name: Read-only live runtime diagnostic
         if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
         run: node scripts/diagnose-runtime.mjs

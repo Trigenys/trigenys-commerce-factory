@@ -10,6 +10,7 @@
 }
 
 .public-store-shell {
+  container: storefront / inline-size;
   min-height: 100vh;
   background: var(--shop-bg);
   color: var(--shop-ink);
@@ -471,7 +472,7 @@
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 960px) {
+@container storefront (max-width: 960px) {
   .public-product-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -490,7 +491,7 @@
   }
 }
 
-@media (max-width: 680px) {
+@container storefront (max-width: 680px) {
   .public-catalog-heading {
     align-items: stretch;
     flex-direction: column;
@@ -519,7 +520,7 @@
   }
 }
 
-@media (max-width: 420px) {
+@container storefront (max-width: 420px) {
   .public-product-grid {
     grid-template-columns: 1fr 1fr;
   }

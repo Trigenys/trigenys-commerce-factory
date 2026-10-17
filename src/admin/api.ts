@@ -226,6 +226,19 @@ export async function updateProduct(
   return body.product;
 }
 
+export async function setProductStatus(
+  client: CommerceAuthClient,
+  storeId: string,
+  productId: string,
+  status: "draft" | "active"
+): Promise<Product> {
+  const body = await merchantRequest<{ product: Product }>(
+    client, productPath(storeId) + "/" + encodeURIComponent(productId),
+    { method: "PATCH", body: JSON.stringify({ status }) }
+  );
+  return body.product;
+}
+
 export async function archiveProduct(
   client: CommerceAuthClient,
   storeId: string,
