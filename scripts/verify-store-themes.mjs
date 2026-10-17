@@ -138,6 +138,8 @@ try {
         await page.goto(base + "/store/theme-test/cart");
         await page.locator('.cart-form').waitFor();
         await checkPage(page, `${theme}/${width}/checkout-art-direction`);
+        const formCorner = await page.locator('.cart-form').evaluate((form) => parseFloat(getComputedStyle(form).borderTopLeftRadius));
+        assert.ok(formCorner <= 24, "Checkout remains a readable panel rather than a pill-shaped surface");
         await page.screenshot({ path: `artifacts/themes/cart-${theme}-${width}.png`, fullPage: true });
       }
     }
@@ -150,7 +152,7 @@ try {
       themeSettings = theme === "gifts-celebration" ? { accent: "#cf24db", font: "sans", imageFit: "contain" } : {};
       await page.goto(base + "/store/theme-test");
       await page.locator('.theme-hero[data-products="1"]').waitFor();
-      await page.evaluate(() => document.fonts.ready);
+      await prepareScreenshot(page);
       await checkPage(page, `${theme}/${width}/single-product`);
       assert.equal(await page.locator('.theme-hero').getByText("Sac Signature", { exact: true }).count() > 0, true, "A single product is featured, including Clean");
       if (await page.locator('.theme-feature-visual').count()) {
@@ -168,6 +170,14 @@ try {
         assert.ok(price && price.y + price.height < 844, "Single-product name/price appear in the first viewport");
         assert.ok(action && action.y + action.height < 844, "The first viewport contains a product action");
         assert.equal(await page.locator('.theme-kicker').textContent(), "Mode", "The merchant category replaces the template's sample sector");
+        const cornersVisible = await page.locator('.theme-feature-visual img').evaluate((image) => {
+          const box = image.getBoundingClientRect();
+          const scale = Math.min(box.width / image.naturalWidth, box.height / image.naturalHeight);
+          const width = image.naturalWidth * scale, height = image.naturalHeight * scale;
+          const left = box.x + (box.width - width) / 2, top = box.y + (box.height - height) / 2;
+          return [[left + 2, top + 2], [left + width - 2, top + 2], [left + 2, top + height - 2], [left + width - 2, top + height - 2]].every(([x, y]) => document.elementFromPoint(x, y) === image);
+        });
+        assert.equal(cornersVisible, true, "Whole-product mode leaves all four content corners visible");
       }
     }
   }
