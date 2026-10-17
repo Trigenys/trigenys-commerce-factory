@@ -97,6 +97,11 @@ try {
       await page.evaluate(() => document.fonts.ready);
       await checkPage(page, `${theme}/${width}/single-product`);
       assert.equal(await page.locator('.theme-hero').getByText("Sac Signature", { exact: true }).count() > 0, true, "A single product is featured, including Clean");
+      if (await page.locator('.theme-feature-visual').count()) {
+        const visual = await page.locator('.theme-feature-visual').first().boundingBox();
+        const card = await page.locator('.theme-feature-card').first().boundingBox();
+        assert.ok(visual && card && Math.abs(visual.width - card.width) < 1, "The product scene fills its card instead of leaving an empty side strip");
+      }
       if (theme === "gifts-celebration") {
         const price = await page.locator('.theme-feature-caption > strong').boundingBox();
         const action = await page.locator('.theme-card-link').boundingBox();

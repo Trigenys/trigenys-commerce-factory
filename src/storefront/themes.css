@@ -50,7 +50,7 @@
 
 .theme-editorial { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(24px, 4cqw, 64px); align-items: center; }
 .theme-feature-card { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; border-radius: 18px; overflow: hidden; background: var(--shop-card); color: var(--shop-ink) !important; }
-.theme-feature-visual { display: grid; place-items: center; min-height: 0; overflow: hidden; aspect-ratio: 1.35; max-height: 370px; background: color-mix(in srgb, var(--shop-card) 92%, var(--theme-scene)); }
+.theme-feature-visual { display: grid; place-items: center; width: 100%; min-height: 0; overflow: hidden; aspect-ratio: 1.35; max-height: 370px; background: color-mix(in srgb, var(--shop-card) 92%, var(--theme-scene)); }
 .theme-feature-caption { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 20px; padding: 20px 24px; }
 .theme-feature-caption > small { grid-column: 1 / -1; color: var(--shop-muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
 .theme-feature-caption h2 { grid-column: 1; font-size: clamp(20px, 2cqw, 28px); line-height: 1.2; overflow-wrap: anywhere; }
