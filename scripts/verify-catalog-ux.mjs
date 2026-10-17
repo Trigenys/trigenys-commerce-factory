@@ -337,7 +337,7 @@ try {
     await page.getByRole("button", { name: /Éditorial/ }).click();
     assert.equal(await page.getByLabel(fr ? "Typographie" : "Typography", { exact: true }).inputValue(), "", "Switching themes resets the previous typography override");
     assert.equal(await page.getByLabel(fr ? "Images des produits" : "Product images", { exact: true }).inputValue(), "");
-    await page.getByRole("button", { name: fr ? "Enregistrer" : "Save", exact: true }).click();
+    await page.getByRole("button", { name: fr ? "Enregistrer" : "Save changes", exact: true }).click();
     await page.locator('.merchant-notice [role="status"]').waitFor();
     assert.equal(state.store.theme, "fashion-editorial");
     assert.deepEqual(state.store.themeSettings, {});
