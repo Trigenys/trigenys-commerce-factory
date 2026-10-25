@@ -70,6 +70,15 @@ jobs:
       - name: Verify motion, scrollytelling and shared page branding
         if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
         run: npm run test:motion-brand
+      - name: Verify cinematic design laboratory at desktop and mobile sizes
+        if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
+        run: npm run test:cinematic-lab
+      - name: Retain cinematic laboratory screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: commerce-cinematic-lab
+          path: artifacts/wow-lab/
       - name: Retain motion and shared-brand screenshots
         if: always()
         uses: actions/upload-artifact@v6
