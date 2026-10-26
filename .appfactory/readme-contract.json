@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "name": "Trigenys Commerce Factory",
+  "stage": "beta",
+  "tagline": "Turn social conversations into discoverable, branded storefronts without creating a separate deployment for every merchant.",
+  "problem": "Small merchants already sell through WhatsApp, Instagram and Facebook, but scattered product photos, unclear availability and manual order conversations make discovery and catalog maintenance difficult. They need a lightweight shared storefront and a working merchant workspace before complex marketplaces or payment automation.",
+  "scenario": "A merchant signs in, adds a product with variants, chooses a storefront presentation, publishes the catalog and shares a shop link. A buyer browses without an account, submits a request and agrees directly with the seller on WhatsApp; a WhatsApp click alone is never counted as a completed sale.",
+  "differentiation": "One multi-tenant application separates public storefronts, authenticated merchant operations and a server-side tenant-aware API. It prioritizes fast catalog-to-conversation handoff, explicit merchant-confirmed payments and controlled infrastructure provisioned through AppFactory.",
+  "architecture": "Browser React/Vite storefront and merchant workspace -> authenticated Cloudflare Worker API -> scoped store membership checks -> Neon PostgreSQL and private R2 media. Cloudflare Pages serves a shared frontend; AppFactory coordinates deployment using GitHub OIDC without committing provider credentials.",
+  "limitations": "A beta storefront is not a hosted payment processor, inventory accounting suite or automatic order fulfillment service. Meta catalog synchronization, custom domains, campaigns and online payments are deferred; customer requests and WhatsApp clicks must not be mistaken for paid sales.",
+  "capabilities": [
+    {
+      "name": "Merchant and buyer journeys",
+      "description": "Implement storefront browsing, persistent cart, merchant onboarding and order-request flows with role-aware views.",
+      "status": "shipped",
+      "evidence": "docs/user-journeys.md"
+    },
+    {
+      "name": "Merchant workspace",
+      "description": "Provide responsive workspace navigation, catalog and settings actions with documented accessibility checks.",
+      "status": "shipped",
+      "evidence": "docs/merchant-workspace-ux.md"
+    },
+    {
+      "name": "Store theme library",
+      "description": "Develop shared storefront presentations and theme customization without one deployment per merchant.",
+      "status": "in-development"
+    },
+    {
+      "name": "Meta channel expansion",
+      "description": "Evaluate explicit consent, connector and webhook boundaries before enabling external catalog synchronization.",
+      "status": "planned"
+    }
+  ],
+  "roadmap": [
+    {
+      "name": "End-to-end beta verification",
+      "exitCriteria": "Reviewed staging and production evidence for published shops, tenant isolation, role restrictions and buyer request recovery."
+    },
+    {
+      "name": "Merchant trials and pricing",
+      "exitCriteria": "Run documented real merchant pilots, capture feedback and publish approved FCFA pricing and plan entitlements before paid onboarding."
+    },
+    {
+      "name": "Optional Meta integration",
+      "exitCriteria": "Complete connector threat model, consent flow and webhook validation before enabling catalog sync."
+    }
+  ],
+  "references": [
+    {
+      "name": "Commerce Factory architecture decision",
+      "url": "https://github.com/Trigenys/trigenys-commerce-factory/blob/main/docs/architecture/ADR-001-mvp-platform.md",
+      "relevance": "Shared tenancy, server access and storefront routing decision."
+    },
+    {
+      "name": "AppFactory README contract",
+      "url": "https://github.com/Trigenys/appfactory/blob/main/docs/product-readme-contract.md",
+      "relevance": "Reusable, evidence-based documentation contract and presentation audit."
+    }
+  ],
+  "requiredHeadings": [
+    "Why Commerce Factory",
+    "Merchant and buyer journeys",
+    "Architecture and trust boundaries",
+    "Capability maturity",
+    "Quick start",
+    "Roadmap and non-goals",
+    "Existing engineering documentation"
+  ],
+  "requiredTerms": [
+    "WhatsApp",
+    "Cloudflare",
+    "Neon",
+    "RAIDER",
+    "beta",
+    "idempotent"
+  ],
+  "requiredFiles": [
+    "docs/user-journeys.md",
+    "docs/merchant-workspace-ux.md",
+    "docs/architecture/ADR-001-mvp-platform.md",
+    "docs/ROADMAP.md",
+    "docs/deployment.md"
+  ],
+  "presentation": {
+    "variant": "centered",
+    "headline": "A storefront for every merchant. One reliable platform.",
+    "summary": "Transform scattered social sales into branded catalogs, practical merchant workflows and buyer conversations — without pretending a WhatsApp click is a paid order.",
+    "badges": [
+      {
+        "label": "Stage",
+        "value": "Beta",
+        "color": "orange",
+        "href": "#capability-maturity"
+      },
+      {
+        "label": "Frontend",
+        "value": "React + Vite",
+        "color": "2563eb",
+        "href": "#quick-start"
+      },
+      {
+        "label": "API",
+        "value": "Cloudflare Worker",
+        "color": "0969da",
+        "href": "#architecture-and-trust-boundaries"
+      },
+      {
+        "label": "Database",
+        "value": "Neon PostgreSQL",
+        "color": "263238",
+        "href": "#architecture-and-trust-boundaries"
+      },
+      {
+        "label": "Governance",
+        "value": "RAIDER",
+        "color": "6d28d9",
+        "href": "#existing-engineering-documentation"
+      }
+    ],
+    "navigation": [
+      {
+        "label": "Why it matters",
+        "href": "#why-commerce-factory"
+      },
+      {
+        "label": "User journeys",
+        "href": "#merchant-and-buyer-journeys"
+      },
+      {
+        "label": "Architecture",
+        "href": "#architecture-and-trust-boundaries"
+      },
+      {
+        "label": "Status",
+        "href": "#capability-maturity"
+      },
+      {
+        "label": "Run locally",
+        "href": "#quick-start"
+      },
+      {
+        "label": "Roadmap",
+        "href": "#roadmap-and-non-goals"
+      },
+      {
+        "label": "Documentation",
+        "href": "#existing-engineering-documentation"
+      }
+    ]
+  }
+}
