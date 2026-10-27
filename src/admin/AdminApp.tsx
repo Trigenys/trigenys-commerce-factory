@@ -16,6 +16,7 @@ import { useChromeHeight } from "./merchant-chrome";
 import type { CommerceAuthClient } from "./auth";
 import { canSignInWithGoogle, getAuthClient, getSessionSnapshot } from "./auth";
 import { finishGoogleReturn } from "./google-access";
+import { finishEmailLinkReturn } from "./email-link-access";
 import { captureSocialReturn } from "./social-return";
 import {
   ApiError,
@@ -985,6 +986,7 @@ export default function AdminApp() {
   const [attempt, setAttempt] = useState(0);
   const [fatalError, setFatalError] = useState<string | null>(null);
   const [googleFeedback, setGoogleFeedback] = useState<"failed" | "missing-session" | null>(null);
+  const [emailLinkFeedback, setEmailLinkFeedback] = useState<"failed" | "missing-session" | null>(null);
 
   const t = copy[language];
 
@@ -996,6 +998,7 @@ export default function AdminApp() {
 
   async function hydrate(nextClient: CommerceAuthClient) {
     const session = await getSessionSnapshot(nextClient);
+    setEmailLinkFeedback(finishEmailLinkReturn(session.authenticated));
     setGoogleFeedback(finishGoogleReturn(session.authenticated));
     setAuthenticated(session.authenticated);
     setSessionEmail(session.email);
@@ -1114,6 +1117,8 @@ export default function AdminApp() {
           language={language}
           googleEnabled={canSignInWithGoogle()}
           googleFeedback={googleFeedback}
+          emailLinkEnabled={import.meta.env.VITE_MAGIC_LINK_ENABLED === "true"}
+          emailLinkFeedback={emailLinkFeedback}
           onAuthenticated={async () => {
             await hydrate(client);
           }}
