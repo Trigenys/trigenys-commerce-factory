@@ -103,6 +103,15 @@ jobs:
       - name: Verify Google and merchant social imports
         if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
         run: npm run test:social
+      - name: Verify passwordless email link access
+        if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
+        run: npm run test:magic-link
+      - name: Retain email link screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: commerce-magic-link
+          path: artifacts/magic-link/
       - name: Retain social journey screenshots and report
         if: always()
         uses: actions/upload-artifact@v6
