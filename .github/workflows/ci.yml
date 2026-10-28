@@ -112,6 +112,15 @@ jobs:
         with:
           name: commerce-magic-link
           path: artifacts/magic-link/
+      - name: Verify branded transactional email rendering
+        if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
+        run: npm run test:auth-emails
+      - name: Retain branded email previews and report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: commerce-auth-emails
+          path: artifacts/auth-emails/
       - name: Retain social journey screenshots and report
         if: always()
         uses: actions/upload-artifact@v6

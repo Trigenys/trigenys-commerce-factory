@@ -66,7 +66,7 @@ export default function AccountAccess({ client, language, onAuthenticated, verif
       if (Date.now() < resendAt) return;
       setBusy(true);setError("");setMessage("");
       try {
-        await sendEmailLink(client,email,mode === "signup" ? name : undefined);
+        await sendEmailLink(client,email,mode === "signup" ? name : undefined,language);
         setResendAt(Date.now()+30000);setLinkSent(true);
       } catch { setError(linkText.error); } finally { setBusy(false); }
       return;

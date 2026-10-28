@@ -1,4 +1,5 @@
 import { registerJourneyRoutes } from "./journey-routes.ts";
+import { registerAuthEmailRoutes, type AuthEmailDependencies } from "./auth-email-webhook.ts";
 import { registerSocialRoutes } from "./social-routes.ts";
 import type { SocialAdapterFactory, SocialRepository } from "./social-types.ts";
 import type { JourneyRepository } from "./journey-types.ts";
@@ -29,6 +30,7 @@ export type AppEnv = {
 };
 
 type AppDependencies = {
+  authEmail?: AuthEmailDependencies;
   socialRepositoryFactory?: (env: WorkerBindings) => SocialRepository;
   socialAdapterFactory?: SocialAdapterFactory;
   journeyRepositoryFactory?: (env: WorkerBindings) => JourneyRepository;
@@ -634,6 +636,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   });
 
   registerJourneyRoutes(app, repositoryFactory, dependencies.journeyRepositoryFactory);
+  registerAuthEmailRoutes(app, dependencies.authEmail);
   registerSocialRoutes(app,repositoryFactory,dependencies.socialRepositoryFactory,dependencies.socialAdapterFactory);
   app.onError(() => new Response(JSON.stringify({error:"SERVICE_UNAVAILABLE"}),{status:503,headers:{"Content-Type":"application/json","Retry-After":"5","Cache-Control":"no-store"}}));
 

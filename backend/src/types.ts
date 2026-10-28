@@ -27,6 +27,10 @@ export interface MediaBucket {
 }
 
 export type WorkerBindings = {
+  AUTH_EMAIL_ENABLED?: string;
+  RESEND_API_KEY?: string;
+  MAIL_FROM?: string;
+  AUTH_EMAIL_DEFAULT_LANGUAGE?: string;
   TRIGENYS_COMMERCE_FACTORY_DATABASE_URL?: string;
   TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL?: string;
   TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN?: string;

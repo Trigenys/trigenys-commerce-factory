@@ -15,7 +15,7 @@ function valid(value: unknown): value is PendingReturn {
     Number.isFinite(v.createdAt) && v.createdAt <= Date.now() && Date.now() - v.createdAt < lifetime;
 }
 
-export async function sendEmailLink(client: CommerceAuthClient, email: string, name?: string): Promise<void> {
+export async function sendEmailLink(client: CommerceAuthClient, email: string, name?: string, language: "fr" | "en" = "fr"): Promise<void> {
   const store = new URLSearchParams(window.location.search).get("store");
   const invitation = window.location.pathname === "/app/accept-invitation"
     ? new URLSearchParams(window.location.hash.slice(1)).get("token") : null;
@@ -25,10 +25,10 @@ export async function sendEmailLink(client: CommerceAuthClient, email: string, n
     invitation: invitation && /^[a-f0-9]{64}$/.test(invitation) ? invitation : null,
     createdAt: Date.now()
   };
-  // Only a correlation ID goes to Neon. Invitation tokens stay in the requesting tab.
+  // Only a correlation ID and the UI language go to Neon. Invitation tokens stay in the requesting tab.
   // A link opened in another tab/device safely falls back to /app after authentication.
   try { sessionStorage.setItem(returnKey, JSON.stringify(pending)); } catch { /* Return context is optional. */ }
-  const callbackURL = window.location.origin + "/app/email-link?flow=" + pending.id;
+  const callbackURL = window.location.origin + "/app/email-link?flow=" + pending.id + "&lang=" + language;
   const result = await client.signIn.magicLink({
     email: email.trim(), ...(name?.trim() ? { name: name.trim() } : {}),
     callbackURL, newUserCallbackURL: callbackURL, errorCallbackURL: callbackURL + "&link_error=1"
