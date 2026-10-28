@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "description": "Visuels indépendants pour le carrousel de la page de connexion CommerceFactory. Texte marketing déjà incrusté dans chaque visuel; ne pas superposer les titres sans ajustement.",
+  "slides": [
+    {
+      "id": "slide-1",
+      "src": "/login-carousel/01-boutique-en-ligne.webp",
+      "title": "Votre boutique en ligne, simplement.",
+      "alt": "Entrepreneure à son ordinateur, boutique et commandes.",
+      "locale": "fr",
+      "width": 1279,
+      "height": 720
+    },
+    {
+      "id": "slide-2",
+      "src": "/login-carousel/02-visibilite-produits.webp",
+      "title": "Vos produits méritent d’être vus.",
+      "alt": "Commerçante présentant ses créations, vitrine numérique.",
+      "locale": "fr",
+      "width": 1279,
+      "height": 720
+    },
+    {
+      "id": "slide-3",
+      "src": "/login-carousel/03-vente-mobile.webp",
+      "title": "Vendez partout, à tout moment.",
+      "alt": "Entrepreneure utilisant son smartphone pour vendre.",
+      "locale": "fr",
+      "width": 1279,
+      "height": 720
+    },
+    {
+      "id": "slide-4",
+      "src": "/login-carousel/04-gestion-commandes.webp",
+      "title": "Vos commandes, sous contrôle.",
+      "alt": "Commerçante préparant un colis dans sa boutique.",
+      "locale": "fr",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "id": "slide-5",
+      "src": "/login-carousel/05-boutique-a-votre-image.webp",
+      "title": "Une boutique à votre image.",
+      "alt": "Entrepreneure pilotant la présence numérique de sa boutique.",
+      "locale": "fr",
+      "width": 1279,
+      "height": 720
+    },
+    {
+      "id": "slide-6",
+      "src": "/login-carousel/06-croissance.webp",
+      "title": "Grandissez à votre rythme.",
+      "alt": "Entrepreneure préparant une commande dans son atelier.",
+      "locale": "fr",
+      "width": 1279,
+      "height": 720
+    }
+  ]
+}
