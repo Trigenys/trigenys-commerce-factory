@@ -15,6 +15,7 @@
     "test:journeys": "node scripts/verify-user-journeys.mjs",
     "test:social": "node scripts/verify-social-journeys.mjs",
     "test:magic-link": "node scripts/verify-magic-link.mjs",
+    "test:auth-emails": "node --experimental-strip-types scripts/verify-auth-emails.mjs",
     "test:hero": "node scripts/verify-hero-story.mjs",
     "test:catalog": "node scripts/verify-catalog-ux.mjs",
     "test:landing": "node scripts/verify-landing.mjs",

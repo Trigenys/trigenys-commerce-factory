@@ -58,6 +58,7 @@ try {
     assert.equal(f.links.length,1);assert.equal(f.links[0].email,"owner@example.com");assert.equal(f.links[0].password,undefined);
     assert.equal(f.links[0].callbackURL,f.links[0].newUserCallbackURL);assert.ok(f.links[0].errorCallbackURL.endsWith("&link_error=1"));
     assert.equal(new URL(f.links[0].callbackURL).origin,base);assert.equal(new URL(f.links[0].callbackURL).pathname,"/app/email-link");
+    assert.equal(new URL(f.links[0].callbackURL).searchParams.get("lang"),language);
     assert.equal(await page.getByRole("status").filter({hasText:language==="fr" ? "Si cette adresse":"If this address"}).evaluate(e=>e===document.activeElement),true);
     await check(page,"link-sent-"+language+"-"+width);
     await page.clock.fastForward(31000);
