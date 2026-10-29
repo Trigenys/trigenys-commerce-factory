@@ -40,6 +40,15 @@ jobs:
       - name: Install browser for storefront checks
         id: browser-checks
         run: npx playwright install --with-deps chromium
+      - name: Verify fluid login carousel and stable frame on mobile and desktop
+        if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
+        run: npm run test:auth-carousel
+      - name: Retain login carousel screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: commerce-auth-carousel
+          path: artifacts/auth-carousel/
       - name: Verify merchant app layout, navigation, roles and management actions
         if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
         run: npm run test:workspace
