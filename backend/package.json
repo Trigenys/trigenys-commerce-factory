@@ -10,7 +10,8 @@
     "dev": "wrangler dev --config wrangler.production.jsonc",
     "typecheck": "tsc --noEmit",
     "test": "node --test --experimental-strip-types test/*.test.ts",
-    "check": "npm run typecheck && npm test && npm run test:integration",
+    "check": "npm run typecheck && npm test && npm run test:integration && npm run test:runtime",
+    "test:runtime": "wrangler deploy --config wrangler.production.jsonc --dry-run --outdir .wrangler-auth-email-smoke && node scripts/auth-email-runtime-smoke.mjs",
     "test:integration": "node --test --experimental-strip-types test/integration/*.test.ts"
   },
   "dependencies": {

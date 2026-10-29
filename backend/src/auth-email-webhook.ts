@@ -131,7 +131,9 @@ export function registerAuthEmailRoutes(app: Hono<AppEnv>, dependencies: AuthEma
       if (!keys) {
         keys = createRemoteJWKSet(new URL(config.authBase + "/.well-known/jwks.json"), {
           timeoutDuration: 2000, cooldownDuration: 30_000, cacheMaxAge: 10 * 60_000,
-          [customFetch]: (url, options) => fetcher(url, { ...options, redirect: "error" })
+          // workerd rejects redirect:"error" before making a request. JOSE requires HTTP 200,
+          // so manual handling rejects redirected key sets without following another host.
+          [customFetch]: (url, options) => fetcher(url, { ...options, redirect: "manual" })
         });
         keysets.set(config.authBase, keys);
       }

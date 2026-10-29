@@ -36,11 +36,11 @@ async function signed(body: object | string, timestamp = String(now), alg = "EdD
 }
 
 function fixture(overrides: { provider?: (request: Request) => Promise<Response>; jwksStatus?: number } = {}) {
-  const sends: Request[] = [], payloads: Record<string, unknown>[] = []; let jwksReads = 0, clock = now;
+  const sends: Request[] = [], jwksRequests: Request[] = [], payloads: Record<string, unknown>[] = []; let jwksReads = 0, clock = now;
   const fetcher: typeof fetch = async (url, init) => {
     const request = new Request(url, init);
     if (request.url === auth + "/.well-known/jwks.json") {
-      jwksReads++; return Response.json({ keys: [jwk] }, { status: overrides.jwksStatus || 200 });
+      jwksReads++; jwksRequests.push(request); return Response.json({ keys: [jwk] }, { status: overrides.jwksStatus || 200 });
     }
     assert.equal(request.url, "https://notify.example/v1/dispatch/commerce-factory/email");
     const payload = await request.clone().json() as Record<string, unknown> & {message: Record<string, unknown>};
@@ -48,7 +48,7 @@ function fixture(overrides: { provider?: (request: Request) => Promise<Response>
     return overrides.provider ? overrides.provider(request) : Response.json({ accepted: true, project: "commerce-factory", channel: "email", eventId: payload.id }, {status:202});
   };
   const app = createApp({ authEmail: { fetcher, now: () => clock } });
-  return { app, sends, payloads, jwksReads: () => jwksReads, advance: (ms: number) => { clock += ms; },
+  return { app, sends, jwksRequests, payloads, jwksReads: () => jwksReads, advance: (ms: number) => { clock += ms; },
     async post(data: Awaited<ReturnType<typeof signed>>, bindings = env) {
       return app.request("/v1/webhooks/neon-auth", { method: "POST", headers: data.headers, body: data.raw }, bindings);
     } };
@@ -68,7 +68,17 @@ test("a signed event delegates branded FR/EN mail to Notify with the original Ne
     assert.match(String(p.id), /^[a-f0-9]{64}$/); assert.equal(p.occurredAt, e.timestamp); assert.equal(p.expiresAt, e.event_data.expires_at);
     assert.equal(f.sends[0].headers.get("x-notify-auth"), env.NOTIFY_EMAIL_INGEST_KEY);
     assert.equal(f.sends[0].redirect, "manual");
+    assert.equal(f.jwksRequests[0].redirect, "manual");
   }
+});
+
+test("redirected JWKS cannot supply signing keys or trigger email delivery", async () => {
+  const f = fixture({ jwksStatus: 302 });
+  const response = await f.post(await signed(event()));
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: "WEBHOOK_VERIFICATION_UNAVAILABLE" });
+  assert.equal(f.jwksReads(), 1);
+  assert.equal(f.sends.length, 0);
 });
 
 test("retries use a stable key and byte-identical message, while JWKS is cached", async () => {

@@ -59,11 +59,18 @@ Rollback: first disable the affected Neon branch's Webhooks (enabled:false), res
 
 - Backend tests sign real test-key Neon events and exercise the updated Notify wire contract, stable retry identity, branch/signature isolation, FR/EN templates, redirects, timeout, disabled/missing configuration and provider/acceptance failures.
 - Existing backend and isolated PostgreSQL journey checks remain part of CI.
+- `npm run test:runtime` bundles the deployment Worker and runs its signed-email route in workerd, with outbound requests restricted to fixtures. It covers real JWKS retrieval, signature verification, branded Notify dispatch, tampering and rejected JWKS redirects. It is included in `npm run check` and sends no real email.
 - Existing email-rendering and SDK magic-link CI checks remain unchanged.
 - Notify tests cover actual SQLite migrations, concurrent claims, uncertain SMTP outcomes and real Nodemailer/TLS/MIME against a local fixture SMTP server. Its workerd/D1 smoke exercises the actual bundled SMTP failure path and existing WhatsApp routes.
 - These fixtures prove code behavior, not real Spacemail receipt or Neon redemption. Those remain unverified until SMTP secrets and a real owned-mailbox test are completed.
 
 Notify's contract/runbook is docs/transactional-email.md in Trigenys/trigenys-notify. No direct SMTP implementation or additional ledger is added to Commerce Factory.
+
+### Runtime regression found during staging verification (2026-10-29)
+
+The first real Neon request failed before Notify and left no D1 email receipt. The custom JWKS fetch override used `redirect:"error"`, which Node accepts but workerd rejects while constructing the request. As a result, no JWKS network request could run and the webhook returned `WEBHOOK_VERIFICATION_UNAVAILABLE`.
+
+The override now uses `manual`. JOSE already requires an HTTP 200 response, so redirected key sets are rejected without following their target. The new workerd check reproduces the original failure against the old deployment bundle and covers the fixed path; Node mocks alone are insufficient for this platform boundary. If a delivery test fails, first disable the Neon staging webhook to restore its built-in mail before diagnosing transport or credentials.
 
 ## RAIDER
 
