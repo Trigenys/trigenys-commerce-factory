@@ -1,8 +1,18 @@
+/* The image is the visual centerpiece. Keep its 16:9 box stable in every state. */
 .auth-layout.auth-layout--showcase {
-  max-width: 1480px;
-  grid-template-columns: minmax(0, 1.35fr) minmax(340px, 430px);
-  gap: clamp(24px, 3.5vw, 58px);
-  padding: clamp(28px, 5vh, 64px) clamp(18px, 3.5vw, 50px);
+  width: 100%;
+  max-width: none;
+  min-height: calc(100dvh - var(--merchant-header-height, 72px));
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  align-items: center;
+  gap: clamp(24px, 3.2vw, 60px);
+  padding: clamp(18px, 3vw, 46px) clamp(16px, 2.5vw, 48px);
+}
+
+.auth-layout--showcase .auth-card {
+  width: 100%;
+  max-width: 420px;
+  justify-self: end;
 }
 
 .auth-showcase {
@@ -12,24 +22,40 @@
 }
 
 .auth-showcase-frame {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
-  border-radius: 22px;
+  border-radius: clamp(14px, 1.5vw, 24px);
   background: #25111b;
   box-shadow: 0 28px 65px rgba(35, 16, 25, .18);
 }
 
+/* Absolute layers prevent the frame from collapsing when switching slides.
+   Both images remain mounted and overlap until the crossfade finishes. */
 .auth-showcase-slide {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
   margin: 0;
-  aspect-ratio: 16 / 9;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .8s ease-in-out;
 }
 
-.auth-showcase-slide[hidden] { display: none; }
+.auth-showcase-slide.is-active {
+  z-index: 2;
+  opacity: 1;
+}
 
 .auth-showcase-slide img {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: contain; /* Text is baked into the source images: never crop it. */
 }
 
 .auth-showcase-toolbar {
@@ -114,13 +140,13 @@
 
 .auth-showcase-actions button:disabled { opacity: .5; cursor: default; }
 
-@media (max-width: 960px) {
+@media (max-width: 980px) {
   .auth-layout.auth-layout--showcase {
     grid-template-columns: minmax(0, 1fr);
-    max-width: 720px;
+    max-width: 860px;
+    margin-inline: auto;
   }
-
-  .auth-layout--showcase .auth-card { order: 0; }
+  .auth-layout--showcase .auth-card { order: 0; justify-self: center; }
   .auth-layout--showcase .auth-showcase { order: 1; }
 }
 
@@ -133,5 +159,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .auth-showcase-slide,
   .auth-showcase-dots button::after { transition: none; }
 }

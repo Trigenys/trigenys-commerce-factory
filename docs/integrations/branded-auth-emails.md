@@ -62,9 +62,9 @@ Rollback: first disable the affected Neon branch's Webhooks (enabled:false), res
 - Backend tests sign real test-key Neon events and exercise the updated Notify wire contract, stable retry identity, branch/signature isolation, FR/EN templates, redirects, timeout, disabled/missing configuration and provider/acceptance failures.
 - Existing backend and isolated PostgreSQL journey checks remain part of CI.
 - `npm run test:runtime` bundles the deployment Worker and runs its signed-email route in workerd, with outbound requests restricted to fixtures. It covers real JWKS retrieval, signature verification, branded Notify dispatch, tampering and rejected JWKS redirects. It is included in `npm run check` and sends no real email.
-- Existing email-rendering and SDK magic-link CI checks remain unchanged.
+- Email-rendering checks cover standalone HTML and a dark webmail host that removes body attributes, with remote images blocked, alongside existing SDK magic-link checks.
 - Notify tests cover actual SQLite migrations, concurrent claims, uncertain SMTP outcomes and real Nodemailer/TLS/MIME against a local fixture SMTP server. Its workerd/D1 smoke exercises the actual bundled SMTP failure path and existing WhatsApp routes.
-- These fixtures prove code behavior, not real Spacemail receipt or Neon redemption. Those remain unverified until SMTP secrets and a real owned-mailbox test are completed.
+- Two explicitly authorized staging magic-link requests were accepted by Spacemail, each with one accepted Notify receipt. The owner subsequently confirmed receipt in Spacemail and Gmail; Gmail classified its message as spam. Live token redemption remains unverified.
 
 Notify's contract/runbook is docs/transactional-email.md in Trigenys/trigenys-notify. No direct SMTP implementation or additional ledger is added to Commerce Factory.
 
@@ -81,3 +81,11 @@ Once the signed staging link passed validation, public Worker-to-Worker delivery
 ## RAIDER
 
 Reuse: Roadmap rendering and Notify's per-project dispatch/D1 conventions, plus Nodemailer in Notify. Agnostic boundary: Commerce requests transactional delivery without owning a provider. Idempotency/durability: Notify's central receipt. Engineering: strict signed-event checks, secret isolation, verified TLS, bounded calls and explicit ambiguous-state handling. Retroactive adoption: flags off by default; password/Google, store data and existing Notify channels stay on their established flows.
+
+### Webmail rendering and delivery diagnosis (2026-10-30)
+
+The received Gmail message passed SPF, DKIM and DMARC, as verified from its Authentication-Results header. Authentication success does not establish inbox placement, and Gmail does not disclose the exact classification signal. Do not change working domain records or promise inbox delivery based only on SMTP acceptance.
+
+The Spacemail screenshot exposed a rendering bug: greeting, introduction and signature paragraphs inherited color only from body, which a webmail can strip while embedding the message into its dark interface. Set foreground colors on the actual text elements and preserve explicit table/cell backgrounds. The header now uses a styled text wordmark so brand identification does not depend on external image loading.
+
+The rendering regression runs French/English link and OTP fixtures on desktop/mobile, both standalone and inside a dark host with body attributes removed and host paragraph styles applied. It blocks all remote image requests and checks WCAG contrast, links, overflow and expiry. This simulation covers the reported inheritance failure; it is not a claim about every mailbox's automatic dark-mode rewriting.
