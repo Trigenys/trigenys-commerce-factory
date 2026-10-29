@@ -3,6 +3,7 @@ import type { CommerceAuthClient } from "./auth";
 import { getSessionSnapshot } from "./auth";
 import { signInWithGoogle } from "./google-access";
 import { sendEmailLink } from "./email-link-access";
+import AuthCarousel from "./AuthCarousel";
 
 type Mode = "signup" | "signin" | "forgot" | "reset" | "verify";
 const texts = {
@@ -110,12 +111,13 @@ export default function AccountAccess({ client, language, onAuthenticated, verif
     catch { setError(language === "fr" ? "La connexion Google a été interrompue ou n’a pas pu démarrer. Réessayez ou utilisez votre email." : "Google sign-in was interrupted or could not start. Try again or use your email."); }
     finally { setGoogleBusy(false); }
   }
-  return <main className="auth-layout" id="merchant-main" tabIndex={-1}>
-    <section className="auth-copy"><span className="admin-eyebrow">Commerce Factory</span>
-      <h1>{mode === "forgot" ? t.recoveryTitle : mode === "reset" ? t.resetTitle : mode === "verify" ? t.verifyTitle : t.title}</h1>
-      <p>{mode === "forgot" ? t.recoveryBody : mode === "reset" ? t.resetBody : mode === "verify" ? t.verifyBody : t.body}</p>
-      <div className="auth-benefits"><span>✓ WhatsApp</span><span>✓ FCFA</span><span>✓ Mobile</span></div>
-    </section>
+  return <main className={"auth-layout" + (!recovery ? " auth-layout--showcase" : "")} id="merchant-main" tabIndex={-1}>
+    {!recovery ? <AuthCarousel language={language} /> : (
+      <section className="auth-copy"><span className="admin-eyebrow">Commerce Factory</span>
+        <h1>{mode === "forgot" ? t.recoveryTitle : mode === "reset" ? t.resetTitle : t.verifyTitle}</h1>
+        <p>{mode === "forgot" ? t.recoveryBody : mode === "reset" ? t.resetBody : t.verifyBody}</p>
+      </section>
+    )}
     <section className="auth-card" aria-label={recovery ? t.recoveryTitle : t.signin}>
       {!recovery && <div className="auth-tabs" role="group" aria-label={language === "fr" ? "Accès au compte" : "Account access"}>
         <button type="button" disabled={busy || googleBusy} aria-pressed={mode === "signup"} className={mode === "signup" ? "active" : ""} onClick={()=>change("signup")}>{t.signup}</button>
