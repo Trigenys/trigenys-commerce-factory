@@ -21,7 +21,7 @@ export function renderBrandedEmail(input: {
 <html lang="${input.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${escapeHtml(input.subject)}</title></head>
 <body style="margin:0;padding:0;background:#fbf5eb;color:#142d25;font-family:Arial,Helvetica,sans-serif;line-height:1.6;-webkit-text-size-adjust:100%">
 <div aria-hidden="true" style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all">${escapeHtml(input.preheader)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#fbf5eb" style="background-color:#fbf5eb;color:#142d25"><tr><td align="center" style="padding:32px 16px;color:#142d25">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#fbf5eb" style="background-color:#fbf5eb;color:#142d25;font-family:Arial,Helvetica,sans-serif;line-height:1.6"><tr><td align="center" style="padding:32px 16px;color:#142d25">
 <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:100%;max-width:560px">
 <tr><td style="padding:0 8px 24px;color:#142d25"><a href="${origin}" aria-label="Commerce Factory by Trigenys" style="display:inline-block;text-decoration:none;color:#142d25;line-height:1.2"><span style="font-size:25px;font-weight:700;color:#142d25">Commerce <span style="color:#8a0b37">Factory</span></span><br><span style="font-size:11px;letter-spacing:1px;color:#4a6155">by Trigenys</span></a></td></tr>
 <tr><td bgcolor="#fffdf8" style="color:#142d25;background-color:#fffdf8;border:1px solid #d8d5c5;border-top:4px solid #b34729;border-radius:14px;padding:28px 24px">

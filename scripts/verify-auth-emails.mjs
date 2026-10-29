@@ -21,7 +21,7 @@ try {
     // Webmails can discard <body> attributes and let their dark theme style paragraphs.
     // Keep the original content in that hostile host instead of trusting a standalone preview.
     const content=client==="dark-webmail"
-      ? `<!DOCTYPE html><html lang="${language}"><head><meta charset="utf-8"><style>body{background:#18191b}body,p,strong{color:#f7f8f9}</style></head><body>${message.html.match(/<body[^>]*>([\s\S]*)<\/body>/i)[1]}</body></html>`
+      ? `<!DOCTYPE html><html lang="${language}"><head><meta charset="utf-8"><title>Webmail preview</title><style>body{background:#18191b}body,p,strong{color:#f7f8f9}</style></head><body>${message.html.match(/<body[^>]*>([\s\S]*)<\/body>/i)[1]}</body></html>`
       : message.html;
     await page.setContent(content, { waitUntil: "networkidle" });
     assert.equal(await page.locator("html").getAttribute("lang"), language);
