@@ -36,6 +36,7 @@ Commerce Worker server-only bindings:
 
 - AUTH_EMAIL_ENABLED: absent/false until the full chain is ready;
 - NOTIFY_EMAIL_BASE_URL: HTTPS root origin of the matching Notify environment;
+- NOTIFY_EMAIL_SERVICE: optional Cloudflare HTTP service binding to the matching Notify Worker. Prefer it for Worker-to-Worker delivery. When present, it is the only delivery transport and retains x-notify-auth; a failed private call never falls back to a public host;
 - NOTIFY_EMAIL_INGEST_KEY: secret scoped to Commerce email;
 - optional AUTH_EMAIL_DEFAULT_LANGUAGE: fr or en;
 - optional AUTH_EMAIL_PARENT_ENDPOINT_ID: one explicitly verified parent context label for a cloned branch. It applies only to signed magic-link events whose original verification URL remains on this Worker's configured Auth origin and database path; parent-origin links, other context labels and parent-labeled OTPs remain rejected. It is absent by default and is not exposed in public config;
@@ -74,6 +75,8 @@ The first real Neon request failed before Notify and left no D1 email receipt. T
 The override now uses `manual`. JOSE already requires an HTTP 200 response, so redirected key sets are rejected without following their target. The new workerd check reproduces the original failure against the old deployment bundle and covers the fixed path; Node mocks alone are insufficient for this platform boundary. If a delivery test fails, first disable the Neon staging webhook to restore its built-in mail before diagnosing transport or credentials.
 
 The next live request verified its signature but reported the configured parent endpoint (`ep-plain-wave-b23ip5pe`) in its context while being requested through staging (`ep-soft-river-b2at40xx`). The parent relationship and both Auth URLs were verified in the console; production Webhooks remained disabled. Staging can opt into the single explicit parent label with AUTH_EMAIL_PARENT_ENDPOINT_ID. This does not authorize production verification links: their origin/path still fails the existing strict link check. OTPs retain exact context matching. Failed signed requests log only fixed error/phase codes and bounded public endpoint identifiers, never email addresses, payloads, links, tokens or credentials.
+
+Once the signed staging link passed validation, public Worker-to-Worker delivery failed before a Notify receipt was claimed. The staging consumer therefore binds NOTIFY_EMAIL_SERVICE directly to trigenys-notify-staging-api, using Cloudflare's supported internal HTTP transport. The API URL remains a routing/contract value; product-scoped authentication is still required. Production must receive its own matching binding during its separate rollout, never a staging fallback. The workerd smoke exercises a real service binding in addition to the external HTTP fixture.
 
 ## RAIDER
 

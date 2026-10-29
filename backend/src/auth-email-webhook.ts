@@ -3,7 +3,7 @@ import type { Hono } from "hono";
 import type { AppEnv } from "./app.ts";
 import type { WorkerBindings } from "./types.ts";
 import { buildAuthEmail, type AuthEmailMessage, type AuthEmailPurpose } from "./auth-email-templates.ts";
-import { sendTransactionalEmail } from "./email-delivery.ts";
+import { EmailDeliveryError, sendTransactionalEmail } from "./email-delivery.ts";
 import type { EmailLanguage } from "./email-layout.ts";
 
 export type AuthEmailDependencies = { fetcher?: typeof fetch; now?: () => number };
@@ -163,14 +163,19 @@ export function registerAuthEmailRoutes(app: Hono<AppEnv>, dependencies: AuthEma
       signatureVerified = true; phase = "event";
       const { message, idempotencyKey } = parseEvent(raw, c.req.raw.headers, config, now());
       phase = "notify";
+      // A configured service binding is the only delivery transport for that Worker.
+      // Keep the same scoped authentication and contract; never fall back after its failure.
+      const service = c.env.NOTIFY_EMAIL_SERVICE;
+      const emailFetcher: typeof fetch = service ? (input, init) => service.fetch(input, init) : fetcher;
       await sendTransactionalEmail({ baseUrl: config.notifyBase, ingestKey: config.ingestKey, recipient: message.recipient,
-        idempotencyKey, occurredAt: message.issuedAt, expiresAt: message.expiresAt, message: buildAuthEmail(message) }, fetcher);
+        idempotencyKey, occurredAt: message.issuedAt, expiresAt: message.expiresAt, message: buildAuthEmail(message) }, emailFetcher);
       return c.json({ accepted: true });
     } catch (error) {
       const failure = error instanceof WebhookError ? error : new WebhookError(503, "EMAIL_DELIVERY_UNAVAILABLE");
       // Fixed codes only: no payload, recipient, link, token, provider error or credential.
       if (signatureVerified) console.warn(JSON.stringify({ event: "commerce_auth_email_failed", phase,
-        code: failure.code, status: failure.status, diagnostic: failure.diagnostic, endpoint: failure.endpoint }));
+        code: failure.code, status: failure.status, diagnostic: failure.diagnostic, endpoint: failure.endpoint,
+        deliveryStatus: error instanceof EmailDeliveryError ? error.status : undefined }));
       if (failure.status === 503) c.header("Retry-After", "1");
       return c.json({ error: failure.code }, failure.status);
     }

@@ -1,5 +1,10 @@
 import type { RenderedEmail } from "./auth-email-templates.ts";
 
+export class EmailDeliveryError extends Error {
+  readonly status?: number;
+  constructor(status?: number) { super("EMAIL_DELIVERY_FAILED"); this.status = status; }
+}
+
 // Commerce owns its content. Trigenys Notify owns SMTP credentials and durable delivery receipts.
 export async function sendTransactionalEmail(input: {
   baseUrl: string; ingestKey: string; recipient: string; idempotencyKey: string;
@@ -17,12 +22,12 @@ export async function sendTransactionalEmail(input: {
         expiresAt: input.expiresAt, recipient: input.recipient, message: input.message })
     });
     // Workers supports manual redirect handling. Never forward the ingest key to a redirect target.
-    if (response.status !== 202) { await response.body?.cancel(); throw new Error("EMAIL_DELIVERY_FAILED"); }
+    if (response.status !== 202) { await response.body?.cancel(); throw new EmailDeliveryError(response.status); }
     const result: unknown = await response.json();
     if (!result || typeof result !== "object" || !("accepted" in result) || result.accepted !== true ||
       !("project" in result) || result.project !== "commerce-factory" || !("channel" in result) || result.channel !== "email" ||
-      !("eventId" in result) || result.eventId !== id) throw new Error("EMAIL_DELIVERY_FAILED");
-  } catch {
-    throw new Error("EMAIL_DELIVERY_FAILED");
+      !("eventId" in result) || result.eventId !== id) throw new EmailDeliveryError(response.status);
+  } catch (error) {
+    throw error instanceof EmailDeliveryError ? error : new EmailDeliveryError();
   } finally { clearTimeout(timer); }
 }

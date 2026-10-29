@@ -29,6 +29,7 @@ export interface MediaBucket {
 export type WorkerBindings = {
   AUTH_EMAIL_ENABLED?: string;
   NOTIFY_EMAIL_BASE_URL?: string;
+  NOTIFY_EMAIL_SERVICE?: { fetch: typeof fetch };
   NOTIFY_EMAIL_INGEST_KEY?: string;
   AUTH_EMAIL_DEFAULT_LANGUAGE?: string;
   AUTH_EMAIL_PARENT_ENDPOINT_ID?: string;

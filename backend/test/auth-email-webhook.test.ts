@@ -110,6 +110,21 @@ test("an explicitly mapped parent label accepts only signed links on this branch
   const codes = fixture(); assert.equal((await codes.post(await signed(otp), bindings)).status, 400); assert.equal(codes.sends.length, 0);
 });
 
+test("a private Notify binding retains scoped auth and never falls back to public HTTP", async () => {
+  for (const status of [202, 503]) {
+    const f = fixture(), privateSends: Request[] = [];
+    const bindings: WorkerBindings = { ...env, NOTIFY_EMAIL_SERVICE: { fetch: async (url, init) => {
+      const request = new Request(url, init); privateSends.push(request);
+      assert.equal(request.url, "https://notify.example/v1/dispatch/commerce-factory/email");
+      assert.equal(request.headers.get("x-notify-auth"), env.NOTIFY_EMAIL_INGEST_KEY);
+      const payload = await request.json() as {id: string};
+      return Response.json({ accepted: true, project: "commerce-factory", channel: "email", eventId: payload.id }, { status });
+    } } };
+    assert.equal((await f.post(await signed(event()), bindings)).status, status === 202 ? 200 : 503);
+    assert.equal(privateSends.length, 1); assert.equal(f.sends.length, 0); assert.equal(f.jwksReads(), 1);
+  }
+});
+
 test("retries use a stable key and byte-identical message, while JWKS is cached", async () => {
   const f = fixture(), e = event(), s = await signed(e);
   assert.equal((await f.post(s)).status, 200); f.advance(1000);

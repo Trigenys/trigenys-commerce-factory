@@ -28,27 +28,33 @@ const headers = { "content-type": "application/json", "x-neon-signature": header
   "x-neon-signature-kid": jwk.kid, "x-neon-timestamp": timestamp,
   "x-neon-event-id": id, "x-neon-event-type": event.event_type };
 
-for (const redirectKeys of [false, true]) {
+for (const scenario of ["http", "redirect", "service"]) {
+  const redirectKeys = scenario === "redirect";
   const seen = [], sent = [];
+  const receiveEmail = async request => {
+    assert.equal(request.url, notify + "/v1/dispatch/commerce-factory/email");
+    assert.equal(request.headers.get("x-notify-auth"), key);
+    const payload = await request.json(); sent.push(payload);
+    assert.equal(payload.recipient, "merchant@example.com");
+    assert.equal(payload.project, "commerce-factory");
+    assert.match(payload.message.subject, /Votre lien de connexion/);
+    return Response.json({ accepted: true, project: payload.project, channel: "email", eventId: payload.id }, { status: 202 });
+  };
   const mf = new Miniflare({
     modulesRoot: dirname(bundle),
     modules: [{ type: "ESModule", path: bundle }],
     compatibilityDate: "2026-10-08", compatibilityFlags: ["nodejs_compat"],
     bindings: { AUTH_EMAIL_ENABLED: "true", NOTIFY_EMAIL_BASE_URL: notify, NOTIFY_EMAIL_INGEST_KEY: key,
       TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL: auth, TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN: web },
+    serviceBindings: scenario === "service" ? { NOTIFY_EMAIL_SERVICE: receiveEmail } : {},
     outboundService: async request => {
       seen.push(request.url);
       if (request.url === auth + "/.well-known/jwks.json") {
         return redirectKeys ? new Response(null, { status: 302, headers: { location: "https://unexpected.example/keys" } })
           : Response.json({ keys: [jwk] });
       }
-      assert.equal(request.url, notify + "/v1/dispatch/commerce-factory/email");
-      assert.equal(request.headers.get("x-notify-auth"), key);
-      const payload = await request.json(); sent.push(payload);
-      assert.equal(payload.recipient, "merchant@example.com");
-      assert.equal(payload.project, "commerce-factory");
-      assert.match(payload.message.subject, /Votre lien de connexion/);
-      return Response.json({ accepted: true, project: payload.project, channel: "email", eventId: payload.id }, { status: 202 });
+      assert.notEqual(scenario, "service", "Bound email transport must not use public HTTP");
+      return receiveEmail(request);
     }
   });
   try {
@@ -69,4 +75,4 @@ for (const redirectKeys of [false, true]) {
     }
   } finally { await mf.dispose(); }
 }
-console.log("workerd signed-email smoke passed: verified JWKS, branded Notify dispatch, tamper rejection and no JWKS redirect follow; zero real email.");
+console.log("workerd signed-email smoke passed: verified JWKS, HTTP/private-binding Notify dispatch, tamper rejection and no JWKS redirect follow; zero real email.");
