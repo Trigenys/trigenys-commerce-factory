@@ -36,11 +36,11 @@ async function signed(body: object | string, timestamp = String(now), alg = "EdD
 }
 
 function fixture(overrides: { provider?: (request: Request) => Promise<Response>; jwksStatus?: number } = {}) {
-  const sends: Request[] = [], payloads: Record<string, unknown>[] = []; let jwksReads = 0, clock = now;
+  const sends: Request[] = [], jwksRequests: Request[] = [], payloads: Record<string, unknown>[] = []; let jwksReads = 0, clock = now;
   const fetcher: typeof fetch = async (url, init) => {
     const request = new Request(url, init);
     if (request.url === auth + "/.well-known/jwks.json") {
-      jwksReads++; return Response.json({ keys: [jwk] }, { status: overrides.jwksStatus || 200 });
+      jwksReads++; jwksRequests.push(request); return Response.json({ keys: [jwk] }, { status: overrides.jwksStatus || 200 });
     }
     assert.equal(request.url, "https://notify.example/v1/dispatch/commerce-factory/email");
     const payload = await request.clone().json() as Record<string, unknown> & {message: Record<string, unknown>};
@@ -48,7 +48,7 @@ function fixture(overrides: { provider?: (request: Request) => Promise<Response>
     return overrides.provider ? overrides.provider(request) : Response.json({ accepted: true, project: "commerce-factory", channel: "email", eventId: payload.id }, {status:202});
   };
   const app = createApp({ authEmail: { fetcher, now: () => clock } });
-  return { app, sends, payloads, jwksReads: () => jwksReads, advance: (ms: number) => { clock += ms; },
+  return { app, sends, jwksRequests, payloads, jwksReads: () => jwksReads, advance: (ms: number) => { clock += ms; },
     async post(data: Awaited<ReturnType<typeof signed>>, bindings = env) {
       return app.request("/v1/webhooks/neon-auth", { method: "POST", headers: data.headers, body: data.raw }, bindings);
     } };
@@ -68,6 +68,60 @@ test("a signed event delegates branded FR/EN mail to Notify with the original Ne
     assert.match(String(p.id), /^[a-f0-9]{64}$/); assert.equal(p.occurredAt, e.timestamp); assert.equal(p.expiresAt, e.event_data.expires_at);
     assert.equal(f.sends[0].headers.get("x-notify-auth"), env.NOTIFY_EMAIL_INGEST_KEY);
     assert.equal(f.sends[0].redirect, "manual");
+    assert.equal(f.jwksRequests[0].redirect, "manual");
+  }
+});
+
+test("redirected JWKS cannot supply signing keys or trigger email delivery", async () => {
+  const f = fixture({ jwksStatus: 302 });
+  const response = await f.post(await signed(event()));
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: "WEBHOOK_VERIFICATION_UNAVAILABLE" });
+  assert.equal(f.jwksReads(), 1);
+  assert.equal(f.sends.length, 0);
+});
+
+test("signed validation failures have bounded diagnostics without email or token data", async t => {
+  const warning = t.mock.method(console, "warn", () => {});
+  const e = event(); e.context.endpoint_id = "ep-other-branch";
+  const f = fixture(), response = await f.post(await signed(e));
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: "INVALID_WEBHOOK" });
+  assert.equal(warning.mock.calls.length, 1);
+  const logged = String(warning.mock.calls[0].arguments[0]);
+  assert.equal(JSON.parse(logged).diagnostic, "endpoint");
+  for (const value of [e.user.email, e.user.name, e.event_data.link_url, e.event_data.token, env.NOTIFY_EMAIL_INGEST_KEY!])
+    assert.equal(logged.includes(value), false);
+  assert.equal(f.sends.length, 0);
+});
+
+test("an explicitly mapped parent label accepts only signed links on this branch, never parent URLs or OTPs", async () => {
+  const bindings = { ...env, AUTH_EMAIL_PARENT_ENDPOINT_ID: "ep-parent-test" };
+  const e = event(); e.context.endpoint_id = "ep-parent-test";
+  const strict = fixture(); assert.equal((await strict.post(await signed(e))).status, 400);
+  const mapped = fixture(); assert.equal((await mapped.post(await signed(e), bindings)).status, 200);
+  assert.equal(mapped.sends.length, 1);
+  const parentUrl = event(); parentUrl.context.endpoint_id = "ep-parent-test";
+  parentUrl.event_data.link_url = parentUrl.event_data.link_url.replace("ep-mail-test", "ep-parent-test");
+  const parent = fixture(); assert.equal((await parent.post(await signed(parentUrl), bindings)).status, 400); assert.equal(parent.sends.length, 0);
+  const other = event(); other.context.endpoint_id = "ep-unconfigured-branch";
+  const unmapped = fixture(); assert.equal((await unmapped.post(await signed(other), bindings)).status, 400); assert.equal(unmapped.sends.length, 0);
+  const otp = { ...e, event_type: "send.otp", event_data: { otp_code: "123456", otp_type: "sign-in", expires_at: e.event_data.expires_at } };
+  const codes = fixture(); assert.equal((await codes.post(await signed(otp), bindings)).status, 400); assert.equal(codes.sends.length, 0);
+});
+
+test("a private Notify binding retains scoped auth and never falls back to public HTTP", async () => {
+  for (const status of [202, 503]) {
+    const f = fixture(), privateSends: Request[] = [];
+    const bindings: WorkerBindings = { ...env, NOTIFY_EMAIL_SERVICE: { fetch: async (url, init) => {
+      const request = new Request(url, init); privateSends.push(request);
+      assert.equal(request.url, "https://notify.example/v1/dispatch/commerce-factory/email");
+      assert.equal(request.headers.get("x-notify-auth"), env.NOTIFY_EMAIL_INGEST_KEY);
+      const payload = await request.json() as {id: string};
+      return Response.json({ accepted: true, project: "commerce-factory", channel: "email", eventId: payload.id }, { status });
+    } } };
+    assert.equal((await f.post(await signed(event()), bindings)).status, status === 202 ? 200 : 503);
+    assert.equal(privateSends.length, 1); assert.equal(f.sends.length, 0); assert.equal(f.jwksReads(), 1);
   }
 });
 
@@ -134,7 +188,7 @@ test("verification and password-reset email OTPs render, without silently treati
 });
 
 test("disabled or incomplete configuration fails closed without reaching either provider", async () => {
-  for (const bindings of [{ ...env, AUTH_EMAIL_ENABLED: "false" }, { ...env, NOTIFY_EMAIL_INGEST_KEY: "" }, { ...env, NOTIFY_EMAIL_BASE_URL: "http://insecure.example" }, { ...env, TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL: "" }, { ...env, TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN: "http://insecure.example" }]) {
+  for (const bindings of [{ ...env, AUTH_EMAIL_ENABLED: "false" }, { ...env, NOTIFY_EMAIL_INGEST_KEY: "" }, { ...env, NOTIFY_EMAIL_BASE_URL: "http://insecure.example" }, { ...env, AUTH_EMAIL_PARENT_ENDPOINT_ID: "https://invalid.example" }, { ...env, TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL: "" }, { ...env, TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN: "http://insecure.example" }]) {
     const f = fixture(), r = await f.post(await signed(event()), bindings);
     assert.equal(r.status, 503); assert.equal(f.jwksReads(), 0); assert.equal(f.sends.length, 0);
   }

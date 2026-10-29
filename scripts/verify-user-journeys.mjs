@@ -16,7 +16,7 @@ async function fixture(options = {}) {
   return result;
 }
 async function check(page,label,{axe=true}={}){
-  await page.locator("h1").first().waitFor();
+  await page.locator("h1:visible, #commerce-account-form").first().waitFor();
   if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))report.layoutFailures.push({label,...await page.evaluate(()=>({viewport:innerWidth,width:document.documentElement.scrollWidth,elements:[...document.querySelectorAll("main,section,aside,form,fieldset,ol")].filter(e=>e.getBoundingClientRect().right>innerWidth+1).map(e=>({tag:e.tagName,class:e.className,width:Math.round(e.getBoundingClientRect().width)})).slice(0,12)}))});
   const bad=await page.locator("img").evaluateAll(images=>images.filter(i=>i.complete&&!i.naturalWidth).map(i=>i.src));assert.deepEqual(bad,[],label+": images");
   if(axe){await page.evaluate(axeSource);const result=await page.evaluate(async()=>await axe.run(document,{runOnly:{type:"tag",values:["wcag2a","wcag2aa","wcag21a","wcag21aa","wcag22aa"]}}));
@@ -46,7 +46,7 @@ try{
     for(const route of ["/help","/contact","/privacy","/terms","/missing-page","/app","/app/products","/app/orders","/app/appearance","/app/settings","/app/analytics","/app/team","/store/atelier","/store/atelier/p/sac-signature","/store/atelier/cart","/orders/"+orderId+"#token="+token,"/app/accept-invitation#token="+token]){
       await page.goto(base+route);
       const headings={"/app":"Tableau de bord","/app/products":"Vos produits","/app/orders":"Commandes","/app/appearance":"L’apparence de votre boutique","/app/settings":"Paramètres de la boutique","/app/analytics":"Statistiques de votre boutique","/app/team":"Votre équipe"};
-      if(headings[route])await page.getByRole("heading",{name:headings[route],level:1,exact:true}).waitFor();else await page.locator("h1").first().waitFor();
+      if(headings[route])await page.getByRole("heading",{name:headings[route],level:1,exact:true}).waitFor();else await page.locator("h1:visible, #commerce-account-form").first().waitFor();
       await page.getByRole("status").filter({hasText:/Chargement|Opération/}).first().waitFor({state:"hidden",timeout:5000}).catch(()=>{});
       if (route.startsWith("/orders/")) await checkPrivateFooter(page, "/v1/public/orders/" + orderId);
       await check(page,(route.split("#")[0]+"-"+viewport.width).replaceAll("/","-"));
@@ -85,7 +85,7 @@ try{
     assert.equal(state.calls.filter(c=>c.path==="/v1/admin/stores"&&c.method==="POST").length,1);assert.equal(state.calls.filter(c=>c.path.endsWith("/publish")&&c.method==="POST").length,1);report.checks.push("Signup → store draft → product draft/reload → keyboard upload access → theme save → publish at "+width+"px");await context.close();
   }
   {
-    const {context,page,state}=await fixture({authenticated:false});state.failConfig=true;await page.goto(base+"/app");await page.getByRole("heading",{name:"Votre espace est temporairement indisponible",level:1,exact:true}).waitFor();await check(page,"configuration-recovery");state.failConfig=false;await page.getByRole("button",{name:"Réessayer",exact:true}).click();await page.getByRole("heading",{name:"Construisez votre boutique.",level:1,exact:true}).waitFor();report.checks.push("Merchant configuration outage resumes from the retry action");await context.close();
+    const {context,page,state}=await fixture({authenticated:false});state.failConfig=true;await page.goto(base+"/app");await page.getByRole("heading",{name:"Votre espace est temporairement indisponible",level:1,exact:true}).waitFor();await check(page,"configuration-recovery");state.failConfig=false;await page.getByRole("button",{name:"Réessayer",exact:true}).click();await page.locator("#commerce-account-form").waitFor();report.checks.push("Merchant configuration outage resumes from the retry action");await context.close();
   }
   // Owner order transitions and payment confirmation; staff get fewer navigation/actions.
   for(const profile of ["owner","staff"]){const {context,page,state}=await fixture({profile});await page.goto(base+"/app/orders");await page.locator(".orders-list details>summary").click();await check(page,profile+"-order-detail");assert.equal(await page.getByRole("button",{name:"Confirmer le paiement reçu",exact:true}).count(),profile==="owner" ? 1:0);if(profile==="owner"){await page.getByRole("button",{name:"Confirmée",exact:true}).click();await page.getByText("Commande mise à jour.").waitFor();assert.equal(state.orders[0].status,"confirmed");await page.getByRole("button",{name:"Confirmer le paiement reçu",exact:true}).click();await page.getByText("Commande mise à jour.").waitFor();assert.equal(state.orders[0].paymentStatus,"paid");}else{assert.equal(await page.getByRole("link",{name:"Équipe",exact:true}).count(),0);await page.goto(base+"/app/team");await page.getByRole("heading",{name:"Accès réservé au propriétaire",exact:true}).waitFor();await check(page,"staff-restricted-page");}await context.close();}report.checks.push("Owner/staff navigation and order/payment controls");

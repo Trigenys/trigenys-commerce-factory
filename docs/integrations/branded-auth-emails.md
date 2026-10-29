@@ -36,8 +36,10 @@ Commerce Worker server-only bindings:
 
 - AUTH_EMAIL_ENABLED: absent/false until the full chain is ready;
 - NOTIFY_EMAIL_BASE_URL: HTTPS root origin of the matching Notify environment;
+- NOTIFY_EMAIL_SERVICE: optional Cloudflare HTTP service binding to the matching Notify Worker. Prefer it for Worker-to-Worker delivery. When present, it is the only delivery transport and retains x-notify-auth; a failed private call never falls back to a public host;
 - NOTIFY_EMAIL_INGEST_KEY: secret scoped to Commerce email;
 - optional AUTH_EMAIL_DEFAULT_LANGUAGE: fr or en;
+- optional AUTH_EMAIL_PARENT_ENDPOINT_ID: one explicitly verified parent context label for a cloned branch. It applies only to signed magic-link events whose original verification URL remains on this Worker's configured Auth origin and database path; parent-origin links, other context labels and parent-labeled OTPs remain rejected. It is absent by default and is not exposed in public config;
 - existing Auth base URL and web origin remain unchanged.
 
 RESEND_API_KEY and MAIL_FROM are no longer read by Commerce Factory. Configure sender Commerce Factory <commercefactory@trigenys.com> and Spacemail's SMTP_USER/SMTP_PASSWORD **in Notify**, not here. The SMTP login uses the actual parent mailbox behind the alias. Do not publish or copy mailbox passwords into a repository or chat.
@@ -59,12 +61,31 @@ Rollback: first disable the affected Neon branch's Webhooks (enabled:false), res
 
 - Backend tests sign real test-key Neon events and exercise the updated Notify wire contract, stable retry identity, branch/signature isolation, FR/EN templates, redirects, timeout, disabled/missing configuration and provider/acceptance failures.
 - Existing backend and isolated PostgreSQL journey checks remain part of CI.
-- Existing email-rendering and SDK magic-link CI checks remain unchanged.
+- `npm run test:runtime` bundles the deployment Worker and runs its signed-email route in workerd, with outbound requests restricted to fixtures. It covers real JWKS retrieval, signature verification, branded Notify dispatch, tampering and rejected JWKS redirects. It is included in `npm run check` and sends no real email.
+- Email-rendering checks cover standalone HTML and a dark webmail host that removes body attributes, with remote images blocked, alongside existing SDK magic-link checks.
 - Notify tests cover actual SQLite migrations, concurrent claims, uncertain SMTP outcomes and real Nodemailer/TLS/MIME against a local fixture SMTP server. Its workerd/D1 smoke exercises the actual bundled SMTP failure path and existing WhatsApp routes.
-- These fixtures prove code behavior, not real Spacemail receipt or Neon redemption. Those remain unverified until SMTP secrets and a real owned-mailbox test are completed.
+- Two explicitly authorized staging magic-link requests were accepted by Spacemail, each with one accepted Notify receipt. The owner subsequently confirmed receipt in Spacemail and Gmail; Gmail classified its message as spam. Live token redemption remains unverified.
 
 Notify's contract/runbook is docs/transactional-email.md in Trigenys/trigenys-notify. No direct SMTP implementation or additional ledger is added to Commerce Factory.
+
+### Runtime regression found during staging verification (2026-10-29)
+
+The first real Neon request failed before Notify and left no D1 email receipt. The custom JWKS fetch override used `redirect:"error"`, which Node accepts but workerd rejects while constructing the request. As a result, no JWKS network request could run and the webhook returned `WEBHOOK_VERIFICATION_UNAVAILABLE`.
+
+The override now uses `manual`. JOSE already requires an HTTP 200 response, so redirected key sets are rejected without following their target. The new workerd check reproduces the original failure against the old deployment bundle and covers the fixed path; Node mocks alone are insufficient for this platform boundary. If a delivery test fails, first disable the Neon staging webhook to restore its built-in mail before diagnosing transport or credentials.
+
+The next live request verified its signature but reported the configured parent endpoint (`ep-plain-wave-b23ip5pe`) in its context while being requested through staging (`ep-soft-river-b2at40xx`). The parent relationship and both Auth URLs were verified in the console; production Webhooks remained disabled. Staging can opt into the single explicit parent label with AUTH_EMAIL_PARENT_ENDPOINT_ID. This does not authorize production verification links: their origin/path still fails the existing strict link check. OTPs retain exact context matching. Failed signed requests log only fixed error/phase codes and bounded public endpoint identifiers, never email addresses, payloads, links, tokens or credentials.
+
+Once the signed staging link passed validation, public Worker-to-Worker delivery failed before a Notify receipt was claimed. The staging consumer therefore binds NOTIFY_EMAIL_SERVICE directly to trigenys-notify-staging-api, using Cloudflare's supported internal HTTP transport. The API URL remains a routing/contract value; product-scoped authentication is still required. Production must receive its own matching binding during its separate rollout, never a staging fallback. The workerd smoke exercises a real service binding in addition to the external HTTP fixture.
 
 ## RAIDER
 
 Reuse: Roadmap rendering and Notify's per-project dispatch/D1 conventions, plus Nodemailer in Notify. Agnostic boundary: Commerce requests transactional delivery without owning a provider. Idempotency/durability: Notify's central receipt. Engineering: strict signed-event checks, secret isolation, verified TLS, bounded calls and explicit ambiguous-state handling. Retroactive adoption: flags off by default; password/Google, store data and existing Notify channels stay on their established flows.
+
+### Webmail rendering and delivery diagnosis (2026-10-30)
+
+The received Gmail message passed SPF, DKIM and DMARC, as verified from its Authentication-Results header. Authentication success does not establish inbox placement, and Gmail does not disclose the exact classification signal. Do not change working domain records or promise inbox delivery based only on SMTP acceptance.
+
+The Spacemail screenshot exposed a rendering bug: greeting, introduction and signature paragraphs inherited color only from body, which a webmail can strip while embedding the message into its dark interface. Set foreground colors on the actual text elements and preserve explicit table/cell backgrounds. The header now uses a styled text wordmark so brand identification does not depend on external image loading.
+
+The rendering regression runs French/English link and OTP fixtures on desktop/mobile, both standalone and inside a dark host with body attributes removed and host paragraph styles applied. It blocks all remote image requests and checks WCAG contrast, links, overflow and expiry. This simulation covers the reported inheritance failure; it is not a claim about every mailbox's automatic dark-mode rewriting.

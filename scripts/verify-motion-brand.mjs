@@ -24,7 +24,7 @@ async function axe(page, label) {
   assert.deepEqual(violations, [], label + ": accessibility");
 }
 async function ready(page) {
-  await page.locator("h1").first().waitFor();
+  await page.locator("h1:visible, #commerce-account-form").first().waitFor();
   await page.evaluate(() => document.fonts.ready);
 }
 async function overflow(page, label) {
@@ -215,7 +215,7 @@ try {
     for (const route of ["/app", "/app/products", "/app/orders", "/app/analytics", "/app/settings"]) {
       await page.goto(base + route + "?store=11111111-1111-4111-8111-111111111111"); await ready(page);
       await page.locator(".merchant-workspace-shell").waitFor();
-      assert.ok(!/page.*(introuvable|not found)/i.test(await page.locator("h1").first().innerText()));
+      assert.ok(!/page.*(introuvable|not found)/i.test(await page.locator("h1:visible, #commerce-account-form").first().innerText()));
       const color = await page.locator(".admin-header").evaluate(node => getComputedStyle(node).backgroundColor);
       assert.match(color, /255, 253, 248/);
       await overflow(page, route + "-" + language + "-" + width);

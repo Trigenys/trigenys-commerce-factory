@@ -3,18 +3,21 @@ import type { Hono } from "hono";
 import type { AppEnv } from "./app.ts";
 import type { WorkerBindings } from "./types.ts";
 import { buildAuthEmail, type AuthEmailMessage, type AuthEmailPurpose } from "./auth-email-templates.ts";
-import { sendTransactionalEmail } from "./email-delivery.ts";
+import { EmailDeliveryError, sendTransactionalEmail } from "./email-delivery.ts";
 import type { EmailLanguage } from "./email-layout.ts";
 
 export type AuthEmailDependencies = { fetcher?: typeof fetch; now?: () => number };
 const maxBodyBytes = 32 * 1024;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const purposes = new Set(["sign-in", "email-verification", "forget-password"]);
+type WebhookDiagnostic = "envelope" | "event_id" | "event_headers" | "endpoint" | "recipient" | "timestamp" | "expiry" | "purpose" | "channel" | "link_format" | "link_origin" | "otp_format";
 
 class WebhookError extends Error {
   readonly status: 400 | 401 | 413 | 415 | 503;
   readonly code: string;
-  constructor(status: 400 | 401 | 413 | 415 | 503, code: string) { super(code); this.status = status; this.code = code; }
+  readonly diagnostic?: WebhookDiagnostic;
+  readonly endpoint?: { expected: string; received: string };
+  constructor(status: 400 | 401 | 413 | 415 | 503, code: string, diagnostic?: WebhookDiagnostic, endpoint?: { expected: string; received: string }) { super(code); this.status = status; this.code = code; this.diagnostic = diagnostic; this.endpoint = endpoint; }
 }
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -33,7 +36,10 @@ function configuration(env: WorkerBindings) {
     // Endpoint IDs scope events to this Worker’s branch. A shared project must not mix its applications.
     const endpointId = auth.hostname.match(/^(ep-[a-z0-9-]+)\.neonauth\./)?.[1];
     if (!endpointId) throw new Error();
+    const parentEndpointId = env.AUTH_EMAIL_PARENT_ENDPOINT_ID;
+    if (parentEndpointId !== undefined && !/^ep-[a-z0-9-]{3,100}$/.test(parentEndpointId)) throw new Error();
     return { authBase: auth.href.replace(/\/$/, ""), endpointId, appOrigin: web.origin,
+      parentEndpointId,
       notifyBase: notify.origin, ingestKey: env.NOTIFY_EMAIL_INGEST_KEY, defaultLanguage: env.AUTH_EMAIL_DEFAULT_LANGUAGE === "en" ? "en" as const : "fr" as const };
   } catch { throw new WebhookError(503, "EMAIL_NOT_CONFIGURED"); }
 }
@@ -82,29 +88,39 @@ function signatureInput(headers: Headers, raw: Uint8Array, now: number): string 
 function parseEvent(raw: Uint8Array, headers: Headers, config: ReturnType<typeof configuration>, now: number) {
   let body: Record<string, unknown> | null;
   try { body = record(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(raw))); }
-  catch { throw new WebhookError(400, "INVALID_WEBHOOK"); }
+  catch { throw new WebhookError(400, "INVALID_WEBHOOK", "envelope"); }
   const user = record(body?.user), context = record(body?.context), data = record(body?.event_data);
-  if (!body || !user || !context || !data || typeof body.event_id !== "string" || !uuid.test(body.event_id) ||
-    body.event_id !== headers.get("x-neon-event-id") || body.event_type !== headers.get("x-neon-event-type") ||
-    !["send.magic_link", "send.otp"].includes(String(body.event_type)) || context.endpoint_id !== config.endpointId ||
-    typeof user.email !== "string" || user.email.length > 254 || !/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(user.email) ||
-    typeof body.timestamp !== "string" || !Number.isFinite(Date.parse(body.timestamp)) ||
-    Date.parse(body.timestamp) > now + 60_000 || now - Date.parse(body.timestamp) > 5 * 60_000 ||
-    typeof data.expires_at !== "string" || !Number.isFinite(Date.parse(data.expires_at)) || Date.parse(data.expires_at) <= now ||
-    Date.parse(data.expires_at) <= Date.parse(body.timestamp)) throw new WebhookError(400, "INVALID_WEBHOOK");
+  if (!body || !user || !context || !data) throw new WebhookError(400, "INVALID_WEBHOOK", "envelope");
+  if (typeof body.event_id !== "string" || !uuid.test(body.event_id)) throw new WebhookError(400, "INVALID_WEBHOOK", "event_id");
+  if (body.event_id !== headers.get("x-neon-event-id") || body.event_type !== headers.get("x-neon-event-type") ||
+    !["send.magic_link", "send.otp"].includes(String(body.event_type))) throw new WebhookError(400, "INVALID_WEBHOOK", "event_headers");
+  // A cloned Neon branch can retain its parent's context label. This explicit mapping
+  // applies to links only: the original signed link must still pass the branch URL check below.
+  const mappedParentLink = body.event_type === "send.magic_link" && config.parentEndpointId !== undefined && context.endpoint_id === config.parentEndpointId;
+  if (context.endpoint_id !== config.endpointId && !mappedParentLink) throw new WebhookError(400, "INVALID_WEBHOOK", "endpoint", {
+    expected: config.endpointId,
+    received: typeof context.endpoint_id === "string" && /^ep-[a-z0-9-]{3,100}$/.test(context.endpoint_id) ? context.endpoint_id : "unexpected_format"
+  });
+  if (typeof user.email !== "string" || user.email.length > 254 || !/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(user.email))
+    throw new WebhookError(400, "INVALID_WEBHOOK", "recipient");
+  if (typeof body.timestamp !== "string" || !Number.isFinite(Date.parse(body.timestamp)) ||
+    Date.parse(body.timestamp) > now + 60_000 || now - Date.parse(body.timestamp) > 5 * 60_000)
+    throw new WebhookError(400, "INVALID_WEBHOOK", "timestamp");
+  if (typeof data.expires_at !== "string" || !Number.isFinite(Date.parse(data.expires_at)) || Date.parse(data.expires_at) <= now ||
+    Date.parse(data.expires_at) <= Date.parse(body.timestamp)) throw new WebhookError(400, "INVALID_WEBHOOK", "expiry");
   const purpose = body.event_type === "send.magic_link" ? data.link_type : data.otp_type;
-  if (typeof purpose !== "string" || !purposes.has(purpose)) throw new WebhookError(400, "UNSUPPORTED_EMAIL");
-  if (data.delivery_preference !== undefined && data.delivery_preference !== "email") throw new WebhookError(400, "UNSUPPORTED_EMAIL");
+  if (typeof purpose !== "string" || !purposes.has(purpose)) throw new WebhookError(400, "UNSUPPORTED_EMAIL", "purpose");
+  if (data.delivery_preference !== undefined && data.delivery_preference !== "email") throw new WebhookError(400, "UNSUPPORTED_EMAIL", "channel");
   const common = { recipient: user.email, name: typeof user.name === "string" ? user.name.slice(0, 120) : undefined,
     language: config.defaultLanguage as EmailLanguage, appOrigin: config.appOrigin, purpose: purpose as AuthEmailPurpose,
     issuedAt: body.timestamp, expiresAt: data.expires_at };
   let message: AuthEmailMessage;
   if (body.event_type === "send.magic_link") {
-    if (typeof data.link_url !== "string" || data.link_url.length > 16_384 || /[\r\n]/.test(data.link_url)) throw new WebhookError(400, "INVALID_WEBHOOK");
+    if (typeof data.link_url !== "string" || data.link_url.length > 16_384 || /[\r\n]/.test(data.link_url)) throw new WebhookError(400, "INVALID_WEBHOOK", "link_format");
     let url: URL;
-    try { url = new URL(data.link_url); } catch { throw new WebhookError(400, "INVALID_WEBHOOK"); }
+    try { url = new URL(data.link_url); } catch { throw new WebhookError(400, "INVALID_WEBHOOK", "link_format"); }
     const auth = new URL(config.authBase);
-    if (url.origin !== auth.origin || !url.pathname.startsWith(auth.pathname + "/") || url.username || url.password || url.hash) throw new WebhookError(400, "INVALID_WEBHOOK");
+    if (url.origin !== auth.origin || !url.pathname.startsWith(auth.pathname + "/") || url.username || url.password || url.hash) throw new WebhookError(400, "INVALID_WEBHOOK", "link_origin");
     // Locale comes only from an app callback on our configured origin. Never use the webhook caller's locale.
     try {
       const callback = new URL(url.searchParams.get("callbackURL") || "");
@@ -113,7 +129,7 @@ function parseEvent(raw: Uint8Array, headers: Headers, config: ReturnType<typeof
     } catch { /* Other auth links use the configured default language. */ }
     message = { ...common, kind: "link", url: data.link_url };
   } else {
-    if (typeof data.otp_code !== "string" || !/^\d{6}$/.test(data.otp_code)) throw new WebhookError(400, "INVALID_WEBHOOK");
+    if (typeof data.otp_code !== "string" || !/^\d{6}$/.test(data.otp_code)) throw new WebhookError(400, "INVALID_WEBHOOK", "otp_format");
     message = { ...common, kind: "otp", code: data.otp_code };
   }
   return { message, idempotencyKey: `commerce-auth/${config.endpointId}/${body.event_type}/${body.event_id}` };
@@ -124,6 +140,7 @@ export function registerAuthEmailRoutes(app: Hono<AppEnv>, dependencies: AuthEma
   const keysets = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
   app.post("/v1/webhooks/neon-auth", async c => {
     c.header("Cache-Control", "no-store");
+    let signatureVerified = false, phase: "verification" | "event" | "notify" = "verification";
     try {
       const config = configuration(c.env), raw = await readBody(c.req.raw);
       const signed = signatureInput(c.req.raw.headers, raw, now());
@@ -131,7 +148,9 @@ export function registerAuthEmailRoutes(app: Hono<AppEnv>, dependencies: AuthEma
       if (!keys) {
         keys = createRemoteJWKSet(new URL(config.authBase + "/.well-known/jwks.json"), {
           timeoutDuration: 2000, cooldownDuration: 30_000, cacheMaxAge: 10 * 60_000,
-          [customFetch]: (url, options) => fetcher(url, { ...options, redirect: "error" })
+          // workerd rejects redirect:"error" before making a request. JOSE requires HTTP 200,
+          // so manual handling rejects redirected key sets without following another host.
+          [customFetch]: (url, options) => fetcher(url, { ...options, redirect: "manual" })
         });
         keysets.set(config.authBase, keys);
       }
@@ -141,12 +160,22 @@ export function registerAuthEmailRoutes(app: Hono<AppEnv>, dependencies: AuthEma
         if (["ERR_JWS_SIGNATURE_VERIFICATION_FAILED", "ERR_JWKS_NO_MATCHING_KEY", "ERR_JOSE_ALG_NOT_ALLOWED", "ERR_JWS_INVALID"].includes(String(code))) throw new WebhookError(401, "INVALID_WEBHOOK_SIGNATURE");
         throw new WebhookError(503, "WEBHOOK_VERIFICATION_UNAVAILABLE");
       }
+      signatureVerified = true; phase = "event";
       const { message, idempotencyKey } = parseEvent(raw, c.req.raw.headers, config, now());
+      phase = "notify";
+      // A configured service binding is the only delivery transport for that Worker.
+      // Keep the same scoped authentication and contract; never fall back after its failure.
+      const service = c.env.NOTIFY_EMAIL_SERVICE;
+      const emailFetcher: typeof fetch = service ? (input, init) => service.fetch(input, init) : fetcher;
       await sendTransactionalEmail({ baseUrl: config.notifyBase, ingestKey: config.ingestKey, recipient: message.recipient,
-        idempotencyKey, occurredAt: message.issuedAt, expiresAt: message.expiresAt, message: buildAuthEmail(message) }, fetcher);
+        idempotencyKey, occurredAt: message.issuedAt, expiresAt: message.expiresAt, message: buildAuthEmail(message) }, emailFetcher);
       return c.json({ accepted: true });
     } catch (error) {
       const failure = error instanceof WebhookError ? error : new WebhookError(503, "EMAIL_DELIVERY_UNAVAILABLE");
+      // Fixed codes only: no payload, recipient, link, token, provider error or credential.
+      if (signatureVerified) console.warn(JSON.stringify({ event: "commerce_auth_email_failed", phase,
+        code: failure.code, status: failure.status, diagnostic: failure.diagnostic, endpoint: failure.endpoint,
+        deliveryStatus: error instanceof EmailDeliveryError ? error.status : undefined }));
       if (failure.status === 503) c.header("Retry-After", "1");
       return c.json({ error: failure.code }, failure.status);
     }

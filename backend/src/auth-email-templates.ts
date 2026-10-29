@@ -9,7 +9,7 @@ export type AuthEmailMessage = {
 export type RenderedEmail = { subject: string; html: string; text: string };
 
 // The rendering depends only on the signed event, never on the delivery attempt or current clock.
-// Resend requires identical payloads when retrying the same idempotency key.
+// Notify fingerprints the content to reject changed payloads for the same event identity.
 export function buildAuthEmail(input: AuthEmailMessage): RenderedEmail {
   const fr = input.language === "fr", link = input.kind === "link";
   const copy = fr ? {
@@ -28,13 +28,13 @@ export function buildAuthEmail(input: AuthEmailMessage): RenderedEmail {
   const greeting = (fr ? "Bonjour" : "Hello") + (input.name ? " " + input.name : "") + ",";
   const fallback = fr ? "Si le bouton ne fonctionne pas, ouvrez ce lien sécurisé." : "If the button does not work, open this secure link.";
   const valueHtml = input.kind === "link"
-    ? renderButton(input.url, c.action) + `<p style="font-size:13px;margin:0 0 24px"><a href="${escapeHtml(input.url)}" style="color:#142d25;text-decoration:underline">${fallback}</a></p>`
+    ? renderButton(input.url, c.action) + `<p style="font-size:13px;margin:0 0 24px;color:#142d25"><a href="${escapeHtml(input.url)}" style="color:#142d25;text-decoration:underline">${fallback}</a></p>`
     : `<div style="margin:28px 0;padding:24px 12px;background:#eee7d7;border:1px solid #d8d5c5;border-radius:12px;text-align:center"><p style="margin:0 0 8px;font-size:12px;color:#4a6155">${fr ? "Votre code de sécurité" : "Your security code"}</p><p style="margin:0;font-family:monospace;font-size:32px;font-weight:700;letter-spacing:7px;color:#142d25">${escapeHtml(input.code)}</p></div>`;
   const html = renderBrandedEmail({
     language: input.language, appOrigin: input.appOrigin, subject,
     preheader: c.subject + ". " + validity, title: c.title, subtitle: c.subject,
     recipient: input.recipient, year: new Date(input.issuedAt).getUTCFullYear(),
-    bodyHtml: `<p style="margin:0 0 16px;font-size:16px">${escapeHtml(greeting)}</p><p style="margin:0;font-size:16px">${c.intro}</p>${valueHtml}<p style="margin:0 0 24px;font-size:13px;color:#4a6155">${escapeHtml(validity)}</p><p style="margin:0;padding:16px;background:#f1e9dc;border-left:3px solid #b34729;font-size:13px;color:#142d25">${security}</p>`
+    bodyHtml: `<p style="margin:0 0 16px;font-size:16px;color:#142d25">${escapeHtml(greeting)}</p><p style="margin:0;font-size:16px;color:#142d25">${c.intro}</p>${valueHtml}<p style="margin:0 0 24px;font-size:13px;color:#4a6155">${escapeHtml(validity)}</p><p style="margin:0;padding:16px;background:#f1e9dc;border-left:3px solid #b34729;font-size:13px;color:#142d25">${security}</p>`
   });
   const text = ["Commerce Factory by Trigenys", c.subject, "", greeting, c.intro, "", input.kind === "link" ? c.action + ": " + input.url : (fr ? "Votre code : " : "Your code: ") + input.code, "", validity, security, "", fr ? "L’équipe Commerce Factory" : "The Commerce Factory team", (fr ? "Aide : " : "Help: ") + input.appOrigin + "/help", (fr ? "Confidentialité : " : "Privacy: ") + input.appOrigin + "/privacy"].join("\n");
   return { subject, html, text };
