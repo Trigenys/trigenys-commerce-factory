@@ -81,6 +81,35 @@ test("redirected JWKS cannot supply signing keys or trigger email delivery", asy
   assert.equal(f.sends.length, 0);
 });
 
+test("signed validation failures have bounded diagnostics without email or token data", async t => {
+  const warning = t.mock.method(console, "warn", () => {});
+  const e = event(); e.context.endpoint_id = "ep-other-branch";
+  const f = fixture(), response = await f.post(await signed(e));
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: "INVALID_WEBHOOK" });
+  assert.equal(warning.mock.calls.length, 1);
+  const logged = String(warning.mock.calls[0].arguments[0]);
+  assert.equal(JSON.parse(logged).diagnostic, "endpoint");
+  for (const value of [e.user.email, e.user.name, e.event_data.link_url, e.event_data.token, env.NOTIFY_EMAIL_INGEST_KEY!])
+    assert.equal(logged.includes(value), false);
+  assert.equal(f.sends.length, 0);
+});
+
+test("an explicitly mapped parent label accepts only signed links on this branch, never parent URLs or OTPs", async () => {
+  const bindings = { ...env, AUTH_EMAIL_PARENT_ENDPOINT_ID: "ep-parent-test" };
+  const e = event(); e.context.endpoint_id = "ep-parent-test";
+  const strict = fixture(); assert.equal((await strict.post(await signed(e))).status, 400);
+  const mapped = fixture(); assert.equal((await mapped.post(await signed(e), bindings)).status, 200);
+  assert.equal(mapped.sends.length, 1);
+  const parentUrl = event(); parentUrl.context.endpoint_id = "ep-parent-test";
+  parentUrl.event_data.link_url = parentUrl.event_data.link_url.replace("ep-mail-test", "ep-parent-test");
+  const parent = fixture(); assert.equal((await parent.post(await signed(parentUrl), bindings)).status, 400); assert.equal(parent.sends.length, 0);
+  const other = event(); other.context.endpoint_id = "ep-unconfigured-branch";
+  const unmapped = fixture(); assert.equal((await unmapped.post(await signed(other), bindings)).status, 400); assert.equal(unmapped.sends.length, 0);
+  const otp = { ...e, event_type: "send.otp", event_data: { otp_code: "123456", otp_type: "sign-in", expires_at: e.event_data.expires_at } };
+  const codes = fixture(); assert.equal((await codes.post(await signed(otp), bindings)).status, 400); assert.equal(codes.sends.length, 0);
+});
+
 test("retries use a stable key and byte-identical message, while JWKS is cached", async () => {
   const f = fixture(), e = event(), s = await signed(e);
   assert.equal((await f.post(s)).status, 200); f.advance(1000);
@@ -144,7 +173,7 @@ test("verification and password-reset email OTPs render, without silently treati
 });
 
 test("disabled or incomplete configuration fails closed without reaching either provider", async () => {
-  for (const bindings of [{ ...env, AUTH_EMAIL_ENABLED: "false" }, { ...env, NOTIFY_EMAIL_INGEST_KEY: "" }, { ...env, NOTIFY_EMAIL_BASE_URL: "http://insecure.example" }, { ...env, TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL: "" }, { ...env, TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN: "http://insecure.example" }]) {
+  for (const bindings of [{ ...env, AUTH_EMAIL_ENABLED: "false" }, { ...env, NOTIFY_EMAIL_INGEST_KEY: "" }, { ...env, NOTIFY_EMAIL_BASE_URL: "http://insecure.example" }, { ...env, AUTH_EMAIL_PARENT_ENDPOINT_ID: "https://invalid.example" }, { ...env, TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL: "" }, { ...env, TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN: "http://insecure.example" }]) {
     const f = fixture(), r = await f.post(await signed(event()), bindings);
     assert.equal(r.status, 503); assert.equal(f.jwksReads(), 0); assert.equal(f.sends.length, 0);
   }

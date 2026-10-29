@@ -38,6 +38,7 @@ Commerce Worker server-only bindings:
 - NOTIFY_EMAIL_BASE_URL: HTTPS root origin of the matching Notify environment;
 - NOTIFY_EMAIL_INGEST_KEY: secret scoped to Commerce email;
 - optional AUTH_EMAIL_DEFAULT_LANGUAGE: fr or en;
+- optional AUTH_EMAIL_PARENT_ENDPOINT_ID: one explicitly verified parent context label for a cloned branch. It applies only to signed magic-link events whose original verification URL remains on this Worker's configured Auth origin and database path; parent-origin links, other context labels and parent-labeled OTPs remain rejected. It is absent by default and is not exposed in public config;
 - existing Auth base URL and web origin remain unchanged.
 
 RESEND_API_KEY and MAIL_FROM are no longer read by Commerce Factory. Configure sender Commerce Factory <commercefactory@trigenys.com> and Spacemail's SMTP_USER/SMTP_PASSWORD **in Notify**, not here. The SMTP login uses the actual parent mailbox behind the alias. Do not publish or copy mailbox passwords into a repository or chat.
@@ -71,6 +72,8 @@ Notify's contract/runbook is docs/transactional-email.md in Trigenys/trigenys-no
 The first real Neon request failed before Notify and left no D1 email receipt. The custom JWKS fetch override used `redirect:"error"`, which Node accepts but workerd rejects while constructing the request. As a result, no JWKS network request could run and the webhook returned `WEBHOOK_VERIFICATION_UNAVAILABLE`.
 
 The override now uses `manual`. JOSE already requires an HTTP 200 response, so redirected key sets are rejected without following their target. The new workerd check reproduces the original failure against the old deployment bundle and covers the fixed path; Node mocks alone are insufficient for this platform boundary. If a delivery test fails, first disable the Neon staging webhook to restore its built-in mail before diagnosing transport or credentials.
+
+The next live request verified its signature but reported the configured parent endpoint (`ep-plain-wave-b23ip5pe`) in its context while being requested through staging (`ep-soft-river-b2at40xx`). The parent relationship and both Auth URLs were verified in the console; production Webhooks remained disabled. Staging can opt into the single explicit parent label with AUTH_EMAIL_PARENT_ENDPOINT_ID. This does not authorize production verification links: their origin/path still fails the existing strict link check. OTPs retain exact context matching. Failed signed requests log only fixed error/phase codes and bounded public endpoint identifiers, never email addresses, payloads, links, tokens or credentials.
 
 ## RAIDER
 

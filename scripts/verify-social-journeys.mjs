@@ -97,7 +97,7 @@ try{
     const {context,page,state}=await fixture({authenticated:false});state.googleMissingSession=true;await page.goto(base+'/app/login');await page.getByRole('button',{name:'Continuer avec Google',exact:true}).click();await page.getByRole('alert').filter({hasText:'La connexion Google n’a pas abouti'}).waitFor();await check(page,'google-return-without-session');await context.close();
   }
   {
-    const {context,page,state}=await fixture({authenticated:false});state.google=false;await page.goto(base+'/app');await page.getByRole('heading',{name:'Construisez votre boutique.',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Continuer avec Google',exact:true}).count(),0);await check(page,'email-only-unconfigured-google');await context.close();
+    const {context,page,state}=await fixture({authenticated:false});state.google=false;await page.goto(base+'/app');await page.locator('#commerce-account-form').waitFor();assert.equal(await page.getByRole('button',{name:'Continuer avec Google',exact:true}).count(),0);await check(page,'email-only-unconfigured-google');await context.close();
   }
   for(const width of [1440,390]){
     const {context,page,state}=await fixture();await page.setViewportSize({width,height:900});await openConnections(page);await check(page,'social-connected-'+width);await prepare(page);await check(page,'social-preview-'+width);assert.equal(state.store.name,originalStore.name);assert.equal(await page.getByRole('button',{name:'Confirmer l’import des champs cochés',exact:true}).isEnabled(),false);
