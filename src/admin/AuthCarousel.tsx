@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCarousel } from "../landing/useCarousel";
 import "./auth-carousel.css";
 
@@ -74,7 +74,18 @@ export default function AuthCarousel({ language }: { language: "fr" | "en" }) {
   const root = useRef<HTMLElement>(null);
   const carousel = useCarousel(root, slides.length, 7000);
   const fr = language === "fr";
-  const activeTitle = fr ? slides[carousel.index].title : englishSlides[carousel.index].title;
+  // Keep the stage visible at a constant size while the next image loads.
+  // Never unmount a slide between frames: both images stay in the DOM for the crossfade.
+  const [loaded, setLoaded] = useState<boolean[]>(() => slides.map(() => false));
+  const [displayedIndex, setDisplayedIndex] = useState(0);
+  useEffect(() => {
+    if (loaded[carousel.index]) setDisplayedIndex(carousel.index);
+  }, [loaded, carousel.index]);
+  const markLoaded = (index: number) => setLoaded(previous => {
+    if (previous[index]) return previous;
+    return previous.map((ready, i) => i === index ? true : ready);
+  });
+  const activeTitle = fr ? slides[displayedIndex].title : englishSlides[displayedIndex].title;
   const pauseLabel = fr ? "Suspendre le défilement" : "Pause slideshow";
   const playLabel = fr ? "Reprendre le défilement" : "Resume slideshow";
 
@@ -89,23 +100,24 @@ export default function AuthCarousel({ language }: { language: "fr" | "en" }) {
       onMouseLeave={carousel.leave}
       onFocusCapture={carousel.focus}
     >
-      <div className="auth-showcase-frame" aria-live={carousel.playing ? "off" : "polite"}>
+      <div className="auth-showcase-frame" aria-live="off">
         {slides.map((slide, index) => (
           <figure
             key={slide.id}
-            className="auth-showcase-slide"
+            className={"auth-showcase-slide" + (index === displayedIndex ? " is-active" : "")}
+            aria-hidden={index !== displayedIndex}
             role="group"
             aria-roledescription="slide"
             aria-label={String(index + 1) + " / " + slides.length + " — " + (fr ? slide.title : englishSlides[index].title)}
-            hidden={index !== carousel.index}
           >
             <img
               src={slide.src}
               alt={fr ? slide.alt : englishSlides[index].alt}
               width={slide.width}
               height={slide.height}
-              loading={index === 0 ? "eager" : "lazy"}
+              loading="eager"
               decoding="async"
+              onLoad={() => markLoaded(index)}
             />
           </figure>
         ))}
@@ -115,7 +127,7 @@ export default function AuthCarousel({ language }: { language: "fr" | "en" }) {
           <span className="auth-showcase-counter" aria-hidden="true">
             {String(carousel.index + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}
           </span>
-          <span className="auth-showcase-title">{activeTitle}</span>
+          <span className="auth-showcase-title" aria-live={carousel.playing ? "off" : "polite"} aria-atomic="true">{activeTitle}</span>
         </div>
         <div className="auth-showcase-dots" role="group" aria-label={fr ? "Choisir une image" : "Choose a slide"}>
           {slides.map((slide, index) => (
