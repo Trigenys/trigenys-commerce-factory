@@ -10,7 +10,7 @@ const web = "https://commerce.example";
 const id = "11111111-1111-4111-8111-111111111111";
 const { privateKey, publicKey } = await generateKeyPair("EdDSA");
 const jwk = { ...await exportJWK(publicKey), kid: "mail-test", alg: "EdDSA", use: "sig" };
-const env: WorkerBindings = { AUTH_EMAIL_ENABLED: "true", RESEND_API_KEY: "test-only-not-a-real-secret",
+const env: WorkerBindings = { AUTH_EMAIL_ENABLED: "true", NOTIFY_EMAIL_INGEST_KEY: "test-only-not-a-real-secret-123456789", NOTIFY_EMAIL_BASE_URL: "https://notify.example",
   TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL: auth, TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN: web };
 
 function event(language = "fr") {
@@ -42,9 +42,10 @@ function fixture(overrides: { provider?: (request: Request) => Promise<Response>
     if (request.url === auth + "/.well-known/jwks.json") {
       jwksReads++; return Response.json({ keys: [jwk] }, { status: overrides.jwksStatus || 200 });
     }
-    assert.equal(request.url, "https://api.resend.com/emails");
-    sends.push(request); payloads.push(await request.clone().json());
-    return overrides.provider ? overrides.provider(request) : Response.json({ id: "mail-provider-fixture" });
+    assert.equal(request.url, "https://notify.example/v1/dispatch/commerce-factory/email");
+    const payload = await request.clone().json() as Record<string, unknown> & {message: Record<string, unknown>};
+    sends.push(request); payloads.push({...payload,...payload.message});
+    return overrides.provider ? overrides.provider(request) : Response.json({ accepted: true, project: "commerce-factory", channel: "email", eventId: payload.id }, {status:202});
   };
   const app = createApp({ authEmail: { fetcher, now: () => clock } });
   return { app, sends, payloads, jwksReads: () => jwksReads, advance: (ms: number) => { clock += ms; },
@@ -53,20 +54,20 @@ function fixture(overrides: { provider?: (request: Request) => Promise<Response>
     } };
 }
 
-test("a signed event sends a branded FR/EN email through Resend with the original Neon link", async () => {
+test("a signed event delegates branded FR/EN mail to Notify with the original Neon link", async () => {
   for (const language of ["fr", "en"]) {
     const f = fixture(), e = event(language), r = await f.post(await signed(e));
     assert.equal(r.status, 200); assert.deepEqual(await r.json(), { accepted: true });
     assert.equal(r.headers.get("Cache-Control"), "no-store"); assert.equal(f.sends.length, 1);
     const p = f.payloads[0], html = String(p.html), text = String(p.text);
-    assert.equal(p.from, "Commerce Factory <commercefactory@trigenys.com>"); assert.deepEqual(p.to, ["merchant@example.com"]);
+    assert.equal(p.from, undefined); assert.equal(p.recipient, "merchant@example.com"); assert.equal(p.project, "commerce-factory");
     assert.match(String(p.subject), language === "fr" ? /Votre lien de connexion/ : /Your sign-in link/);
     assert.ok(html.includes('<html lang="' + language + '">')); assert.ok(html.includes("Jennifer &lt;script&gt;"));
     assert.ok(text.includes(e.event_data.link_url)); assert.ok(!html.includes("raw-token-must-not-appear"));
     assert.ok(!html.includes("Shared project")); assert.ok(!html.includes("sent by Neon"));
-    assert.equal(f.sends[0].headers.get("Idempotency-Key"), `commerce-auth/ep-mail-test/send.magic_link/${id}`);
-    assert.equal(f.sends[0].headers.get("Authorization"), "Bearer " + env.RESEND_API_KEY);
-    assert.equal(f.sends[0].redirect, "error");
+    assert.match(String(p.id), /^[a-f0-9]{64}$/); assert.equal(p.occurredAt, e.timestamp); assert.equal(p.expiresAt, e.event_data.expires_at);
+    assert.equal(f.sends[0].headers.get("x-notify-auth"), env.NOTIFY_EMAIL_INGEST_KEY);
+    assert.equal(f.sends[0].redirect, "manual");
   }
 });
 
@@ -75,7 +76,7 @@ test("retries use a stable key and byte-identical message, while JWKS is cached"
   assert.equal((await f.post(s)).status, 200); f.advance(1000);
   assert.equal((await f.post(await signed(e, String(now + 1000)))).status, 200);
   assert.equal(await f.sends[0].text(), await f.sends[1].text());
-  assert.equal(f.sends[0].headers.get("Idempotency-Key"), f.sends[1].headers.get("Idempotency-Key"));
+  assert.equal(f.payloads[0].id, f.payloads[1].id);
   assert.equal(f.jwksReads(), 1);
 });
 
@@ -133,18 +134,18 @@ test("verification and password-reset email OTPs render, without silently treati
 });
 
 test("disabled or incomplete configuration fails closed without reaching either provider", async () => {
-  for (const bindings of [{ ...env, AUTH_EMAIL_ENABLED: "false" }, { ...env, RESEND_API_KEY: "" }, { ...env, TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL: "" }, { ...env, TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN: "http://insecure.example" }]) {
+  for (const bindings of [{ ...env, AUTH_EMAIL_ENABLED: "false" }, { ...env, NOTIFY_EMAIL_INGEST_KEY: "" }, { ...env, NOTIFY_EMAIL_BASE_URL: "http://insecure.example" }, { ...env, TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL: "" }, { ...env, TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN: "http://insecure.example" }]) {
     const f = fixture(), r = await f.post(await signed(event()), bindings);
     assert.equal(r.status, 503); assert.equal(f.jwksReads(), 0); assert.equal(f.sends.length, 0);
   }
 });
 
 test("provider errors and ambiguous acceptance fail with sanitized, retryable responses", async () => {
-  for (const status of [401, 409, 422, 429, 500, 503, 200]) {
+  for (const status of [401, 409, 422, 429, 500, 503, 200, 202, 302]) {
     const f = fixture({ provider: async () => Response.json({ message: "secret-token merchant@example.com" }, { status }) });
     const r = await f.post(await signed(event())); assert.equal(r.status, 503); assert.equal(r.headers.get("Retry-After"), "1");
     const text = await r.text(); assert.equal(text.includes("secret-token"), false); assert.equal(text.includes("merchant@example.com"), false);
-    assert.equal(text.includes(env.RESEND_API_KEY!), false);
+    assert.equal(text.includes(env.NOTIFY_EMAIL_INGEST_KEY!), false);
   }
   const unavailable = fixture({ provider: async () => { throw new Error("secret-token"); } });
   assert.equal((await unavailable.post(await signed(event()))).status, 503);

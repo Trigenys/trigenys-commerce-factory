@@ -1,31 +1,28 @@
 import type { RenderedEmail } from "./auth-email-templates.ts";
 
-// Same Resend delivery contract as RoadmapMentor's EmailService, over the native Workers HTTP API.
-// No SMTP credentials, extra SDK, recipient logs, tokens, or provider error bodies leave this module.
+// Commerce owns its content. Trigenys Notify owns SMTP credentials and durable delivery receipts.
 export async function sendTransactionalEmail(input: {
-  apiKey: string; from: string; recipient: string; idempotencyKey: string; message: RenderedEmail;
+  baseUrl: string; ingestKey: string; recipient: string; idempotencyKey: string;
+  occurredAt: string; expiresAt: string; message: RenderedEmail;
 }, fetcher: typeof fetch = fetch): Promise<void> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 2500);
+  const timer = setTimeout(() => controller.abort(), 6500);
   try {
-    const response = await fetcher("https://api.resend.com/emails", {
-      method: "POST", redirect: "error", signal: controller.signal,
-      headers: { Authorization: "Bearer " + input.apiKey, "Content-Type": "application/json", "Idempotency-Key": input.idempotencyKey },
-      body: JSON.stringify({ from: input.from, to: [input.recipient], ...input.message })
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input.idempotencyKey)));
+    const id = Array.from(digest, b => b.toString(16).padStart(2, "0")).join("");
+    const response = await fetcher(new URL("/v1/dispatch/commerce-factory/email", input.baseUrl), {
+      method: "POST", redirect: "manual", signal: controller.signal,
+      headers: { "x-notify-auth": input.ingestKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ version: 1, project: "commerce-factory", id, occurredAt: input.occurredAt,
+        expiresAt: input.expiresAt, recipient: input.recipient, message: input.message })
     });
-    if (!response.ok) {
-      await response.body?.cancel();
-      throw new Error("EMAIL_DELIVERY_FAILED");
-    }
+    // Workers supports manual redirect handling. Never forward the ingest key to a redirect target.
+    if (response.status !== 202) { await response.body?.cancel(); throw new Error("EMAIL_DELIVERY_FAILED"); }
     const result: unknown = await response.json();
-    if (!result || typeof result !== "object" || !("id" in result) || typeof result.id !== "string" || !result.id) {
-      throw new Error("EMAIL_DELIVERY_FAILED");
-    }
+    if (!result || typeof result !== "object" || !("accepted" in result) || result.accepted !== true ||
+      !("project" in result) || result.project !== "commerce-factory" || !("channel" in result) || result.channel !== "email" ||
+      !("eventId" in result) || result.eventId !== id) throw new Error("EMAIL_DELIVERY_FAILED");
   } catch {
-    // Includes provider 429/5xx, idempotency conflicts, redirects, timeouts and ambiguous responses.
-    // Let Neon retry the same event; never acknowledge an email that was not accepted.
     throw new Error("EMAIL_DELIVERY_FAILED");
-  } finally {
-    clearTimeout(timer);
-  }
+  } finally { clearTimeout(timer); }
 }

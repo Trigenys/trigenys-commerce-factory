@@ -10,7 +10,6 @@ export type AuthEmailDependencies = { fetcher?: typeof fetch; now?: () => number
 const maxBodyBytes = 32 * 1024;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const purposes = new Set(["sign-in", "email-verification", "forget-password"]);
-const from = "Commerce Factory <commercefactory@trigenys.com>";
 
 class WebhookError extends Error {
   readonly status: 400 | 401 | 413 | 415 | 503;
@@ -23,19 +22,19 @@ function record(value: unknown): Record<string, unknown> | null {
 }
 
 function configuration(env: WorkerBindings) {
-  if (env.AUTH_EMAIL_ENABLED !== "true" || !env.RESEND_API_KEY?.trim()) throw new WebhookError(503, "EMAIL_NOT_CONFIGURED");
+  if (env.AUTH_EMAIL_ENABLED !== "true" || !env.NOTIFY_EMAIL_INGEST_KEY || env.NOTIFY_EMAIL_INGEST_KEY.length < 32 || env.NOTIFY_EMAIL_INGEST_KEY.length > 256) throw new WebhookError(503, "EMAIL_NOT_CONFIGURED");
   try {
     const auth = new URL(env.TRIGENYS_COMMERCE_FACTORY_AUTH_BASE_URL || "");
     const web = new URL(env.TRIGENYS_COMMERCE_FACTORY_WEB_ORIGIN || "");
+    const notify = new URL(env.NOTIFY_EMAIL_BASE_URL || "");
+    if (notify.protocol !== "https:" || notify.username || notify.password || notify.search || notify.hash || notify.pathname !== "/" || notify.port) throw new Error();
     if (auth.protocol !== "https:" || web.protocol !== "https:" || auth.username || auth.password || auth.search || auth.hash ||
       web.username || web.password || web.search || web.hash || web.pathname !== "/") throw new Error();
     // Endpoint IDs scope events to this Worker’s branch. A shared project must not mix its applications.
     const endpointId = auth.hostname.match(/^(ep-[a-z0-9-]+)\.neonauth\./)?.[1];
     if (!endpointId) throw new Error();
-    const sender = env.MAIL_FROM?.trim() || from;
-    if (sender.length > 254 || /[\r\n]/.test(sender) || !/^[^<>\r\n]+ <[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+>$/.test(sender)) throw new Error();
     return { authBase: auth.href.replace(/\/$/, ""), endpointId, appOrigin: web.origin,
-      apiKey: env.RESEND_API_KEY.trim(), sender, defaultLanguage: env.AUTH_EMAIL_DEFAULT_LANGUAGE === "en" ? "en" as const : "fr" as const };
+      notifyBase: notify.origin, ingestKey: env.NOTIFY_EMAIL_INGEST_KEY, defaultLanguage: env.AUTH_EMAIL_DEFAULT_LANGUAGE === "en" ? "en" as const : "fr" as const };
   } catch { throw new WebhookError(503, "EMAIL_NOT_CONFIGURED"); }
 }
 
@@ -143,8 +142,8 @@ export function registerAuthEmailRoutes(app: Hono<AppEnv>, dependencies: AuthEma
         throw new WebhookError(503, "WEBHOOK_VERIFICATION_UNAVAILABLE");
       }
       const { message, idempotencyKey } = parseEvent(raw, c.req.raw.headers, config, now());
-      await sendTransactionalEmail({ apiKey: config.apiKey, from: config.sender, recipient: message.recipient,
-        idempotencyKey, message: buildAuthEmail(message) }, fetcher);
+      await sendTransactionalEmail({ baseUrl: config.notifyBase, ingestKey: config.ingestKey, recipient: message.recipient,
+        idempotencyKey, occurredAt: message.issuedAt, expiresAt: message.expiresAt, message: buildAuthEmail(message) }, fetcher);
       return c.json({ accepted: true });
     } catch (error) {
       const failure = error instanceof WebhookError ? error : new WebhookError(503, "EMAIL_DELIVERY_UNAVAILABLE");
