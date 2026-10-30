@@ -13,10 +13,10 @@ Existing project: `little-frog-93793324`.
 
 For each intended environment, in Neon Console → project → correct branch → Settings → Better Auth → Magic Link:
 
-1. Enable Magic Link. Choose a short validity period, initially 10 minutes.
+1. Enable Magic Link. The verified staging configuration uses a 5-minute validity period; check the production branch independently.
 2. Enable Allow New User Registration to support the signup UI. The existing signup form requires terms acceptance; the login form explains account creation and links to the terms/privacy policy, as the Google login flow does.
 3. Verify that the exact frontend origin is trusted. Both current frontend origins were already configured on staging; check the production branch independently.
-4. Verify the email sender. The inspected setup uses shared Neon SMTP for development. Configure the production sender using Neon's email settings before releasing public email-based access. Do not commit or copy SMTP credentials into issues.
+4. Verify the email sender and delivery hook for the intended branch. Staging magic links use the signed Commerce webhook and Trigenys Notify's configured Resend SMTP relay, with a 5-minute expiry. The managed Neon email-provider settings may still display the shared sender because this webhook intercepts only send.magic_link; other email events retain built-in delivery. Configure and test production independently before public activation. See [branded auth emails](./branded-auth-emails.md); never copy SMTP credentials into Commerce Factory or issues.
 5. Set `VITE_MAGIC_LINK_ENABLED=true` for the corresponding Cloudflare Pages production build and redeploy the same checked source. Preview builds remain off unless intentionally enabled and their origin is trusted.
 
 The installed Neon connector can read the existing Auth integration and trusted domains, but its `update_auth_config` tool only exposes the application name. It does not expose Magic Link plugin settings. This change does not claim that enabling the frontend activates that provider setting.
@@ -33,7 +33,7 @@ Expired, reused or sessionless links return to account access with a request-new
 
 `npm run test:magic-link` runs browser interactions with the installed SDK and isolated provider/API fixtures: desktop/mobile, French/English, signup consent, send/pending/success/failure/retry, resend delay, session reload, existing-store/new-merchant destinations, invitation privacy, safe fallback and expired-link recovery. Reports explicitly label simulated email/provider responses.
 
-Before enabling publicly, verify with an owned mailbox on staging: real email receipt, first redemption/session restoration, single-use rejection, expiry, sign-out/sign-in, new-account onboarding and Worker/database persistence. Repeat the login check against production after its provider/sender/domain configuration is complete. A green browser fixture suite is not proof of email delivery or live redemption.
+Real staging email delivery was verified on 2026-10-30 through Notify/Resend, including Gmail reception outside spam. Token redemption is a separate check. Before enabling publicly, verify with an owned mailbox on staging: real email receipt, first redemption/session restoration, single-use rejection, expiry, sign-out/sign-in, new-account onboarding and Worker/database persistence. Repeat the login check against production after its provider/sender/domain configuration is complete. A green browser fixture suite is not proof of email delivery or live redemption.
 
 RAIDER: reuse the managed provider and current SDK; keep email delivery and identity validation in Neon; prevent duplicate UI submission and retain provider-side limits; store only expiring return context in browser storage; gate rollout per environment; retain existing auth methods and explicitly separate mocked/live evidence.
 
