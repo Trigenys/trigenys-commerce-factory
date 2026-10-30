@@ -4,7 +4,7 @@ Implemented at the user's request to reuse Roadmap Mentor's branded template str
 
 ## Current architecture
 
-Neon Auth → signed Commerce Factory webhook → branded HTML/text → private Notify email API → Spacemail SMTP.
+Neon Auth → signed Commerce Factory webhook → branded HTML/text → private Notify email API → configured transactional SMTP relay (Resend in the verified staging deployment).
 
 Commerce Factory owns its existing logo, FR/EN content, return context, verified branch identity and Neon link. Notify owns the SMTP credentials, per-product sender policy, durable D1 receipts and failure handling. Neon continues to generate and redeem tokens. No new Commerce database, SMTP library, SMTP password or Resend key is needed.
 
@@ -14,7 +14,7 @@ The template/layout separation from Roadmap Mentor remains. The transport now us
 
 POST /v1/webhooks/neon-auth still verifies the exact raw body (32 KiB limit), detached Ed25519/JWS signature through this branch's cached JWKS, matching event/key headers, timestamp freshness, endpoint identity, recipient and Auth URL. Only a validated event can reach Notify. No raw token field is forwarded separately, and no email body, recipient, OTP or link is logged.
 
-Link requests carry the UI language in their configured app callback. Templates retain the logo, green/cream/coral colors, inline CTA, readable expiry, security text, HTML fallback hyperlink and complete text alternative. OTP locale is absent from Neon's documented envelope, so OTP events use AUTH_EMAIL_DEFAULT_LANGUAGE (fr by default). Never subscribe SMS events to this email-only handler.
+Link requests carry the UI language in their configured app callback. Templates retain the text wordmark, green/cream/coral colors, inline CTA, readable expiry, security text, HTML fallback hyperlink and complete text alternative. OTP locale is absent from Neon's documented envelope, so OTP events use AUTH_EMAIL_DEFAULT_LANGUAGE (fr by default). Never subscribe SMS events to this email-only handler.
 
 ## Notify contract
 
@@ -42,7 +42,7 @@ Commerce Worker server-only bindings:
 - optional AUTH_EMAIL_PARENT_ENDPOINT_ID: one explicitly verified parent context label for a cloned branch. It applies only to signed magic-link events whose original verification URL remains on this Worker's configured Auth origin and database path; parent-origin links, other context labels and parent-labeled OTPs remain rejected. It is absent by default and is not exposed in public config;
 - existing Auth base URL and web origin remain unchanged.
 
-RESEND_API_KEY and MAIL_FROM are no longer read by Commerce Factory. Configure sender Commerce Factory <commercefactory@trigenys.com> and Spacemail's SMTP_USER/SMTP_PASSWORD **in Notify**, not here. The SMTP login uses the actual parent mailbox behind the alias. Do not publish or copy mailbox passwords into a repository or chat.
+Commerce Factory does not read RESEND_API_KEY, SMTP credentials or MAIL_FROM. Configure sender Commerce Factory <commercefactory@trigenys.com> and relay credentials **in Notify**, not here. The verified staging relay uses SMTP_HOST=smtp.resend.com, SMTP_PORT=465, SMTP_USER=resend and SMTP_PASSWORD_SECRET=RESEND_API_KEY. SMTP_PASSWORD_SECRET is only the name of an existing secret binding; the API key remains in Cloudflare's secret store. No credential needs to be copied into Commerce Factory or a repository. The default selector remains SMTP_PASSWORD for existing deployments.
 
 The browser's /v1/config response is unchanged and exposes neither the Notify service key nor SMTP credentials.
 
@@ -50,7 +50,7 @@ The browser's /v1/config response is unchanged and exposes neither the Notify se
 
 1. Merge and validate both repositories. Apply Notify's additive migration 0004_transactional_email.sql to its existing staging D1; retain existing group routes, assets, crons and provider flags.
 2. Deploy Notify and Commerce's checked Worker bundles. Provision a shared product-specific ingest key on the two services and the email sender policy in Notify.
-3. Securely configure Spacemail credentials in Notify. Verify SMTP acceptance and owned-mailbox delivery before enabling the auth webhook.
+3. Securely configure the chosen transactional relay in Notify. When an API key is already stored, select its binding with SMTP_PASSWORD_SECRET instead of copying or renaming its value. Activate SMTP host, user and selector together, then verify SMTP acceptance and owned-mailbox delivery before enabling the auth webhook.
 4. Enable Notify email and Commerce AUTH_EMAIL_ENABLED. On Neon project little-frog-93793324, branch br-dry-cell-b2hsrgii (commerce-journeys-57-staging), enable only send.magic_link, HTTPS URL https://commerce-factory-journeys-api.lawrynnjennifer.workers.dev/v1/webhooks/neon-auth, **10-second per-attempt timeout**. Total provider delivery budget is 15 seconds.
 5. Request a fresh link from the existing staging login, check sender/content/receipt, then click and verify the session and correct merchant workspace. Do not record live link URLs in screenshots, logs or PRs. Existing email OTPs stay with Neon until separately verified/enabled.
 6. Roll production out separately, against production Notify resources and credentials. Never point production auth at staging as an implicit fallback.
@@ -64,7 +64,7 @@ Rollback: first disable the affected Neon branch's Webhooks (enabled:false), res
 - `npm run test:runtime` bundles the deployment Worker and runs its signed-email route in workerd, with outbound requests restricted to fixtures. It covers real JWKS retrieval, signature verification, branded Notify dispatch, tampering and rejected JWKS redirects. It is included in `npm run check` and sends no real email.
 - Email-rendering checks cover standalone HTML and a dark webmail host that removes body attributes, with remote images blocked, alongside existing SDK magic-link checks.
 - Notify tests cover actual SQLite migrations, concurrent claims, uncertain SMTP outcomes and real Nodemailer/TLS/MIME against a local fixture SMTP server. Its workerd/D1 smoke exercises the actual bundled SMTP failure path and existing WhatsApp routes.
-- Two explicitly authorized staging magic-link requests were accepted by Spacemail, each with one accepted Notify receipt. The owner subsequently confirmed receipt in Spacemail and Gmail; Gmail classified its message as spam. Live token redemption remains unverified.
+- The initial Spacemail tests reached SMTP acceptance and owned mailboxes, but Gmail classified its message as spam. On 2026-10-30 Notify was switched to Resend through its existing SMTP adapter (Notify PRs #54 and #56). All three explicitly authorized staging requests received one accepted Notify receipt, with one attempt each. The connected Gmail message showed INBOX and SPF/DKIM/DMARC pass; the owner confirmed reception outside spam on the other Gmail address. Receipt in that second Gmail mailbox is owner-reported, not an API inspection. Live token redemption and production activation remain unverified.
 
 Notify's contract/runbook is docs/transactional-email.md in Trigenys/trigenys-notify. No direct SMTP implementation or additional ledger is added to Commerce Factory.
 
@@ -77,6 +77,20 @@ The override now uses `manual`. JOSE already requires an HTTP 200 response, so r
 The next live request verified its signature but reported the configured parent endpoint (`ep-plain-wave-b23ip5pe`) in its context while being requested through staging (`ep-soft-river-b2at40xx`). The parent relationship and both Auth URLs were verified in the console; production Webhooks remained disabled. Staging can opt into the single explicit parent label with AUTH_EMAIL_PARENT_ENDPOINT_ID. This does not authorize production verification links: their origin/path still fails the existing strict link check. OTPs retain exact context matching. Failed signed requests log only fixed error/phase codes and bounded public endpoint identifiers, never email addresses, payloads, links, tokens or credentials.
 
 Once the signed staging link passed validation, public Worker-to-Worker delivery failed before a Notify receipt was claimed. The staging consumer therefore binds NOTIFY_EMAIL_SERVICE directly to trigenys-notify-staging-api, using Cloudflare's supported internal HTTP transport. The API URL remains a routing/contract value; product-scoped authentication is still required. Production must receive its own matching binding during its separate rollout, never a staging fallback. The workerd smoke exercises a real service binding in addition to the external HTTP fixture.
+
+### Verified relay switch (2026-10-30)
+
+Notify PR [#56](https://github.com/Trigenys/trigenys-notify/pull/56), merge `666e6c026eb91740b068278d9c119821bf026c24`, adds a provider-agnostic selector for an existing secret binding. Notify's full CI passed (run `41061808568`); its existing Worker was deployed and the four SMTP settings switched together. The active configuration version at verification was `997627ee-c1aa-40b1-8cee-25b4273ff088`. All 26 unrelated bindings and runtime metadata were preserved, including the existing D1, WhatsApp channels and product sender policies.
+
+Commerce's code, token generation/redemption, Google access, data model and tenant authorization did not change for this relay switch. The API key value was neither read nor copied by the agent. No new Worker, database or external mail account was provisioned.
+
+Keep the remaining acceptance steps distinct:
+
+- Transport and rendering: verified with real staging requests and owned mailboxes; delivery outside spam is observed evidence, not a promise for every recipient.
+- Live authentication: still verify first redemption, refreshed session, correct merchant workspace, sign-out/sign-in, and rejection of a reused or expired link. Never commit live links, tokens or session data as proof.
+- Production: the inspected Commerce production Worker has no branded email/Notify bindings. Do not silently route production auth to staging. Verify the production service mapping, flags, sender policy and Neon branch independently before activation. The Neon connector's redacted config does not expose every plugin/webhook setting; absent fields are not evidence that those settings are disabled.
+
+The relay rollback is separate from the webhook rollback above: after verifying that the previous SMTP credential is still valid, switch Notify's host, user and password selector back together. Retain both secrets during the coordinated switch; never claim that a failed SMTP request is safe to resend after an ambiguous DATA outcome.
 
 ## RAIDER
 
