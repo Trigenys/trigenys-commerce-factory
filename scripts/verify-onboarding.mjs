@@ -44,6 +44,11 @@ async function screen(page, label) {
   assert.deepEqual(await page.locator("img:visible").evaluateAll(images => images.filter(image => image.complete && !image.naturalWidth).map(image => image.src)), [], label + ": images");
   await page.screenshot({ path: output + "/" + label + ".png", fullPage: true }); report.screens.push(label);
 }
+async function locationValue(page, field, expected) {
+  const id = await field.getAttribute("id");
+  await page.waitForFunction(({ id, expected }) => document.getElementById(id)?.value === expected, { id, expected });
+  assert.equal(await field.inputValue(), expected);
+}
 async function checkLocation(page, language, width) {
   const fr = language === "fr";
   await page.locator(".setup-optional").first().locator("summary").click();
@@ -52,19 +57,19 @@ async function checkLocation(page, language, width) {
   await page.getByRole("option", { name: /^Douala / }).waitFor();
   await screen(page, "location-" + language + "-" + width);
   await location.press("ArrowDown"); assert.equal(await location.inputValue(), "Doula");
-  await location.press("Enter"); assert.equal(await location.inputValue(), "Douala");
+  await location.press("Enter"); await locationValue(page, location, "Douala");
   assert.equal(await page.getByRole("heading", { name: fr ? "Donnons vie à votre boutique." : "Let’s bring your store to life.", exact: true }).count(), 1, "Selecting a city does not submit the form");
   await location.fill("Duoala"); await location.press("ArrowDown"); await location.press("Enter");
-  assert.equal(await location.inputValue(), "Douala", "Selecting the same city again still replaces the typo");
+  await locationValue(page, location, "Douala");
   await location.fill("yaounde"); await page.getByRole("option", { name: /^Yaoundé / }).click();
-  assert.equal(await location.inputValue(), "Yaoundé", "Accent-insensitive suggestions retain the canonical name");
+  await locationValue(page, location, "Yaoundé");
   await location.fill("Doula"); await location.press("ArrowDown"); await location.press("Tab");
   await page.locator(".location-options").waitFor({ state: "hidden" });
   assert.equal(await location.inputValue(), "Doula", "Blur never accepts a highlighted suggestion");
   await location.click(); await location.press("Escape"); assert.equal(await location.inputValue(), "Doula");
   await location.press("Escape"); assert.equal(await location.inputValue(), "Doula", "Escape on a closed list does not erase input");
   await location.fill("Doula, Bonapriso"); await page.getByRole("option", { name: /^Douala, Bonapriso / }).click();
-  assert.equal(await location.inputValue(), "Douala, Bonapriso", "A city correction keeps the neighbourhood");
+  await locationValue(page, location, "Douala, Bonapriso");
   await location.fill("Bonapriso, face au marché");
   await page.getByRole("option", { name: fr ? /^Conserver « Bonapriso, face au marché »/ : /^Keep « Bonapriso, face au marché »/ }).click();
   assert.equal(await location.inputValue(), "Bonapriso, face au marché");
@@ -174,7 +179,7 @@ try {
     assert.equal(await location.inputValue(), "Mon quartier personnel", "Changing country keeps the current location");
     await location.fill("Dou"); assert.equal(await page.getByRole("option", { name: /^Douala / }).count(), 0, "Country filtering excludes Cameroon cities");
     await location.fill("Abijan"); await page.getByRole("option", { name: /^Abidjan / }).tap();
-    assert.equal(await location.inputValue(), "Abidjan");
+    await locationValue(page, location, "Abidjan");
     await screen(page, "location-settings-touch-390");
     await page.getByRole("button", { name: "Enregistrer", exact: true }).first().click();
     await page.getByText("Modifications enregistrées.", { exact: true }).waitFor(); assert.equal(state.store.businessLocation, "Abidjan");

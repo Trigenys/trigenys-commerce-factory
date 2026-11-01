@@ -12,5 +12,5 @@
 .location-options li > span { font-size: .86rem; font-weight: 650; line-height: 1.45; }
 .location-options small, .location-field > small { color: #4a6155; font-size: .73rem; line-height: 1.6; }
 .location-field > small.field-error { color: #a13c29; }
-.location-source a { color: #245344; text-underline-offset: 3px; }
+.admin-shell.brand-page .location-field .location-source a { color: #245344; text-decoration: underline; text-underline-offset: 3px; }
 .location-source { font-size: .67rem !important; }
