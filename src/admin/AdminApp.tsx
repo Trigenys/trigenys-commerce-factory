@@ -1,5 +1,6 @@
 import MerchantWorkspace from "./MerchantWorkspace";
 import StoreOnboarding from "./StoreOnboarding";
+import LocationInput from "./LocationInput";
 import { resolveStoreTheme, themeFonts } from "../../shared/store-themes";
 import { themeShellProps } from "../storefront/theme-style";
 import { slugify, initials, validStoreDraft, storeToInput, fieldError } from "./store-input";
@@ -262,6 +263,7 @@ function BusinessFields({
   setInput,
   errors,
   t,
+  language,
   slugTouched,
   setSlugTouched
 }: {
@@ -269,6 +271,7 @@ function BusinessFields({
   setInput: (input: StoreInput) => void;
   errors: Record<string, string>;
   t: typeof copy.fr | typeof copy.en;
+  language: Language;
   slugTouched: boolean;
   setSlugTouched: (value: boolean) => void;
 }) {
@@ -324,15 +327,7 @@ function BusinessFields({
         <small>{input.description.length}/280</small>
       </label>
 
-      <label>
-        <span>{t.location}</span>
-        <input
-          aria-label={t.location}
-          value={input.businessLocation}
-          onChange={(event) => setInput({ ...input, businessLocation: event.target.value })}
-          placeholder="Douala, Bonapriso"
-        />
-      </label>
+      <LocationInput key={input.countryCode} label={t.location} value={input.businessLocation} countryCode={input.countryCode} language={language} error={errors.businessLocation} onChange={businessLocation => setInput({ ...input, businessLocation })} />
 
       <label>
         <span>{t.contactEmail}</span>
@@ -592,6 +587,7 @@ function StoreSettings({
             setInput={setInput}
             errors={errors}
             t={t}
+            language={language}
             slugTouched={slugTouched}
             setSlugTouched={setSlugTouched}
           />
