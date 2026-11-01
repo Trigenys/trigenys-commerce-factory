@@ -741,7 +741,7 @@ export default function AdminApp() {
     return () => window.removeEventListener("merchant-session-expired", expire);
   }, []);
 
-  const guidedSetup = authenticated && (!store || setupRequested && store.role !== "staff" && store.status === "draft");
+  const guidedSetup = authenticated && window.location.pathname !== "/app/accept-invitation" && window.location.pathname !== "/app/platform" && (!store || setupRequested && store.role !== "staff" && store.status === "draft");
   const workspaceMode = authenticated && Boolean(store) && !guidedSetup && !loading && !fatalError && window.location.pathname !== "/app/accept-invitation";
   const signOut = useCallback(async () => {
     if (!client) return;

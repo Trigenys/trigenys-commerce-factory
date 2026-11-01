@@ -44,7 +44,7 @@ export default function WhatsAppInput({ label, value, countryCode, language, err
 }) {
   const id = useId(), fr = language === "fr";
   const country = isSupportedCountry(countryCode) ? countryCode as Country : undefined;
-  return <div className="whatsapp-field" hidden={hidden}>
+  return <div className="whatsapp-number-field" hidden={hidden}>
     <label htmlFor={id}>{label}</label>
     <PhoneInput id={id} className="whatsapp-input" countrySelectComponent={CallingCodeSelect}
       countrySelectProps={{ "aria-label": fr ? "Indicatif WhatsApp" : "WhatsApp calling code" }}
@@ -52,7 +52,7 @@ export default function WhatsAppInput({ label, value, countryCode, language, err
       countryOptionsOrder={["CM", "CI", "SN", "GA", "CG", "FR", "..."]}
       value={phoneDisplayValue(value, countryCode)} onChange={next => onChange(next || "")}
       autoComplete="tel" inputMode="tel" aria-invalid={Boolean(error)} aria-describedby={id + "-hint"}
-      placeholder={country === "CM" ? "670 00 00 01" : fr ? "Votre numéro" : "Your number"} />
+      placeholder={fr ? "Votre numéro" : "Your number"} />
     <small id={id + "-hint"} className={error ? "field-error" : ""}>{error || (fr ? "Indicatif modifiable. Vous pouvez aussi coller le numéro complet avec +." : "You can change the calling code or paste a full number starting with +.")}</small>
   </div>;
 }

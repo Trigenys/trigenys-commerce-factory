@@ -97,6 +97,9 @@ async function checkPhone(page, language, width) {
   const phone = page.getByLabel(fr ? "Numéro WhatsApp" : "WhatsApp number", { exact: true });
   const code = page.getByLabel(fr ? "Indicatif WhatsApp" : "WhatsApp calling code", { exact: true });
   assert.equal(await code.inputValue(), "CM");
+  const label = await page.locator('label[for="' + await phone.getAttribute("id") + '"]').boundingBox();
+  const select = await code.boundingBox(), number = await phone.boundingBox();
+  assert.ok(label && select && number && label.y + label.height <= Math.min(select.y, number.y), "Phone label is above the two controls");
   await phone.fill("670000001"); await phoneValue(page, "+237670000001");
   await phone.fill("237670000001"); await phoneValue(page, "+237670000001");
   await phone.fill(""); await code.selectOption("CI");
@@ -198,7 +201,9 @@ try {
       return route.fallback();
     });
     await page.getByRole("button", { name: fr ? "Enregistrer le produit" : "Save product", exact: true }).click();
-    await attachmentWait;
+    let attachmentTimeout;
+    try { await Promise.race([attachmentWait, new Promise((_, reject) => { attachmentTimeout = setTimeout(() => reject(new Error("Product attachment did not start")), 30000); })]); }
+    finally { clearTimeout(attachmentTimeout); }
     try {
       assert.equal(await page.getByRole("button", { name: fr ? "← Retour" : "← Back", exact: true }).isDisabled(), true);
       assert.equal(await page.locator(".setup-progress button:enabled").count(), 0, "Navigation is blocked during a product mutation");
@@ -239,7 +244,10 @@ try {
     await page.getByRole("button", { name: "Continuer →", exact: true }).click();
     await page.getByRole("button", { name: "Enregistrer et ajouter un produit →", exact: true }).waitFor();
     await screen(page, "compact-style-" + width + "x" + height);
-    if (width > 1050) assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 2), "Default style fits " + width + "x" + height);
+    if (width > 1050) {
+      const dimensions = await page.evaluate(() => ({ content: document.documentElement.scrollHeight, viewport: innerHeight }));
+      assert.ok(dimensions.content <= dimensions.viewport + 2, "Default style fits " + width + "x" + height + ": " + JSON.stringify(dimensions));
+    }
     await page.locator(".theme-picker-compact summary").click();
     const font = page.getByLabel("Typographie", { exact: true }); await font.focus();
     await font.evaluate(element => element.scrollIntoView({ block: "center" }));
