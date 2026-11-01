@@ -352,12 +352,22 @@ export default function ProductCatalog({
   client,
   store,
   language,
-  onProductsChange
+  onProductsChange,
+  guided = false,
+  showNotices = true,
+  onEditorPreviewChange,
+  onEditorOpenChange,
+  onCatalogStateChange
 }: {
   client: CommerceAuthClient;
   store: Store;
   language: Language;
   onProductsChange?: (products: Product[]) => void;
+  guided?: boolean;
+  showNotices?: boolean;
+  onEditorPreviewChange?: (product: Product | null) => void;
+  onEditorOpenChange?: (open: boolean) => void;
+  onCatalogStateChange?: (state: "loading" | "ready" | "error") => void;
 }) {
   const t = copy[language];
   const [products, setProducts] = useState<Product[]>([]);
@@ -367,6 +377,10 @@ export default function ProductCatalog({
   useUnsavedChanges(Boolean(editor));
   const [slugTouched, setSlugTouched] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [catalogLoaded, setCatalogLoaded] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [queuedPhotos, setQueuedPhotos] = useState<File[]>([]);
+  const [queuedSources, setQueuedSources] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [visibilityBusy, setVisibilityBusy] = useState<string | null>(null);
   const [error, setInlineError] = useState<string | null>(null);
@@ -386,10 +400,34 @@ export default function ProductCatalog({
   const [statusFilter, setStatusFilter] = useState("all");
   const nameRef = useRef<HTMLInputElement>(null);
   const focusEditor = useRef(false);
-  const newRequested = useRef(new URLSearchParams(window.location.search).get("new") === "1" && !editor);
+  const newRequested = useRef((guided || new URLSearchParams(window.location.search).get("new") === "1") && !editor);
   useEffect(() => {
     if (editor && focusEditor.current) { focusEditor.current = false; nameRef.current?.focus(); }
   }, [editor?.id, Boolean(editor)]);
+
+
+  // Pending files stay in memory. Their blob previews never enter the persisted
+  // editor or API payload, and are revoked when removed or when this view exits.
+  useEffect(() => {
+    const urls = queuedPhotos.map(file => URL.createObjectURL(file));
+    setQueuedSources(urls);
+    return () => { urls.forEach(url => URL.revokeObjectURL(url)); };
+  }, [queuedPhotos]);
+  useEffect(() => {
+    if (catalogLoaded) onProductsChange?.(products);
+  }, [products, catalogLoaded, onProductsChange]);
+  useEffect(() => { onEditorOpenChange?.(Boolean(editor)); }, [Boolean(editor), onEditorOpenChange]);
+  useEffect(() => {
+    if (!onEditorPreviewChange) return;
+    const input = editor ? toInput(editor) : null;
+    onEditorPreviewChange(input && editor ? {
+      ...input, id: editor.id || "setup-unsaved-product", storeId: store.id,
+      imageUrls: [...input.imageUrls, ...queuedSources]
+    } : null);
+  }, [editor, queuedSources, store.id, onEditorPreviewChange]);
+  useEffect(() => () => {
+    onEditorPreviewChange?.(null); onEditorOpenChange?.(false);
+  }, [onEditorPreviewChange, onEditorOpenChange]);
 
   const ordered = useMemo(
     () => [...products].sort((a, b) => {
@@ -431,10 +469,11 @@ export default function ProductCatalog({
   async function reload() {
     const next = await listProducts(client, store.id);
     setProducts(next);
-    onProductsChange?.(next);
+    setCatalogLoaded(true); onCatalogStateChange?.("ready");
   }
 
   function cacheProduct(product: Product) {
+    setCatalogLoaded(true); onCatalogStateChange?.("ready");
     setProducts(current => current.some(item => item.id === product.id)
       ? current.map(item => item.id === product.id ? product : item)
       : [...current, product]);
@@ -449,24 +488,29 @@ export default function ProductCatalog({
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true); onCatalogStateChange?.("loading");
     (async () => {
       try {
         const next = await listProducts(client, store.id);
         if (!cancelled) {
-          setProducts(next); onProductsChange?.(next);
+          setProducts(next); setCatalogLoaded(true); onCatalogStateChange?.("ready");
           if (newRequested.current) {
-            newRequested.current = false; focusEditor.current = true;
-            setEditor(blankEditor(store, Math.max(0, ...next.map(product => product.sortOrder)) + 10));
+            newRequested.current = false;
+            if (!guided || !next.some(product => product.status !== "archived")) {
+              focusEditor.current = true;
+              const fresh = blankEditor(store, Math.max(0, ...next.map(product => product.sortOrder)) + 10);
+              setEditor({ ...fresh, status: guided ? "active" : fresh.status });
+            }
           }
         }
       } catch {
-        if (!cancelled) setError(t.loadError);
+        if (!cancelled) { setError(t.loadError); onCatalogStateChange?.("error"); }
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [client, store.id, language, onProductsChange, setError]);
+  }, [client, store.id, language, guided, onCatalogStateChange, setError, loadAttempt]);
 
   function startCreate() {
     if (busy || mediaBusy) return;
@@ -475,7 +519,9 @@ export default function ProductCatalog({
       (max, product) => Math.max(max, product.sortOrder),
       0
     );
-    setEditor(blankEditor(store, maxOrder + 10));
+    const fresh = blankEditor(store, maxOrder + 10);
+    setQueuedPhotos([]);
+    setEditor({ ...fresh, status: guided ? "active" : fresh.status });
     focusEditor.current = true;
     setSlugTouched(false);
     setError(null);
@@ -488,6 +534,7 @@ export default function ProductCatalog({
     if (busy || mediaBusy) return;
     if (editor && !window.confirm(language === "fr" ? "Remplacer le brouillon en cours ?" : "Replace the current draft?")) return;
     if (product.status === "archived") return;
+    setQueuedPhotos([]);
     setEditor(editorFromProduct(product));
     focusEditor.current = true;
     setSlugTouched(true);
@@ -503,7 +550,7 @@ export default function ProductCatalog({
       .split(/\r?\n/)
       .map((value) => value.trim())
       .filter(Boolean);
-    if (current.length + files.length > 8) {
+    if (current.length + files.length + (guided ? queuedPhotos.length : 0) > 8) {
       setError(t.invalid);
       return;
     }
@@ -541,6 +588,17 @@ export default function ProductCatalog({
     }
   }
 
+
+  function chooseImages(files: FileList | null) {
+    if (!guided || editor?.id) { void uploadImages(files); return; }
+    if (!editor || !files?.length || busy || mediaBusy) return;
+    const selected = Array.from(files);
+    if (selected.length + queuedPhotos.length + editor.imageText.split(/\r?\n/).filter(Boolean).length > 8) {
+      setError(t.invalid); return;
+    }
+    setQueuedPhotos(current => [...current, ...selected]); setError(null);
+  }
+
   function removeImage(url: string) {
     if (!editor || busy || mediaBusy) return;
     const next = editor.imageText
@@ -568,7 +626,35 @@ export default function ProductCatalog({
     setError(null);
     dismiss();
     try {
-      if (editor.id) {
+
+      if (guided) {
+        let id = editor.id;
+        let created: Product | null = null;
+        const chosen = [...queuedPhotos];
+        if (!id) {
+          // A photo needs a server-owned product ID. Keep that first record a
+          // draft until every selected upload and its final attachment succeed.
+          created = await createProduct(client, store.id, { ...input, status: chosen.length ? "draft" : input.status });
+          id = created.id; cacheProduct(created);
+          setEditor({ ...editor, id });
+        }
+        const urls = [...input.imageUrls];
+        for (const file of chosen) {
+          const prepared = await prepareImageForUpload(file);
+          const media = await uploadMedia(client, store.id, prepared, "product", id);
+          urls.push(media.publicUrl);
+          setEditor({ ...editor, id, imageText: urls.join("\n") });
+          setQueuedPhotos(current => current.slice(1));
+        }
+        const saved = created && !chosen.length ? created : await updateProduct(client, store.id, id, { ...input, imageUrls: urls });
+        cacheProduct(saved);
+        for (const url of pendingDeleteUrls) {
+          const publicId = managedMediaPublicId(url);
+          if (publicId) { try { await deleteMediaByPublicId(client, store.id, publicId); } catch { /* Existing orphan cleanup handles leftovers. */ } }
+        }
+        setEditor(null); draft.discard(); setQueuedPhotos([]); setPendingDeleteUrls([]);
+        await refreshAfterMutation(t.saved);
+      } else if (editor.id) {
         const saved = await updateProduct(client, store.id, editor.id, input);
         cacheProduct(saved);
         for (const url of pendingDeleteUrls) {
@@ -593,7 +679,9 @@ export default function ProductCatalog({
         await refreshAfterMutation(t.createdAddImages);
       }
     } catch (cause) {
-      if (cause instanceof ApiError && cause.code === "PRODUCT_SLUG_TAKEN") {
+      if (cause instanceof MediaPreparationError) {
+        setError(cause.code === "UNSUPPORTED_MEDIA_TYPE" ? t.mediaUnsupported : cause.code.includes("TOO_LARGE") ? t.mediaTooLarge : t.mediaUploadFailed);
+      } else if (cause instanceof ApiError && cause.code === "PRODUCT_SLUG_TAKEN") {
         setError(t.slugTaken);
       } else {
         setError(t.genericError);
@@ -686,32 +774,9 @@ export default function ProductCatalog({
     }
   }
 
-  return (
-    <section className="catalog-panel" aria-labelledby="catalog-title">
-      <div className="catalog-heading workspace-page-heading">
-        <div>
-          <h1 id="catalog-title">{t.title}</h1>
-          <p>{t.body}</p>
-        </div>
-        <button
-          type="button"
-          className={editor ? "admin-secondary" : "admin-primary"}
-          onClick={startCreate}
-          disabled={busy || mediaBusy}
-        >
-          <AppIcon name="plus" />{t.add}
-        </button>
-      </div>
-
-      <MerchantNotice notice={notice} language={language} onDismiss={dismiss} />
-      {editor ? <p className="draft-note" role="status">{language === "fr" ? "Brouillon conservé dans cet onglet. Enregistrez pour appliquer vos modifications." : "Draft kept in this tab. Save to apply changes."}</p> : null}
-      {error ? <p className="form-message error">{error}</p> : null}
-
-      {editor ? (
-        <form className="catalog-editor" onSubmit={save}>
-          <div className="workspace-form-heading"><h2>{editor.id ? (language === "fr" ? "Modifier le produit" : "Edit product") : (language === "fr" ? "Nouveau produit" : "New product")}</h2><p>{language === "fr" ? "Renseignez les informations du produit, puis enregistrez." : "Enter product details, then save."}</p></div>
-          <fieldset className="admin-form admin-form-grid catalog-fields" disabled={busy || mediaBusy} aria-label={language === "fr" ? "Informations du produit" : "Product details"}>
-            <label className="span-2">
+  const fields = editor ? {
+    name: (
+<label className="span-2">
               <span>{t.name}</span>
               <input
                 ref={nameRef}
@@ -729,8 +794,9 @@ export default function ProductCatalog({
                 required
               />
             </label>
-
-            <label className="span-2">
+    ),
+    slug: (
+<label className="span-2">
               <span>{t.slug}</span>
               <div className="slug-field">
                 <small>{store.slug}/</small>
@@ -748,8 +814,9 @@ export default function ProductCatalog({
                 />
               </div>
             </label>
-
-            <label>
+    ),
+    price: (
+<label>
               <span>{t.price}</span>
               <div className="catalog-price-field">
                 <input
@@ -765,8 +832,9 @@ export default function ProductCatalog({
                 <b>{editor.currencyCode}</b>
               </div>
             </label>
-
-            <label>
+    ),
+    status: (
+<label>
               <span>{t.status}</span>
               <select
                 aria-label={t.status}
@@ -782,8 +850,9 @@ export default function ProductCatalog({
                 <option value="active">{t.active}</option>
               </select>
             </label>
-
-            <div className="catalog-category-control">
+    ),
+    category: (
+<div className="catalog-category-control">
               <label><span>{t.category}</span>
               <select
                 ref={categorySelectRef}
@@ -813,8 +882,9 @@ export default function ProductCatalog({
                 <div className="catalog-category-actions"><button type="button" className="admin-secondary" onClick={addCategory}>{t.useCategory}</button><button type="button" className="admin-secondary" onClick={() => resetCategoryEntry(true)}>{t.cancel}</button></div>
               </div> : null}
             </div>
-
-            <label>
+    ),
+    stock: (
+<label>
               <span>{t.stock}</span>
               <select
                 aria-label={t.stock}
@@ -827,8 +897,9 @@ export default function ProductCatalog({
                 {stocks.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
             </label>
-
-            <label className="span-2">
+    ),
+    description: (
+<label className="span-2">
               <span>{t.description}</span>
               <textarea
                 rows={4}
@@ -840,8 +911,9 @@ export default function ProductCatalog({
                 }
               />
             </label>
-
-            <div className="span-2 catalog-media-field">
+    ),
+    images: (
+<div className="span-2 catalog-media-field">
               <span>{t.images}</span>
               <div className="catalog-media-grid">
                 {editor.imageText
@@ -861,6 +933,13 @@ export default function ProductCatalog({
                     </div>
                   ))}
               </div>
+              {queuedSources.length > 0 && <div className="catalog-media-grid">
+                {queuedSources.map((url, index) => <div className="catalog-media-item" key={url}>
+                  <img src={url} alt={language === "fr" ? "Photo en attente d’envoi" : "Photo waiting to upload"} width="140" height="140" />
+                  <button type="button" disabled={busy || mediaBusy} onClick={() => setQueuedPhotos(current => current.filter((_, i) => i !== index))}>{t.removeImage}</button>
+                </div>)}
+              </div>}
+              {queuedPhotos.length > 0 && <p className="setup-queued-note" role="status">{language === "fr" ? "Photos en attente d’envoi. Si vous rechargez ou fermez cet onglet avant l’enregistrement, vous devrez les sélectionner à nouveau." : "Photos are waiting to upload. If you reload or close this tab before saving, select them again."}</p>}
               <label className="catalog-upload-control">
                 <span>{mediaBusy ? t.uploading : t.uploadImages}</span>
                 <input
@@ -868,17 +947,18 @@ export default function ProductCatalog({
                   aria-label={t.uploadImages}
                   accept="image/jpeg,image/png,image/webp"
                   multiple
-                  disabled={!editor.id || busy || mediaBusy}
+                  disabled={(!guided && !editor.id) || busy || mediaBusy}
                   onChange={(event) => {
-                    void uploadImages(event.currentTarget.files);
+                    chooseImages(event.currentTarget.files);
                     event.currentTarget.value = "";
                   }}
                 />
               </label>
-              <small>{!editor.id ? (language === "fr" ? "Créez le produit pour activer l’ajout des images. " : "Create the product to enable image uploads. ") : ""}{t.imagesHint}</small>
+              <small>{guided && !editor.id ? (language === "fr" ? "Sélectionnez vos photos ; elles seront envoyées quand vous enregistrerez le produit." : "Choose your photos; they will upload when you save the product.") : t.imagesHint}</small>
             </div>
-
-            <label className="span-2">
+    ),
+    variants: (
+<label className="span-2">
               <span>{t.variants}</span>
               <textarea
                 rows={3}
@@ -891,6 +971,44 @@ export default function ProductCatalog({
               />
               <small>{t.variantsHint}</small>
             </label>
+    )
+  } : null;
+
+  return (
+    <section className="catalog-panel" aria-labelledby="catalog-title">
+      <div className="catalog-heading workspace-page-heading">
+        <div>
+          {guided ? <h2 id="catalog-title">{language === "fr" ? "Votre produit" : "Your product"}</h2> : <h1 id="catalog-title">{t.title}</h1>}
+          {!guided && <p>{t.body}</p>}
+        </div>
+        <button
+          type="button"
+          className={editor ? "admin-secondary" : "admin-primary"}
+          onClick={startCreate}
+          disabled={busy || mediaBusy}
+          hidden={guided && Boolean(editor)}
+        >
+          <AppIcon name="plus" />{t.add}
+        </button>
+      </div>
+
+      {showNotices && <MerchantNotice notice={notice} language={language} onDismiss={dismiss} />}
+      {editor ? <p className="draft-note" role="status">{language === "fr" ? "Brouillon conservé dans cet onglet. Enregistrez pour appliquer vos modifications." : "Draft kept in this tab. Save to apply changes."}</p> : null}
+      {error ? <p className="form-message error">{error}{guided && !catalogLoaded && <button type="button" className="admin-secondary" onClick={() => setLoadAttempt(value => value + 1)}>{language === "fr" ? "Réessayer" : "Retry"}</button>}</p> : null}
+
+      {editor ? (
+        <form className="catalog-editor" onSubmit={save} noValidate={guided}>
+          <div className="workspace-form-heading"><h2>{editor.id ? (language === "fr" ? "Modifier le produit" : "Edit product") : (language === "fr" ? "Nouveau produit" : "New product")}</h2><p>{language === "fr" ? "Renseignez les informations du produit, puis enregistrez." : "Enter product details, then save."}</p></div>
+          <fieldset className="admin-form admin-form-grid catalog-fields" disabled={busy || mediaBusy} aria-label={language === "fr" ? "Informations du produit" : "Product details"}>
+            {fields && <>
+              {fields.name}
+              {guided ? <>{fields.price}{fields.images}
+                <p className="setup-context">{language === "fr" ? "Le produit actif apparaîtra seulement lorsque vous publierez la boutique." : "An active product becomes public only after you publish the store."}</p>
+                <details className="setup-guided-options"><summary>{language === "fr" ? "Visibilité, description et autres détails" : "Visibility, description and more details"}</summary>
+                  <div className="setup-guided-options-content">{fields.slug}{fields.status}{fields.category}{fields.stock}{fields.description}{fields.variants}</div>
+                </details>
+              </> : <>{fields.slug}{fields.price}{fields.status}{fields.category}{fields.stock}{fields.description}{fields.images}{fields.variants}</>}
+            </>}
           </fieldset>
 
           <div className="catalog-editor-actions">
@@ -901,14 +1019,14 @@ export default function ProductCatalog({
                 if(!window.confirm(language === "fr" ? "Abandonner ce brouillon ?" : "Discard this draft?"))return;
                 setEditor(null);
         draft.discard();
-                setPendingDeleteUrls([]);
+                setPendingDeleteUrls([]); setQueuedPhotos([]);
               }}
               disabled={busy || mediaBusy}
             >
               {t.cancel}
             </button>
             <button className="admin-primary" type="submit" disabled={busy || mediaBusy || addingCategory}>
-              {editor.id ? t.save : t.create}
+              {guided ? (language === "fr" ? "Enregistrer le produit" : "Save product") : editor.id ? t.save : t.create}
             </button>
           </div>
         </form>

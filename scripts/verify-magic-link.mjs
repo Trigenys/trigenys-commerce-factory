@@ -82,7 +82,7 @@ try {
     await page.getByRole("checkbox").check();await page.getByRole("button",{name:"Recevoir mon lien de connexion",exact:true}).click();
     await page.getByRole("status").filter({hasText:"Si cette adresse"}).waitFor();assert.equal(f.links[0].name,"Commerce Test");
     await check(page,"signup-link-sent");state.authenticated=true;await page.goto(f.links[0].callbackURL);
-    await page.getByRole("heading",{name:"Votre boutique, sans labyrinthe.",exact:true}).waitFor();
+    await page.getByRole("heading",{name:"Donnons vie à votre boutique.",exact:true}).waitFor();
     report.checks.push("Signup requires explicit terms acceptance and reaches onboarding after the provider callback");await context.close();
   }
   {

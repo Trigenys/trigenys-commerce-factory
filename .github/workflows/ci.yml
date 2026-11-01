@@ -40,6 +40,15 @@ jobs:
       - name: Install browser for storefront checks
         id: browser-checks
         run: npx playwright install --with-deps chromium
+      - name: Verify guided creation, media recovery and explicit publication
+        if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
+        run: npm run test:onboarding
+      - name: Retain guided store creation screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: commerce-guided-onboarding
+          path: artifacts/onboarding/
       - name: Verify fluid login carousel and stable frame on mobile and desktop
         if: ${{ !cancelled() && steps.browser-checks.outcome == 'success' }}
         run: npm run test:auth-carousel

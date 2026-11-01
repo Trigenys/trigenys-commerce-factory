@@ -1,4 +1,8 @@
 import MerchantWorkspace from "./MerchantWorkspace";
+import StoreOnboarding from "./StoreOnboarding";
+import { resolveStoreTheme, themeFonts } from "../../shared/store-themes";
+import { themeShellProps } from "../storefront/theme-style";
+import { slugify, initials, validStoreDraft, storeToInput, fieldError } from "./store-input";
 import AccountMenu from "./AccountMenu";
 import MerchantNotice, { useMerchantNotice } from "./MerchantNotice";
 import AppIcon from "./AppIcon";
@@ -20,7 +24,6 @@ import { finishEmailLinkReturn } from "./email-link-access";
 import { captureSocialReturn } from "./social-return";
 import {
   ApiError,
-  createStore,
   deleteMediaByPublicId,
   listStores,
   listProducts,
@@ -36,21 +39,12 @@ import {
 import { MediaPreparationError, prepareImageForUpload } from "./media";
 import "./admin.css";
 import "../brand/workspace-brand.css";
-import { isStoreTheme, parseThemeSettings, resolveStoreTheme, themeFonts } from "../../shared/store-themes";
-import { themeShellProps } from "../storefront/theme-style";
 import ThemePicker from "../themes/ThemePicker";
 import { useMerchantMedia } from "./use-merchant-media";
 import MerchantThemePreview from "./MerchantThemePreview";
 import MerchantImage from "./MerchantImage";
 
 type Language = "fr" | "en";
-type OnboardingStep = 0 | 1 | 2 | 3;
-
-const steps = {
-  fr: ["Entreprise", "WhatsApp", "Apparence", "Vérification", "Premier produit", "Publier"],
-  en: ["Business", "WhatsApp", "Appearance", "Review", "First product", "Publish"]
-} as const;
-
 const copy = {
   fr: {
     back: "Retour au site",
@@ -226,94 +220,6 @@ const copy = {
 
 function languageFromPreference(): Language { return preferredLanguage(); }
 
-function slugify(value: string): string {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-+/g, "-")
-    .slice(0, 63);
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return (parts[0]?.[0] || "C") + (parts[1]?.[0] || "F");
-}
-
-function emptyInput(email = ""): StoreInput {
-  return {
-    name: "",
-    slug: "",
-    whatsappNumber: "",
-    countryCode: "CM",
-    currencyCode: "XAF",
-    description: "",
-    businessLocation: "",
-    contactEmail: email,
-    theme: "clean",
-    themeSettings: {}
-  };
-}
-
-function validStoreDraft(value: unknown): value is StoreInput {
-  if (!value || typeof value !== "object") return false;
-  const input = value as StoreInput;
-  return [input.name, input.slug, input.whatsappNumber, input.countryCode, input.currencyCode, input.description, input.businessLocation, input.contactEmail].every(field => typeof field === "string" && field.length <= 280) && isStoreTheme(input.theme) && parseThemeSettings(input.themeSettings) !== null;
-}
-
-function storeToInput(store: Store): StoreInput {
-  return {
-    name: store.name,
-    slug: store.slug,
-    whatsappNumber: store.whatsappNumber,
-    countryCode: store.countryCode,
-    currencyCode: store.currencyCode,
-    description: store.description || "",
-    businessLocation: store.businessLocation || "",
-    contactEmail: store.contactEmail || "",
-    theme: store.theme,
-    themeSettings: store.themeSettings ?? {}
-  };
-}
-
-function fieldError(
-  input: StoreInput,
-  step: OnboardingStep,
-  language: Language
-): Record<string, string> {
-  const t = copy[language];
-  const errors: Record<string, string> = {};
-
-  if (step === 0 || step === 3) {
-    if (input.name.trim().length < 2) errors.name = t.required;
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.slug) || input.slug.length < 3) {
-      errors.slug = t.invalidSlug;
-    }
-    if (
-      input.contactEmail &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.contactEmail)
-    ) {
-      errors.contactEmail = t.invalidEmail;
-    }
-  }
-
-  if (step === 1 || step === 3) {
-    const compact = input.whatsappNumber.replace(/\D/g, "");
-    const international = input.whatsappNumber.trim().startsWith("+");
-    const cmLocal = input.countryCode === "CM" && (
-      /^6\d{8}$/.test(compact) || /^2376\d{8}$/.test(compact)
-    );
-    if (!cmLocal && !(international && /^[1-9]\d{7,14}$/.test(compact))) {
-      errors.whatsappNumber = t.invalidPhone;
-    }
-  }
-
-  return errors;
-}
-
 function BrandPreview({
   input,
   language
@@ -470,205 +376,6 @@ function BusinessFields({
         </select>
       </label>
     </div>
-  );
-}
-
-function Onboarding({
-  client,
-  language,
-  email,
-  onCreated
-}: {
-  client: CommerceAuthClient;
-  language: Language;
-  email: string;
-  onCreated: (store: Store) => void;
-}) {
-  const t = copy[language];
-  const [step, setStep] = useState<OnboardingStep>(0);
-  const draft = useDraft("commerce-onboarding:"+email, emptyInput(email), validStoreDraft);
-  const input = draft.value;
-  const setInput = draft.setValue;
-  useUnsavedChanges(Boolean(input.name));
-  const [slugTouched, setSlugTouched] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  function next() {
-    const found = fieldError(input, step, language);
-    setErrors(found);
-    if (Object.keys(found).length > 0) {
-      window.requestAnimationFrame(() => document.querySelector<HTMLElement>('.merchant-form-card [aria-invalid="true"]')?.focus());
-      return;
-    }
-    setServerError(null);
-    setStep((Math.min(3, step + 1)) as OnboardingStep);
-    window.requestAnimationFrame(() => document.getElementById("onboarding-step")?.focus());
-  }
-
-  async function submit() {
-    const found = fieldError(input, 3, language);
-    setErrors(found);
-    if (Object.keys(found).length > 0) return;
-
-    setBusy(true);
-    setServerError(null);
-    try {
-      const store = await createStore(client, input);
-      draft.discard();
-      onCreated(store);
-    } catch (error) {
-      if (error instanceof ApiError) {
-        if (error.code === "SLUG_TAKEN") setServerError(t.slugTaken);
-        else if (error.code === "STORE_ALREADY_EXISTS") setServerError(t.storeExists);
-        else if (error.code === "INVALID_STORE_INPUT") setServerError(t.invalidStore);
-        else setServerError(t.genericError);
-      } else {
-        setServerError(t.genericError);
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const title = [
-    t.businessTitle,
-    t.whatsappTitle,
-    t.appearanceTitle,
-    t.reviewTitle
-  ][step];
-  const body = [
-    t.businessBody,
-    t.whatsappBody,
-    t.appearanceBody,
-    t.reviewBody
-  ][step];
-
-  return (
-    <main className="merchant-layout" id="merchant-main" tabIndex={-1}>
-      <aside className="merchant-progress">
-        <span className="admin-eyebrow">{t.onboardingEyebrow}</span>
-        <h1>{t.onboardingTitle}</h1>
-        <p>{t.onboardingBody}</p>
-        <ol>
-          {steps[language].map((label, index) => (
-            <li
-              key={label}
-              className={
-                index === step ? "active" :
-                index < step ? "done" :
-                index > 3 ? "future" : ""
-              }
-            >
-              <span>{index < step ? "✓" : index + 1}</span>
-              <b>{label}</b>
-            </li>
-          ))}
-        </ol>
-      </aside>
-
-      <section className="merchant-workspace">
-        <p role="status" className="draft-note">{language === "fr" ? (draft.available ? "Votre brouillon est conservé dans cet onglet." : "Cet appareil ne permet pas de conserver le brouillon. Gardez cette page ouverte.") : (draft.available ? "Your draft is saved in this tab." : "This device cannot save drafts. Keep this page open.")}</p>
-        <div className="merchant-form-card">
-          <div className="merchant-form-head">
-            <span>0{step + 1}</span>
-            <div>
-              <h2 tabIndex={-1} id="onboarding-step">{title}</h2>
-              <p>{body}</p>
-            </div>
-          </div>
-
-          {step === 0 ? (
-            <BusinessFields
-              input={input}
-              setInput={setInput}
-              errors={errors}
-              t={t}
-              slugTouched={slugTouched}
-              setSlugTouched={setSlugTouched}
-            />
-          ) : null}
-
-          {step === 1 ? (
-            <div className="admin-form">
-              <label>
-                <span>{t.whatsapp}</span>
-                <div className="whatsapp-field">
-                  <b>WA</b>
-                  <input
-                    aria-label={t.whatsapp}
-                    value={input.whatsappNumber}
-                    onChange={(event) =>
-                      setInput({ ...input, whatsappNumber: event.target.value })
-                    }
-                    placeholder="670 00 00 01"
-                    inputMode="tel"
-                    aria-invalid={Boolean(errors.whatsappNumber)}
-                  />
-                </div>
-                <small>{t.whatsappHint}</small>
-                {errors.whatsappNumber ? (
-                  <small className="field-error">{errors.whatsappNumber}</small>
-                ) : null}
-              </label>
-            </div>
-          ) : null}
-
-          {step === 2 ? (
-            <div className="appearance-grid">
-              <div className="admin-form">
-                <ThemePicker value={input.theme} settings={input.themeSettings} language={language} onChange={(theme, themeSettings) => setInput({ ...input, theme, themeSettings })} />
-                <div className="logo-pending">
-                  <span className="merchant-preview-logo">{initials(input.name).toUpperCase()}</span>
-                  <div>
-                    <strong>{t.logoSoon}</strong>
-                    <p>{t.logoSoonBody}</p>
-                  </div>
-                </div>
-              </div>
-              <BrandPreview input={input} language={language} />
-            </div>
-          ) : null}
-
-          {step === 3 ? (
-            <div className="review-grid">
-              <div className="review-list">
-                <div><span>{t.storeName}</span><strong>{input.name}</strong></div>
-                <div><span>{t.slug}</span><strong>/{input.slug}</strong></div>
-                <div><span>{t.whatsapp}</span><strong>{input.whatsappNumber}</strong></div>
-                <div><span>{t.location}</span><strong>{input.businessLocation || "—"}</strong></div>
-                <div><span>{t.currency}</span><strong>{input.currencyCode}</strong></div>
-                <div><span>{t.theme}</span><strong>{resolveStoreTheme(input.theme).name}</strong></div>
-              </div>
-              <BrandPreview input={input} language={language} />
-            </div>
-          ) : null}
-
-          {serverError ? <p className="form-message error" role="alert">{serverError}</p> : null}
-
-          <div className="wizard-actions">
-            <button
-              type="button"
-              className="admin-secondary"
-              onClick={() => setStep((Math.max(0, step - 1)) as OnboardingStep)}
-              disabled={step === 0 || busy}
-            >
-              {t.previous}
-            </button>
-            {step < 3 ? (
-              <button type="button" className="admin-primary" onClick={next}>
-                {t.next} →
-              </button>
-            ) : (
-              <button type="button" className="admin-primary" onClick={submit} disabled={busy}>
-                {busy ? t.creating : t.create}
-              </button>
-            )}
-          </div>
-        </div>
-      </section>
-    </main>
   );
 }
 
@@ -987,6 +694,7 @@ export default function AdminApp() {
   const [fatalError, setFatalError] = useState<string | null>(null);
   const [googleFeedback, setGoogleFeedback] = useState<"failed" | "missing-session" | null>(null);
   const [emailLinkFeedback, setEmailLinkFeedback] = useState<"failed" | "missing-session" | null>(null);
+  const [setupRequested, setSetupRequested] = useState(() => new URLSearchParams(window.location.search).get("setup") === "1");
 
   const t = copy[language];
 
@@ -1009,6 +717,7 @@ export default function AdminApp() {
 
     const nextStores = await listStores(nextClient);
     setStores(nextStores);
+    setSetupRequested(new URLSearchParams(window.location.search).get("setup") === "1");
     const wanted = new URLSearchParams(window.location.search).get("store");
     setStore(nextStores.find(item => item.id === wanted) || nextStores[0] || null);
   }
@@ -1044,7 +753,8 @@ export default function AdminApp() {
     return () => window.removeEventListener("merchant-session-expired", expire);
   }, []);
 
-  const workspaceMode = authenticated && Boolean(store) && !loading && !fatalError && window.location.pathname !== "/app/accept-invitation";
+  const guidedSetup = authenticated && (!store || setupRequested && store.role !== "staff" && store.status === "draft");
+  const workspaceMode = authenticated && Boolean(store) && !guidedSetup && !loading && !fatalError && window.location.pathname !== "/app/accept-invitation";
   const signOut = useCallback(async () => {
     if (!client) return;
     try { const result = await client.signOut(); if (result.error) throw new Error("SIGN_OUT_FAILED"); }
@@ -1127,18 +837,23 @@ export default function AdminApp() {
         <InvitationAccept client={client} language={language} />
       ) : window.location.pathname === "/app/platform" && !store ? (
         <main id="merchant-main" tabIndex={-1}><PlatformPanel client={client} language={language} /></main>
+      ) : guidedSetup ? (
+        <StoreOnboarding key={sessionEmail} client={client} language={language} email={sessionEmail} store={store}
+          onSaved={(saved) => {
+            window.history.replaceState(null, "", workspaceRoute(saved.id, "overview") + "&setup=1");
+            setSetupRequested(true); setStore(saved);
+            setStores(current => current.some(item => item.id === saved.id) ? current.map(item => item.id === saved.id ? saved : item) : [...current, saved]);
+          }}
+          onExit={(saved) => {
+            window.history.replaceState(null, "", workspaceRoute(saved.id, "overview"));
+            setStore(saved); setSetupRequested(false);
+            setStores(current => current.map(item => item.id === saved.id ? saved : item));
+          }} />
       ) : store ? (
         <MerchantWorkspace client={client} store={store} stores={stores.length ? stores : [store]} language={language} onUpdated={setStore}
           navigationOpen={navigationOpen} onCloseNavigation={closeNavigation}
           renderSettings={(section) => <StoreSettings key={store.id+section} client={client} store={store} language={language} section={section} onUpdated={setStore} />} />
-      ) : (
-        <Onboarding
-          client={client}
-          language={language}
-          email={sessionEmail}
-          onCreated={(created) => { setStore(created);setStores([created]); }}
-        />
-      )}
+      ) : null}
       <WorkspaceFooter language={language} />
     </div>
   );

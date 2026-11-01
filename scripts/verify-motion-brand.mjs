@@ -229,7 +229,7 @@ try {
       const { page, context } = await brandFixture(browser, base, { width, language, authenticated, hasStore: false });
       currentPage = page;
       await page.goto(base + (authenticated ? "/app" : "/app/login")); await ready(page);
-      await page.locator(authenticated ? ".merchant-form-card" : ".auth-card").waitFor();
+      await page.locator(authenticated ? ".setup-card" : ".auth-card").waitFor();
       await overflow(page, "account-" + authenticated + "-" + language + "-" + width);
       await axe(page, "account-" + authenticated + "-" + language + "-" + width);
       await screenshot(page, (authenticated ? "onboarding" : "account") + "-" + language + "-" + width, true);
