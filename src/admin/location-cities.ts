@@ -1,0 +1,9 @@
+// GeoNames, CC BY 4.0; filtered snapshot 2026-11-01. See THIRD_PARTY_NOTICES.md.
+// These are suggestions, not an exhaustive address directory. No network lookup.
+export const citiesByCountry: Readonly<Record<string, readonly string[]>> = {
+  CM: ["Douala", "Yaoundé", "Bamenda", "Bafoussam", "Maroua", "Ngaoundéré", "Kumba", "Nkongsamba", "Buea", "Kousséri", "Bertoua", "Limbe", "Foumban", "Kumbo", "Edéa", "Ébolowa", "Dschang", "Tiko", "Kribi", "Mbalmayo", "Guider", "Sangmélima", "Melong", "Foumbot", "Bafia", "Mbouda", "Mutengene", "Mora", "Meïganga", "Yagoua"],
+  CI: ["Abidjan", "Abobo", "Bouaké", "Korhogo", "Daloa", "Koumassi", "San-Pédro", "Gagnoa", "Yamoussoukro", "Sinfra", "Man", "Marcory", "Bondoukou", "Dabou", "Divo", "Anyama", "Soubré", "Abengourou", "Bonon", "Duekoué", "Bouaflé", "Séguéla", "Daoukro", "Grand-Bassam", "Vavoua", "Bingerville", "Agboville", "Danané", "Adzopé", "Méagui"],
+  SN: ["Dakar", "Pikine", "Touba", "Guédiawaye", "Thiès", "Kaolack", "Rufisque", "Mbour", "Saint-Louis", "Thiès Nones", "Rufisque est", "Ziguinchor", "Diourbel", "Tambacounda", "Louga", "Kolda", "Tivaouane", "Mbaké", "Tiébo", "Yoff", "Keur Médoune", "Richard-Toll", "Dougnane", "Bargny", "Kaffrine", "Bargny Guèdj", "Bargny Ngoude", "Nguékhokh", "Diamniadio", "Joal"],
+  GA: ["Libreville", "Port-Gentil", "Franceville", "Owendo", "Oyem", "Moanda", "Ntoum", "Lambaréné", "Mouila", "Akanda", "Tchibanga", "Bitam", "Koulamoutou", "Oyam", "Makokou", "Lastoursville", "Tsogni", "Okondja", "Gamba", "Mitzic", "Lébamba", "Lékoni", "Mounana", "Fougamou", "Ndjolé", "Akiéni", "Mékambo", "Booué", "Ndendé", "Mbigou"],
+  CG: ["Brazzaville", "Pointe-Noire", "Dolisie", "Nkayi", "Kayes", "Impfondo", "Ouesso", "Owando", "Sibiti", "Loutété", "Bouansa", "Gamboma", "Loandjili", "Mossaka", "Mindouli", "Oyo", "Makoua", "Loudima", "Mossendjo", "Mouyondzi", "Bétou", "Djambala", "Pokola", "Ngo", "Makabana", "Kinkala", "Ewo", "Etoumbi", "Boundji", "Dongou"],
+};

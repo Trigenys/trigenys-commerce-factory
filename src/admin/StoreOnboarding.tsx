@@ -7,6 +7,7 @@ import { isStoreTheme, resolveStoreTheme, storeThemeIds, storeThemes, themeSecto
 import { themeSampleImage } from "../themes/sample-images";
 import ThemePicker from "../themes/ThemePicker";
 import ProductCatalog from "./ProductCatalog";
+import LocationInput from "./LocationInput";
 import OnboardingPreview from "./OnboardingPreview";
 import { setupCopy } from "./setup-copy";
 import "./onboarding.css";
@@ -116,7 +117,7 @@ export default function StoreOnboarding({ client, language, email, store, onSave
   }
   function report(found: Record<string, string>, next: Step) {
     setErrors(found); setError("");
-    if (found.contactEmail) setDetailsOpen(true);
+    if (found.contactEmail || found.businessLocation) setDetailsOpen(true);
     if (found.slug) setEditLink(true);
     focusStep.current = true; setStep(next);
     requestAnimationFrame(() => document.querySelector<HTMLElement>('.setup-fields [aria-invalid="true"]')?.focus());
@@ -227,7 +228,7 @@ export default function StoreOnboarding({ client, language, email, store, onSave
           </div><div className="setup-sector-options"><button type="button" className="setup-text-button" aria-expanded={expandedSectors} onClick={() => setExpandedSectors(!expandedSectors)}>{expandedSectors ? t.fewerSectors : t.moreSectors}</button><button type="button" className="setup-text-button" aria-pressed={sector === "general"} onClick={() => selectSector("general")}>{t.allRetail}</button></div></fieldset>
           <details className="setup-optional" open={detailsOpen} onToggle={event => setDetailsOpen(event.currentTarget.open)}><summary>{t.details} <small>{t.optional}</small></summary><div className="setup-optional-fields">
             <label><span>{t.description}</span><textarea aria-label={t.description} value={input.description} maxLength={280} rows={3} onChange={event => setInput({ ...input, description: event.target.value })} /></label>
-            <label><span>{t.location}</span><input aria-label={t.location} value={input.businessLocation} maxLength={280} onChange={event => setInput({ ...input, businessLocation: event.target.value })} /></label>
+            <LocationInput key={input.countryCode} label={t.location} value={input.businessLocation} countryCode={input.countryCode} language={language} error={errors.businessLocation} onChange={businessLocation => { clearFieldError("businessLocation"); setInput({ ...input, businessLocation }); }} />
             <label><span>{t.email}</span><input aria-label={t.email} type="email" value={input.contactEmail} maxLength={280} aria-invalid={Boolean(errors.contactEmail)} aria-describedby="setup-public-email-hint" onChange={event => { clearFieldError("contactEmail"); setInput({ ...input, contactEmail: event.target.value }); }} /><small id="setup-public-email-hint" className={errors.contactEmail ? "field-error" : ""}>{errors.contactEmail || t.publicEmailHint}</small></label>
           </div></details>
           <div className="setup-actions"><span>{t.private}</span><button type="submit" className="admin-primary">{t.next} →</button></div>

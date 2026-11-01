@@ -4,8 +4,8 @@ import { isStoreTheme, parseThemeSettings } from "../../shared/store-themes";
 // Shared by guided setup and the existing settings form. Keep their validation
 // and slug rules identical so a saved store can move between both experiences.
 const copy = {
-  fr: { required: "Champ requis.", invalidEmail: "Adresse email invalide.", invalidPhone: "Entrez un numéro WhatsApp camerounais valide ou un numéro international commençant par +.", invalidSlug: "Utilisez au moins 3 caractères avec lettres, chiffres et tirets." },
-  en: { required: "Required field.", invalidEmail: "Invalid email address.", invalidPhone: "Enter a valid Cameroon WhatsApp number or an international number starting with +.", invalidSlug: "Use at least 3 characters with letters, numbers and hyphens." }
+  fr: { required: "Champ requis.", invalidEmail: "Adresse email invalide.", invalidPhone: "Entrez un numéro WhatsApp camerounais valide ou un numéro international commençant par +.", invalidSlug: "Utilisez au moins 3 caractères avec lettres, chiffres et tirets.", locationTooLong: "La localisation doit contenir au maximum 180 caractères." },
+  en: { required: "Required field.", invalidEmail: "Invalid email address.", invalidPhone: "Enter a valid Cameroon WhatsApp number or an international number starting with +.", invalidSlug: "Use at least 3 characters with letters, numbers and hyphens.", locationTooLong: "Location must be 180 characters or fewer." }
 };
 
 export function slugify(value: string): string {
@@ -70,6 +70,7 @@ export function fieldError(
   const errors: Record<string, string> = {};
 
   if (step === 0 || step === 3) {
+    if (input.businessLocation.length > 180) errors.businessLocation = t.locationTooLong;
     if (input.name.trim().length < 2) errors.name = t.required;
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.slug) || input.slug.length < 3) {
       errors.slug = t.invalidSlug;
