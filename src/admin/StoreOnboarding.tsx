@@ -49,6 +49,7 @@ export default function StoreOnboarding({ client, language, email, store, onSave
     const p = readDraft(progressKey, progress.value, validProgress);
     return store ? p.storeId === store.id ? p.step : 3 : Math.min(p.step, 2) as Step;
   });
+  const [productStarted, setProductStarted] = useState(step === 3);
   const [expandedSectors, setExpandedSectors] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [editLink, setEditLink] = useState(false);
@@ -103,6 +104,7 @@ export default function StoreOnboarding({ client, language, email, store, onSave
 
   function go(next: Step) {
     setError(""); setErrors({});
+    if (next === 3) setProductStarted(true);
     progress.setValue({ ...progress.value, step: next, storeId: store?.id || progress.value.storeId });
     focusStep.current = true; setStep(next);
   }
@@ -147,7 +149,7 @@ export default function StoreOnboarding({ client, language, email, store, onSave
       setInput(storeToInput(saved));
       progress.setValue({ ...progress.value, step: 3, storeId: saved.id });
       onSaved(saved);
-      focusStep.current = true; setStep(3);
+      setProductStarted(true); focusStep.current = true; setStep(3);
     } catch (cause) {
       if (cause instanceof ApiError && cause.code === "SLUG_TAKEN") { report({ slug: t.slugTaken }, 0); return; }
       setError(cause instanceof ApiError && cause.code === "STORE_ALREADY_EXISTS" ? t.storeExists : cause instanceof ApiError && cause.code === "INVALID_STORE_INPUT" ? t.invalidStore : t.genericError);
@@ -165,7 +167,7 @@ export default function StoreOnboarding({ client, language, email, store, onSave
     if (!recovered) return;
     setInput(storeToInput(recovered));
     progress.setValue({ ...progress.value, storeId: recovered.id, step: 3 });
-    onSaved(recovered); setRecovered(null); focusStep.current = true; setStep(3); setError("");
+    onSaved(recovered); setRecovered(null); setProductStarted(true); focusStep.current = true; setStep(3); setError("");
   }
   async function publish() {
     if (!store || busy || dirty || productEditing || catalogState !== "ready" || active === 0) return;
@@ -250,8 +252,8 @@ export default function StoreOnboarding({ client, language, email, store, onSave
         </form>}
         {/* Keep the editor mounted when moving back, preserving selected local
             files as well as the existing validated product draft. */}
-        {store && <div hidden={step !== 3} className="setup-first-product">
-          <ProductCatalog client={client} store={store} language={language} guided
+        {store && (step === 3 || productStarted) && <div hidden={step !== 3} className="setup-first-product">
+          <ProductCatalog client={client} store={store} language={language} guided showNotices={step === 3}
             onProductsChange={onProducts} onEditorPreviewChange={setProductDraft}
             onEditorOpenChange={setProductEditing} onCatalogStateChange={onCatalogState} />
           {productEditing && <p className="setup-context">{t.saveProductFirst}</p>}

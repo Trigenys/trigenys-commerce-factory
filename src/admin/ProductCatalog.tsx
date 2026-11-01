@@ -354,6 +354,7 @@ export default function ProductCatalog({
   language,
   onProductsChange,
   guided = false,
+  showNotices = true,
   onEditorPreviewChange,
   onEditorOpenChange,
   onCatalogStateChange
@@ -363,6 +364,7 @@ export default function ProductCatalog({
   language: Language;
   onProductsChange?: (products: Product[]) => void;
   guided?: boolean;
+  showNotices?: boolean;
   onEditorPreviewChange?: (product: Product | null) => void;
   onEditorOpenChange?: (open: boolean) => void;
   onCatalogStateChange?: (state: "loading" | "ready" | "error") => void;
@@ -990,7 +992,7 @@ export default function ProductCatalog({
         </button>
       </div>
 
-      <MerchantNotice notice={notice} language={language} onDismiss={dismiss} />
+      {showNotices && <MerchantNotice notice={notice} language={language} onDismiss={dismiss} />}
       {editor ? <p className="draft-note" role="status">{language === "fr" ? "Brouillon conservé dans cet onglet. Enregistrez pour appliquer vos modifications." : "Draft kept in this tab. Save to apply changes."}</p> : null}
       {error ? <p className="form-message error">{error}{guided && !catalogLoaded && <button type="button" className="admin-secondary" onClick={() => setLoadAttempt(value => value + 1)}>{language === "fr" ? "Réessayer" : "Retry"}</button>}</p> : null}
 

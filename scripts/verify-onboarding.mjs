@@ -149,9 +149,11 @@ try {
     await page.goto(base + "/app?store=" + storeId + "&setup=1");
     const publish = page.getByRole("button", { name: "Publier ma boutique ↗", exact: true });
     await publish.waitFor(); assert.equal(await publish.isEnabled(), false);
+    assert.equal(await page.locator(".setup-first-product").count(), 0, "Resuming review does not initialize a hidden editor");
     let failCatalog = true;
     await page.route("**/products", route => route.request().method() === "GET" && failCatalog ? route.fulfill({ status: 503, headers: { "Access-Control-Allow-Origin": "*" }, json: { error: "UNAVAILABLE" } }) : route.fallback());
-    await page.reload(); await page.getByRole("alert").waitFor(); assert.equal(await publish.isEnabled(), false);
+    await page.reload(); await page.locator(".setup-review").getByRole("alert").waitFor(); assert.equal(await publish.isEnabled(), false);
+    assert.equal(await page.getByRole("alert").count(), 1, "The catalog outage is announced once");
     failCatalog = false; await page.getByRole("button", { name: "Réessayer", exact: true }).click();
     await page.locator(".setup-review").getByText("0", { exact: true }).waitFor();
     assert.equal(state.calls.filter(c => c.path === "/v1/admin/stores" && c.method === "POST").length, 0);
