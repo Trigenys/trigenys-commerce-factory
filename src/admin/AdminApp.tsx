@@ -1,6 +1,7 @@
 import MerchantWorkspace from "./MerchantWorkspace";
 import StoreOnboarding from "./StoreOnboarding";
 import LocationInput from "./LocationInput";
+import WhatsAppInput, { phoneDisplayValue } from "./WhatsAppInput";
 import { resolveStoreTheme, themeFonts } from "../../shared/store-themes";
 import { themeShellProps } from "../storefront/theme-style";
 import { slugify, initials, validStoreDraft, storeToInput, fieldError } from "./store-input";
@@ -347,7 +348,7 @@ function BusinessFields({
         <select
           aria-label={t.country}
           value={input.countryCode}
-          onChange={(event) => setInput({ ...input, countryCode: event.target.value })}
+          onChange={(event) => setInput({ ...input, countryCode: event.target.value, whatsappNumber: phoneDisplayValue(input.whatsappNumber, input.countryCode) || "" })}
         >
           <option value="CM">Cameroun</option>
           <option value="CI">Côte d’Ivoire</option>
@@ -596,16 +597,7 @@ function StoreSettings({
           {section === "settings" && <div className="settings-divider" />}
 
           <div className="admin-form admin-form-grid">
-            <label hidden={section === "appearance"}>
-              <span>{t.whatsapp}</span>
-              <input
-                aria-label={t.whatsapp}
-                value={input.whatsappNumber}
-                onChange={(event) => setInput({ ...input, whatsappNumber: event.target.value })}
-                aria-invalid={Boolean(errors.whatsappNumber)}
-              />
-              {errors.whatsappNumber ? <small className="field-error">{errors.whatsappNumber}</small> : null}
-            </label>
+            <WhatsAppInput label={t.whatsapp} value={input.whatsappNumber} countryCode={input.countryCode} language={language} error={errors.whatsappNumber} hidden={section === "appearance"} onChange={whatsappNumber => setInput({ ...input, whatsappNumber })} />
             <div className="span-2 store-logo-field" hidden={section !== "appearance"}>
               <span>{t.logoUpload}</span>
               <div className="store-logo-row">
@@ -749,7 +741,7 @@ export default function AdminApp() {
     return () => window.removeEventListener("merchant-session-expired", expire);
   }, []);
 
-  const guidedSetup = authenticated && (!store || setupRequested && store.role !== "staff" && store.status === "draft");
+  const guidedSetup = authenticated && window.location.pathname !== "/app/accept-invitation" && window.location.pathname !== "/app/platform" && (!store || setupRequested && store.role !== "staff" && store.status === "draft");
   const workspaceMode = authenticated && Boolean(store) && !guidedSetup && !loading && !fatalError && window.location.pathname !== "/app/accept-invitation";
   const signOut = useCallback(async () => {
     if (!client) return;
@@ -815,7 +807,7 @@ export default function AdminApp() {
   }
 
   return (
-    <div className={"admin-shell brand-page" + (workspaceMode ? " workspace-mode" : "")}>
+    <div className={"admin-shell brand-page" + (workspaceMode ? " workspace-mode" : guidedSetup ? " setup-mode" : "")}>
       {header}
       {!authenticated ? (
         <AccountAccess
@@ -850,7 +842,7 @@ export default function AdminApp() {
           navigationOpen={navigationOpen} onCloseNavigation={closeNavigation}
           renderSettings={(section) => <StoreSettings key={store.id+section} client={client} store={store} language={language} section={section} onUpdated={setStore} />} />
       ) : null}
-      <WorkspaceFooter language={language} />
+      {!guidedSetup && <WorkspaceFooter language={language} />}
     </div>
   );
 }

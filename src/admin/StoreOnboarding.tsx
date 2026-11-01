@@ -8,6 +8,8 @@ import { themeSampleImage } from "../themes/sample-images";
 import ThemePicker from "../themes/ThemePicker";
 import ProductCatalog from "./ProductCatalog";
 import LocationInput from "./LocationInput";
+import WhatsAppInput, { phoneDisplayValue } from "./WhatsAppInput";
+import { useChromeHeight } from "./merchant-chrome";
 import OnboardingPreview from "./OnboardingPreview";
 import { setupCopy } from "./setup-copy";
 import "./onboarding.css";
@@ -63,6 +65,10 @@ export default function StoreOnboarding({ client, language, email, store, onSave
   const [products, setProducts] = useState<Product[]>([]);
   const [productDraft, setProductDraft] = useState<Product | null>(null);
   const [productEditing, setProductEditing] = useState(false);
+  const [productBusy, setProductBusy] = useState(false);
+  const actions = useRef<HTMLDivElement>(null);
+  useChromeHeight(actions, "--setup-actions-height", false, `${step}:${productEditing}:${Boolean(published)}`);
+  const blocked = busy || productBusy;
   const [catalogState, setCatalogState] = useState<"loading" | "ready" | "error">("loading");
   const [attempt, setAttempt] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -104,6 +110,7 @@ export default function StoreOnboarding({ client, language, email, store, onSave
   const closePreview = useCallback(() => setPreviewOpen(false), []);
 
   function go(next: Step) {
+    if (blocked) return;
     setError(""); setErrors({});
     if (next === 3) setProductStarted(true);
     progress.setValue({ ...progress.value, step: next, storeId: store?.id || progress.value.storeId });
@@ -191,14 +198,15 @@ export default function StoreOnboarding({ client, language, email, store, onSave
 
   return <main className="setup-flow" id="merchant-main" tabIndex={-1}>
     <header className="setup-topline">
-      <div><span className="admin-eyebrow">{t.heading}</span><p>{t.step} {step + 1} {t.of} 5</p></div>
-      {store && <button type="button" className="setup-text-button" disabled={busy || productEditing} onClick={() => onExit(store)}>{t.later} ↗</button>}
+      <div className="setup-step-meta"><span className="admin-eyebrow">{t.heading}</span><span>{t.step} {step + 1} {t.of} 5</span></div>
+      <p className="setup-save-state" role="status"><span aria-hidden="true">○</span>{!draft.available || !progress.available ? t.noStorage : store && !dirty ? t.savedDraft : t.localDraft}</p>
+      {store && <button type="button" className="setup-text-button" disabled={blocked || productEditing} onClick={() => onExit(store)}>{t.later} ↗</button>}
     </header>
     <nav aria-label={fr ? "Progression de la création" : "Store setup progress"} className="setup-progress"><ol>
       {t.steps.map((label, index) => {
         const reachable = index <= 2 || Boolean(store && !dirty && (index === 3 || savedProducts > 0 && !productEditing && catalogState === "ready"));
         return <li key={index} className={index === step ? "current" : index < step ? "done" : ""}>
-          <button type="button" aria-current={index === step ? "step" : undefined} disabled={busy || !reachable || index > step && !(store && !dirty)} onClick={() => go(index as Step)}>
+          <button type="button" aria-current={index === step ? "step" : undefined} disabled={blocked || !reachable || index > step && !(store && !dirty)} onClick={() => go(index as Step)}>
             <span className="setup-step-number" aria-hidden="true">{index < step ? "✓" : index + 1}</span><span>{label}</span>
           </button>
         </li>;
@@ -207,19 +215,18 @@ export default function StoreOnboarding({ client, language, email, store, onSave
     <button className="admin-secondary setup-preview-toggle" type="button" aria-haspopup="dialog" onClick={() => setPreviewOpen(true)}>{t.preview} <span aria-hidden="true">↗</span></button>
     <div className="setup-grid">
       <section className="setup-card" aria-labelledby="setup-step-title">
-        <div className="setup-card-heading" key={step}><span className="setup-overline">{String(step + 1).padStart(2, "0")} / 05</span>
+        <div className="setup-card-heading" key={step}><span className="setup-overline visually-hidden">{String(step + 1).padStart(2, "0")} / 05</span>
           <h1 ref={heading} id="setup-step-title" tabIndex={-1}>{t.titles[step]}</h1><p>{t.bodies[step]}</p>
         </div>
-        <p className="setup-save-state" role="status"><span aria-hidden="true">○</span>{!draft.available || !progress.available ? t.noStorage : store && !dirty ? t.savedDraft : t.localDraft}</p>
         {step === 0 && <form className="setup-fields" onSubmit={advance} noValidate>
           <label><span>{t.name}</span><input aria-label={t.name} value={input.name} maxLength={120} autoComplete="organization" aria-describedby="setup-name-hint" aria-invalid={Boolean(errors.name)} onChange={event => {
             const name = event.target.value; clearFieldError("name");
             if (!progress.value.slugTouched) clearFieldError("slug");
             setInput({ ...input, name, slug: progress.value.slugTouched ? input.slug : slugify(name) });
-          }} /><small id="setup-name-hint">{errors.name || t.nameHint}</small></label>
+          }} /><small id="setup-name-hint" className={errors.name ? "field-error" : "visually-hidden"}>{errors.name || t.nameHint}</small></label>
           <div className="setup-link"><div><span>{t.link}</span><button type="button" className="setup-text-button" onClick={() => setEditLink(!editLink)} aria-expanded={editLink}>{t.editLink}</button></div>
             {editLink ? <label><span className="visually-hidden">{fr ? "Adresse de la boutique" : "Store address"}</span><div className="slug-field"><small>/store/</small><input aria-label={fr ? "Adresse de la boutique" : "Store address"} value={input.slug} maxLength={63} aria-invalid={Boolean(errors.slug)} aria-describedby="setup-link-hint" onChange={event => { clearFieldError("slug"); progress.setValue({ ...progress.value, slugTouched: true }); setInput({ ...input, slug: slugify(event.target.value) }); }} /></div></label> : <p>/store/<strong>{input.slug || (fr ? "votre-boutique" : "your-store")}</strong></p>}
-            <small id="setup-link-hint" className={errors.slug ? "field-error" : ""}>{errors.slug || t.linkHint}</small>
+            <small id="setup-link-hint" className={errors.slug ? "field-error" : "visually-hidden"}>{errors.slug || t.linkHint}</small>
           </div>
           <fieldset className="setup-sectors"><legend>{t.sector} <small>{t.optional}</small></legend><div className="setup-sector-grid">
             {sectors.map(key => <button type="button" className="setup-sector" key={key} aria-pressed={sector === key} onClick={() => selectSector(key)}>
@@ -231,34 +238,34 @@ export default function StoreOnboarding({ client, language, email, store, onSave
             <LocationInput key={input.countryCode} label={t.location} value={input.businessLocation} countryCode={input.countryCode} language={language} error={errors.businessLocation} onChange={businessLocation => { clearFieldError("businessLocation"); setInput({ ...input, businessLocation }); }} />
             <label><span>{t.email}</span><input aria-label={t.email} type="email" value={input.contactEmail} maxLength={280} aria-invalid={Boolean(errors.contactEmail)} aria-describedby="setup-public-email-hint" onChange={event => { clearFieldError("contactEmail"); setInput({ ...input, contactEmail: event.target.value }); }} /><small id="setup-public-email-hint" className={errors.contactEmail ? "field-error" : ""}>{errors.contactEmail || t.publicEmailHint}</small></label>
           </div></details>
-          <div className="setup-actions"><span>{t.private}</span><button type="submit" className="admin-primary">{t.next} →</button></div>
+          <div className="setup-actions" ref={actions}><span>{t.private}</span><button type="submit" className="admin-primary">{t.next} →</button></div>
         </form>}
         {step === 1 && <form className="setup-fields" onSubmit={advance} noValidate>
-          <label><span>{t.phone}</span><div className="setup-phone"><span aria-hidden="true">↗</span><input aria-label={t.phone} type="tel" autoComplete="tel" inputMode="tel" value={input.whatsappNumber} maxLength={30} placeholder="670 00 00 01" aria-describedby="setup-phone-hint" aria-invalid={Boolean(errors.whatsappNumber)} onChange={event => { clearFieldError("whatsappNumber"); setInput({ ...input, whatsappNumber: event.target.value }); }} /></div><small id="setup-phone-hint" className={errors.whatsappNumber ? "field-error" : ""}>{errors.whatsappNumber || t.phoneHint}</small></label>
-          <div className="setup-conversation"><span>{t.conversation} · {input.name || t.heading}</span><p>{t.message}</p><small>{fr ? "Illustration — aucun message n’est envoyé." : "Illustration — no message is sent."}</small></div>
+          <WhatsAppInput label={t.phone} value={input.whatsappNumber} countryCode={input.countryCode} language={language} error={errors.whatsappNumber} onChange={whatsappNumber => { clearFieldError("whatsappNumber"); setInput({ ...input, whatsappNumber }); }} />
+          <details className="setup-conversation"><summary>{t.conversation} · {input.name || t.heading}</summary><p>{t.message}</p><small>{fr ? "Illustration — aucun message n’est envoyé." : "Illustration — no message is sent."}</small></details>
           <details className="setup-optional"><summary>{t.preferences}<small>{input.countryCode} · {input.currencyCode}</small></summary><div className="setup-optional-fields">
             <label><span>{t.country}</span><select aria-label={t.country} value={input.countryCode} onChange={event => {
               const countryCode = event.target.value;
-              setInput({ ...input, countryCode, currencyCode: input.currencyCode === currencyForCountry[input.countryCode] ? currencyForCountry[countryCode] : input.currencyCode });
+              setInput({ ...input, countryCode, whatsappNumber: phoneDisplayValue(input.whatsappNumber, input.countryCode) || "", currencyCode: input.currencyCode === currencyForCountry[input.countryCode] ? currencyForCountry[countryCode] : input.currencyCode });
             }}>{countries.map(([code, french, english]) => <option key={code} value={code}>{fr ? french : english}</option>)}</select></label>
             <label><span>{t.currency}</span><select aria-label={t.currency} value={input.currencyCode} onChange={event => setInput({ ...input, currencyCode: event.target.value })}>{currencies.map(code => <option key={code} value={code}>{code === "XAF" ? "XAF — FCFA CEMAC" : code === "XOF" ? "XOF — FCFA UEMOA" : code}</option>)}</select></label>
           </div></details>
-          <div className="setup-actions"><button className="admin-secondary" type="button" onClick={() => go(0)}>← {t.back}</button><button type="submit" className="admin-primary">{t.next} →</button></div>
+          <div className="setup-actions" ref={actions}><button className="admin-secondary" type="button" onClick={() => go(0)}>← {t.back}</button><button type="submit" className="admin-primary">{t.next} →</button></div>
         </form>}
         {step === 2 && <form className="setup-fields" onSubmit={saveStore}>
-          <fieldset disabled={busy} className="setup-style-controls"><p className="setup-context">{t.themeHint}</p>
+          <fieldset disabled={busy} className="setup-style-controls">
             <ThemePicker key={sector} value={input.theme} settings={input.themeSettings} language={language} initialSector={sector === "general" ? "all" : sector} compact onChange={(theme, themeSettings) => setInput({ ...input, theme, themeSettings })} />
           </fieldset>
-          <div className="setup-actions"><button className="admin-secondary" type="button" onClick={() => go(1)} disabled={busy}>← {t.back}</button><button type="submit" className="admin-primary" disabled={busy}>{busy ? t.saving : t.saveStyle} →</button></div>
+          <div className="setup-actions" ref={actions}><button className="admin-secondary" type="button" onClick={() => go(1)} disabled={busy}>← {t.back}</button><button type="submit" className="admin-primary" disabled={busy}>{busy ? t.saving : t.saveStyle} →</button></div>
         </form>}
         {/* Keep the editor mounted when moving back, preserving selected local
             files as well as the existing validated product draft. */}
         {store && (step === 3 || productStarted) && <div hidden={step !== 3} className="setup-first-product">
           <ProductCatalog client={client} store={store} language={language} guided showNotices={step === 3}
             onProductsChange={onProducts} onEditorPreviewChange={setProductDraft}
-            onEditorOpenChange={setProductEditing} onCatalogStateChange={onCatalogState} />
-          {productEditing && <p className="setup-context">{t.saveProductFirst}</p>}
-          <div className="setup-actions"><button className="admin-secondary" type="button" disabled={busy} onClick={() => go(2)}>← {t.back}</button><button className="admin-primary" type="button" disabled={productEditing || savedProducts === 0 || catalogState !== "ready"} onClick={() => go(4)}>{t.check} →</button></div>
+            onEditorOpenChange={setProductEditing} onCatalogStateChange={onCatalogState} onBusyChange={setProductBusy}
+            onGuidedBack={() => go(2)} guidedActionsRef={step === 3 && productEditing ? actions : undefined} />
+          <div className="setup-actions" hidden={productEditing} ref={step === 3 && !productEditing ? actions : undefined}><button className="admin-secondary" type="button" disabled={blocked} onClick={() => go(2)}>← {t.back}</button><button className="admin-primary" type="button" disabled={blocked || productEditing || savedProducts === 0 || catalogState !== "ready"} onClick={() => go(4)}>{t.check} →</button></div>
         </div>}
         {step === 4 && store && <div className="setup-review">
           <div className="setup-review-heading"><h2>{t.review}</h2><span className="setup-private-pill">{t.private}</span></div>
@@ -273,7 +280,7 @@ export default function StoreOnboarding({ client, language, email, store, onSave
           {catalogState === "loading" && <p role="status">{t.loading}</p>}
           {catalogState === "error" && <div className="form-message error" role="alert">{t.loadError} <button type="button" className="setup-text-button" onClick={() => setAttempt(value => value + 1)}>{t.retry}</button></div>}
           {catalogState === "ready" && active === 0 && <p className="setup-context">{t.noActive}</p>}
-          <div className="setup-actions setup-review-actions"><button className="admin-secondary" type="button" disabled={busy || productEditing || dirty} onClick={() => onExit(store)}>{t.keepDraft}</button><button className="admin-primary" type="button" disabled={busy || dirty || productEditing || catalogState !== "ready" || active === 0} onClick={publish}>{busy ? t.publishing : t.publish} ↗</button></div>
+          <div className="setup-actions setup-review-actions" ref={actions}><button className="admin-secondary" type="button" disabled={busy || productEditing || dirty} onClick={() => onExit(store)}>{t.keepDraft}</button><button className="admin-primary" type="button" disabled={busy || dirty || productEditing || catalogState !== "ready" || active === 0} onClick={publish}>{busy ? t.publishing : t.publish} ↗</button></div>
         </div>}
         {error && <div role="alert" className="form-message error setup-operation-error">{error}{recovered && <button type="button" className="admin-secondary" onClick={resumeSaved}>{t.recover}</button>}</div>}
       </section>

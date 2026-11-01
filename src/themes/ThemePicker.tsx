@@ -28,16 +28,16 @@ export default function ThemePicker({ value, settings, language, onChange, image
       }}><option value="">{language === "fr" ? "Selon le thème" : "Theme default"}</option><option value="contain">{language === "fr" ? "Produit entier" : "Whole product"}</option><option value="cover">{language === "fr" ? "Remplir le cadre" : "Fill the frame"}</option></select></label>
       <button type="button" className="theme-reset" onClick={() => onChange(value, {})}>{language === "fr" ? "Rétablir le style du thème" : "Reset theme style"}</button>
     </div>;
-  return <fieldset className="theme-picker">
-    <legend>{language === "fr" ? "Choisissez votre univers" : "Choose your style"}</legend>
+  return <fieldset className={"theme-picker" + (compact ? " theme-picker-compact" : "")}>
+    <legend className={compact ? "visually-hidden" : undefined}>{language === "fr" ? "Choisissez votre univers" : "Choose your style"}</legend>
     <div className="theme-picker-toolbar">
       <label htmlFor={id + "-sector"}>{language === "fr" ? "Secteur d’activité" : "Business sector"}</label>
       <select id={id + "-sector"} value={sector} onChange={(event) => setSector(event.target.value as ThemeSector | "all")}>
         <option value="all">{language === "fr" ? "Tous les secteurs" : "All sectors"}</option>
         {Object.entries(themeSectors).map(([key, label]) => <option key={key} value={key}>{label[language]}</option>)}
       </select>
-      <small>{language === "fr" ? "Tous les thèmes acceptent votre catalogue." : "Every theme works with your catalog."}</small>
-      <small>{language === "fr" ? "Changer de thème applique ses couleurs et sa typographie. Vous pourrez ensuite les personnaliser." : "Switching themes applies its colors and typography. You can customize them afterwards."}</small>
+      {!compact && <small>{language === "fr" ? "Tous les thèmes acceptent votre catalogue." : "Every theme works with your catalog."}</small>}
+      <small>{compact ? (language === "fr" ? "Chaque thème applique ses couleurs et sa typographie." : "Each theme applies its colors and typography.") : language === "fr" ? "Changer de thème applique ses couleurs et sa typographie. Vous pourrez ensuite les personnaliser." : "Switching themes applies its colors and typography. You can customize them afterwards."}</small>
     </div>
     <div className="theme-picker-grid" role="group" aria-label={language === "fr" ? "Thèmes disponibles" : "Available themes"}>
       {themes.map((key) => {
@@ -51,7 +51,7 @@ export default function ThemePicker({ value, settings, language, onChange, image
             <span className="theme-thumbnail-detail"><i /><i /><i /></span>
           </span>
           <span className="theme-choice-name">{theme.name}<span>{key === value ? "✓" : "↗"}</span></span>
-          <small>{themeSectors[theme.sector][language]}</small>
+          {!compact && <small>{themeSectors[theme.sector][language]}</small>}
         </button>;
       })}
     </div>

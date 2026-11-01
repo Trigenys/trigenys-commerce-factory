@@ -1,8 +1,8 @@
 import { useLayoutEffect, type RefObject } from "react";
 
-type ChromeProperty = "--merchant-header-height" | "--merchant-mobile-nav-height" | "--merchant-notice-height" | "--merchant-page-toolbar-height";
+type ChromeProperty = "--merchant-header-height" | "--merchant-mobile-nav-height" | "--merchant-notice-height" | "--merchant-page-toolbar-height" | "--setup-actions-height";
 
-export function useChromeHeight(ref: RefObject<HTMLElement | null>, property: ChromeProperty, mobileOnly = false) {
+export function useChromeHeight(ref: RefObject<HTMLElement | null>, property: ChromeProperty, mobileOnly = false, layoutKey?: string) {
   useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return;
@@ -26,5 +26,5 @@ export function useChromeHeight(ref: RefObject<HTMLElement | null>, property: Ch
       if (previous) root.style.setProperty(property, previous);
       else root.style.removeProperty(property);
     };
-  }, [ref, property, mobileOnly]);
+  }, [ref, property, mobileOnly, layoutKey]);
 }

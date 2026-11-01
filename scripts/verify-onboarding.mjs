@@ -36,6 +36,17 @@ async function fixture(options = {}) {
   return f;
 }
 async function screen(page, label) {
+  await page.evaluate(() => document.fonts.ready);
+  const docks = page.locator('.setup-flow .setup-actions:visible, .setup-first-product .catalog-editor-actions:visible');
+  if (await docks.count()) {
+    assert.equal(await docks.count(), 1, label + ": one active action group");
+    const bounds = await docks.boundingBox(), viewport = page.viewportSize();
+    assert.ok(bounds && bounds.y >= 0 && bounds.y + bounds.height <= viewport.height + 1, label + ": actions stay within viewport");
+    for (const button of await docks.getByRole("button").all()) {
+      const box = await button.boundingBox();
+      assert.ok(box && box.height >= 44 && box.y + box.height <= viewport.height + 1, label + ": action target visible");
+    }
+  }
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, label + ": overflow");
   await page.evaluate(axe);
@@ -75,6 +86,44 @@ async function checkLocation(page, language, width) {
   assert.equal(await location.inputValue(), "Bonapriso, face au marché");
   report.checks.push(language + "/" + width + ": location typo/accents, repeat selection, explicit free text, preserved neighbourhood, blur and Escape");
 }
+async function phoneValue(page, expected) {
+  await page.waitForFunction(expected => {
+    const key = Object.keys(sessionStorage).find(key => key.startsWith("commerce-onboarding:owner@example.com") && !key.includes(":progress:"));
+    return key && JSON.parse(sessionStorage.getItem(key))?.whatsappNumber === expected;
+  }, expected);
+}
+async function checkPhone(page, language, width) {
+  const fr = language === "fr";
+  const phone = page.getByLabel(fr ? "Numéro WhatsApp" : "WhatsApp number", { exact: true });
+  const code = page.getByLabel(fr ? "Indicatif WhatsApp" : "WhatsApp calling code", { exact: true });
+  assert.equal(await code.inputValue(), "CM");
+  const label = await page.locator('label[for="' + await phone.getAttribute("id") + '"]').boundingBox();
+  const select = await code.boundingBox(), number = await phone.boundingBox();
+  assert.ok(label && select && number && label.y + label.height <= Math.min(select.y, number.y), "Phone label is above the two controls");
+  await phone.fill("670000001"); await phoneValue(page, "+237670000001");
+  await phone.fill("237670000001"); await phoneValue(page, "+237670000001");
+  await phone.fill(""); await code.selectOption("CI");
+  await phone.fill("0700000001"); await phoneValue(page, "+2250700000001");
+  await phone.fill("+33612345678"); await phoneValue(page, "+33612345678");
+  assert.equal(await code.inputValue(), "FR", "A complete foreign number changes its calling code");
+  const preferences = page.locator(".setup-optional"); await preferences.locator("summary").click();
+  await page.getByLabel(fr ? "Pays" : "Country", { exact: true }).selectOption("SN");
+  await phoneValue(page, "+33612345678"); assert.equal(await code.inputValue(), "FR", "Business country never overwrites an existing foreign phone");
+  await page.getByLabel(fr ? "Pays" : "Country", { exact: true }).selectOption("CM");
+  await preferences.locator("summary").click();
+  // Dispatch a real paste event: the component uses the native input event path.
+  await phone.fill("");
+  await phone.evaluate(element => {
+    element.focus(); const transfer = new DataTransfer(); transfer.setData("text/plain", "+237 670 00 00 01");
+    const paste = new ClipboardEvent("paste", { clipboardData: transfer, bubbles: true, cancelable: true });
+    if (element.dispatchEvent(paste)) {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+      setter.call(element, transfer.getData("text/plain")); element.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  });
+  await phoneValue(page, "+237670000001"); assert.equal(await code.inputValue(), "CM");
+  report.checks.push(language + "/" + width + ": calling code default/selection, national and full international input/paste, no doubled code, foreign phone preserved across business-country changes");
+}
 async function reachProduct(f, language = "fr") {
   const { page } = f, fr = language === "fr";
   await page.goto(base + "/app");
@@ -110,7 +159,7 @@ try {
     await page.getByRole("button", { name: fr ? "Continuer →" : "Continue →", exact: true }).click();
     await page.getByRole("button", { name: fr ? "Continuer →" : "Continue →", exact: true }).click();
     assert.equal(await page.getByLabel(fr ? "Numéro WhatsApp" : "WhatsApp number", { exact: true }).getAttribute("aria-invalid"), "true");
-    await page.getByLabel(fr ? "Numéro WhatsApp" : "WhatsApp number", { exact: true }).fill("+237670000001");
+    await checkPhone(page, language, width);
     assert.equal(await page.getByLabel(fr ? "Numéro WhatsApp" : "WhatsApp number", { exact: true }).getAttribute("aria-invalid"), "false");
     await screen(page, "contact-" + language + "-" + width);
     await page.getByRole("button", { name: fr ? "← Retour" : "← Back", exact: true }).click();
@@ -119,7 +168,8 @@ try {
     assert.equal(await page.getByLabel(fr ? "Nom de la boutique" : "Store name", { exact: true }).inputValue(), "Maison Sève");
     assert.equal(await page.getByLabel(fr ? "Localisation" : "Business location", { exact: true }).inputValue(), "Bonapriso, face au marché");
     await page.getByRole("button", { name: fr ? "Continuer →" : "Continue →", exact: true }).click();
-    assert.equal(await page.getByLabel(fr ? "Numéro WhatsApp" : "WhatsApp number", { exact: true }).inputValue(), "+237670000001");
+    assert.equal((await page.getByLabel(fr ? "Numéro WhatsApp" : "WhatsApp number", { exact: true }).inputValue()).replace(/\D/g, "").slice(-9), "670000001");
+    assert.equal(await page.getByLabel(fr ? "Indicatif WhatsApp" : "WhatsApp calling code", { exact: true }).inputValue(), "CM");
     await page.getByRole("button", { name: fr ? "Continuer →" : "Continue →", exact: true }).click();
     assert.equal(await page.getByLabel(fr ? "Secteur d’activité" : "Business sector", { exact: true }).inputValue(), "beauty");
     assert.equal(await page.locator(".theme-picker-grid > button").count(), 2);
@@ -133,17 +183,31 @@ try {
     await page.getByLabel(fr ? "Ajouter des images" : "Add images", { exact: true }).setInputFiles({ name: "serum.webp", mimeType: "image/webp", buffer: photo });
     assert.equal(f.uploads, 0, "Files are not uploaded before save");
     await screen(page, "first-product-" + language + "-" + width);
+    await page.getByRole("button", { name: fr ? "← Retour" : "← Back", exact: true }).click();
+    await page.getByRole("button", { name: fr ? "Enregistrer et ajouter un produit →" : "Save and add a product →", exact: true }).click();
+    await page.getByLabel(fr ? "Nom du produit" : "Product name", { exact: true }).waitFor();
+    assert.equal(await page.getByLabel(fr ? "Nom du produit" : "Product name", { exact: true }).inputValue(), "Sérum éclat");
+    assert.equal(await page.locator(".setup-queued-note").count(), 1, "Back keeps selected unsent photos");
     await page.reload();
     await page.getByLabel(fr ? "Nom du produit" : "Product name", { exact: true }).waitFor();
     assert.equal(await page.getByLabel(fr ? "Nom du produit" : "Product name", { exact: true }).inputValue(), "Sérum éclat");
     assert.equal(await page.locator(".setup-queued-note").count(), 0, "Files are not falsely persisted across reload");
     await page.getByLabel(fr ? "Ajouter des images" : "Add images", { exact: true }).setInputFiles({ name: "serum.webp", mimeType: "image/webp", buffer: photo });
-    let failedAttachment = false;
+    let failedAttachment = false, releaseAttachment, attachmentStarted;
+    const attachmentWait = new Promise(resolve => { attachmentStarted = resolve; });
+    const attachmentGate = new Promise(resolve => { releaseAttachment = resolve; });
     await page.route(/\/v1\/admin\/stores\/[^/]+\/products\/[^/]+$/, async route => {
-      if (route.request().method() === "PATCH" && !failedAttachment) { failedAttachment = true; return route.fulfill({ status: 503, headers: { "Access-Control-Allow-Origin": "*" }, json: { error: "UNAVAILABLE" } }); }
+      if (route.request().method() === "PATCH" && !failedAttachment) { failedAttachment = true; attachmentStarted(); await attachmentGate; return route.fulfill({ status: 503, headers: { "Access-Control-Allow-Origin": "*" }, json: { error: "UNAVAILABLE" } }); }
       return route.fallback();
     });
     await page.getByRole("button", { name: fr ? "Enregistrer le produit" : "Save product", exact: true }).click();
+    let attachmentTimeout;
+    try { await Promise.race([attachmentWait, new Promise((_, reject) => { attachmentTimeout = setTimeout(() => reject(new Error("Product attachment did not start")), 30000); })]); }
+    finally { clearTimeout(attachmentTimeout); }
+    try {
+      assert.equal(await page.getByRole("button", { name: fr ? "← Retour" : "← Back", exact: true }).isDisabled(), true);
+      assert.equal(await page.locator(".setup-progress button:enabled").count(), 0, "Navigation is blocked during a product mutation");
+    } finally { releaseAttachment(); }
     await page.locator(".catalog-editor").waitFor(); await page.getByRole("alert").first().waitFor();
     assert.equal(state.products.length, 1); assert.equal(state.products[0].status, "draft"); assert.equal(f.uploads, 1);
     await page.getByRole("button", { name: fr ? "Enregistrer le produit" : "Save product", exact: true }).click();
@@ -169,6 +233,29 @@ try {
     report.checks.push(language + "/" + width + ": guided creation, preview, validation, draft reload, queued media, partial-failure recovery, explicit publishing");
     await context.close();
   }
+  for (const [width, height] of [[1366, 768], [1536, 834], [1024, 600]]) {
+    const f = await fixture({ width, height }), { page, context } = f;
+    await page.goto(base + "/app");
+    await page.getByLabel("Nom de la boutique", { exact: true }).fill("Boutique compacte");
+    await page.getByRole("button", { name: "Beauté & soins", exact: false }).click();
+    await page.getByRole("button", { name: "Continuer →", exact: true }).click();
+    await page.getByLabel("Numéro WhatsApp", { exact: true }).fill("670000001");
+    await screen(page, "compact-contact-" + width + "x" + height);
+    await page.getByRole("button", { name: "Continuer →", exact: true }).click();
+    await page.getByRole("button", { name: "Enregistrer et ajouter un produit →", exact: true }).waitFor();
+    await screen(page, "compact-style-" + width + "x" + height);
+    if (width > 1050) {
+      const dimensions = await page.evaluate(() => ({ content: document.documentElement.scrollHeight, viewport: innerHeight }));
+      assert.ok(dimensions.content <= dimensions.viewport + 2, "Default style fits " + width + "x" + height + ": " + JSON.stringify(dimensions));
+    }
+    await page.locator(".theme-picker-compact summary").click();
+    const font = page.getByLabel("Typographie", { exact: true }); await font.focus();
+    await font.evaluate(element => element.scrollIntoView({ block: "center" }));
+    const box = await font.boundingBox(), dock = await page.locator(".setup-actions:visible").boundingBox();
+    assert.ok(box && dock && box.y + box.height <= dock.y, "Expanded controls remain scrollable above the actions");
+    await context.close();
+    report.checks.push(width + "x" + height + ": compact contact/style, action viewport bounds and expanded controls reachable");
+  }
   {
     const f = await fixture({ hasStore: true, width: 390, hasTouch: true }), { page, state, context } = f;
     state.store.businessLocation = "Mon quartier personnel";
@@ -180,10 +267,13 @@ try {
     await location.fill("Dou"); assert.equal(await page.getByRole("option", { name: /^Douala / }).count(), 0, "Country filtering excludes Cameroon cities");
     await location.fill("Abijan"); await page.getByRole("option", { name: /^Abidjan / }).tap();
     await locationValue(page, location, "Abidjan");
+    const settingsPhone = page.getByLabel("Numéro WhatsApp", { exact: true });
+    await settingsPhone.fill("+33612345678");
+    assert.equal(await page.getByLabel("Indicatif WhatsApp", { exact: true }).inputValue(), "FR");
     await screen(page, "location-settings-touch-390");
     await page.getByRole("button", { name: "Enregistrer", exact: true }).first().click();
-    await page.getByText("Modifications enregistrées.", { exact: true }).waitFor(); assert.equal(state.store.businessLocation, "Abidjan");
-    await page.reload(); await location.waitFor(); assert.equal(await location.inputValue(), "Abidjan");
+    await page.getByText("Modifications enregistrées.", { exact: true }).waitFor(); assert.equal(state.store.businessLocation, "Abidjan"); assert.equal(state.store.whatsappNumber, "+33612345678");
+    await page.reload(); await location.waitFor(); assert.equal(await location.inputValue(), "Abidjan"); assert.equal(await page.getByLabel("Indicatif WhatsApp", { exact: true }).inputValue(), "FR");
     await location.fill(""); await location.press("Escape");
     await page.getByRole("button", { name: "Enregistrer", exact: true }).first().click();
     await page.getByText("Modifications enregistrées.", { exact: true }).waitFor(); assert.equal(state.store.businessLocation, "");
@@ -228,7 +318,7 @@ try {
     const f = await fixture();
     await f.context.addInitScript(() => {
       sessionStorage.setItem("commerce-onboarding:owner@example.com", JSON.stringify({
-        name: "Ancien brouillon", slug: "ancien-brouillon", whatsappNumber: "", countryCode: "CM", currencyCode: "XAF",
+        name: "Ancien brouillon", slug: "ancien-brouillon", whatsappNumber: "237670000001", countryCode: "CM", currencyCode: "XAF",
         description: "Description conservée", businessLocation: "", contactEmail: "", theme: "clean", themeSettings: {}
       }));
       sessionStorage.setItem("commerce-onboarding:progress:owner@example.com", JSON.stringify({ version: 1, step: 99, storeId: null, sector: "invalid", slugTouched: true }));
@@ -238,7 +328,20 @@ try {
     await f.page.locator(".setup-optional").getByText("Ajouter une description et des coordonnées", { exact: false }).click();
     assert.equal(await f.page.getByLabel("Courte description", { exact: true }).inputValue(), "Description conservée");
     assert.equal(f.state.calls.filter(c => c.method === "POST").length, 0);
-    report.checks.push("Old validated drafts survive; malformed progress cannot skip required setup");
+    await f.page.getByRole("button", { name: "Continuer →", exact: true }).click();
+    const legacyPhone = f.page.getByLabel("Numéro WhatsApp", { exact: true }); await legacyPhone.waitFor();
+    assert.equal((await legacyPhone.inputValue()).replace(/\D/g, "").slice(-9), "670000001");
+    assert.equal(await f.page.getByLabel("Indicatif WhatsApp", { exact: true }).inputValue(), "CM");
+    await phoneValue(f.page, "237670000001");
+    await f.page.locator(".setup-optional summary").click();
+    await f.page.getByLabel("Pays", { exact: true }).selectOption("SN");
+    await phoneValue(f.page, "+237670000001");
+    assert.equal(await f.page.getByLabel("Indicatif WhatsApp", { exact: true }).inputValue(), "CM");
+    await f.page.getByRole("button", { name: "Continuer →", exact: true }).click();
+    await f.page.getByRole("button", { name: "Enregistrer et ajouter un produit →", exact: true }).click();
+    await f.page.getByLabel("Nom du produit", { exact: true }).waitFor();
+    assert.equal(f.state.store.whatsappNumber, "+237670000001"); assert.equal(f.state.store.countryCode, "SN");
+    report.checks.push("Old validated drafts survive; malformed progress cannot skip setup; legacy national phone keeps its original calling code on country change and saves canonically");
     await f.context.close();
   }
   assert.deepEqual(runtimeErrors, [], "No browser runtime or React state errors");
