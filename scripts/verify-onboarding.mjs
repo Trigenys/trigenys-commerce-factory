@@ -36,6 +36,7 @@ async function fixture(options = {}) {
   return f;
 }
 async function screen(page, label) {
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, label + ": overflow");
   await page.evaluate(axe);
   const violations = await page.evaluate(async () => (await window.axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] } })).violations.filter(v => ["serious", "critical"].includes(v.impact)).map(v => ({ id: v.id, targets: v.nodes.map(n => n.target), details: v.nodes.map(n => n.failureSummary) })));

@@ -114,6 +114,7 @@ export default function StoreOnboarding({ client, language, email, store, onSave
     requestAnimationFrame(() => document.querySelector<HTMLElement>('.setup-fields [aria-invalid="true"]')?.focus());
   }
   function selectSector(next: ThemeSector) {
+    if (next === sector) return;
     const recommended = storeThemeIds.find(key => storeThemes[key].sector === next) || "clean";
     progress.setValue({ ...progress.value, sector: next });
     setInput({ ...input, theme: recommended, themeSettings: {} });
@@ -206,8 +207,8 @@ export default function StoreOnboarding({ client, language, email, store, onSave
             const name = event.target.value; setInput({ ...input, name, slug: progress.value.slugTouched ? input.slug : slugify(name) });
           }} /><small id="setup-name-hint">{errors.name || t.nameHint}</small></label>
           <div className="setup-link"><div><span>{t.link}</span><button type="button" className="setup-text-button" onClick={() => setEditLink(!editLink)} aria-expanded={editLink}>{t.editLink}</button></div>
-            {editLink ? <label><span className="visually-hidden">{fr ? "Adresse de la boutique" : "Store address"}</span><div className="slug-field"><small>/store/</small><input aria-label={fr ? "Adresse de la boutique" : "Store address"} value={input.slug} maxLength={63} aria-invalid={Boolean(errors.slug)} onChange={event => { progress.setValue({ ...progress.value, slugTouched: true }); setInput({ ...input, slug: slugify(event.target.value) }); }} /></div></label> : <p>/store/<strong>{input.slug || (fr ? "votre-boutique" : "your-store")}</strong></p>}
-            <small className={errors.slug ? "field-error" : ""}>{errors.slug || t.linkHint}</small>
+            {editLink ? <label><span className="visually-hidden">{fr ? "Adresse de la boutique" : "Store address"}</span><div className="slug-field"><small>/store/</small><input aria-label={fr ? "Adresse de la boutique" : "Store address"} value={input.slug} maxLength={63} aria-invalid={Boolean(errors.slug)} aria-describedby="setup-link-hint" onChange={event => { progress.setValue({ ...progress.value, slugTouched: true }); setInput({ ...input, slug: slugify(event.target.value) }); }} /></div></label> : <p>/store/<strong>{input.slug || (fr ? "votre-boutique" : "your-store")}</strong></p>}
+            <small id="setup-link-hint" className={errors.slug ? "field-error" : ""}>{errors.slug || t.linkHint}</small>
           </div>
           <fieldset className="setup-sectors"><legend>{t.sector} <small>{t.optional}</small></legend><div className="setup-sector-grid">
             {sectors.map(key => <button type="button" className="setup-sector" key={key} aria-pressed={sector === key} onClick={() => selectSector(key)}>
@@ -217,7 +218,7 @@ export default function StoreOnboarding({ client, language, email, store, onSave
           <details className="setup-optional" open={detailsOpen} onToggle={event => setDetailsOpen(event.currentTarget.open)}><summary>{t.details} <small>{t.optional}</small></summary><div className="setup-optional-fields">
             <label><span>{t.description}</span><textarea aria-label={t.description} value={input.description} maxLength={280} rows={3} onChange={event => setInput({ ...input, description: event.target.value })} /></label>
             <label><span>{t.location}</span><input aria-label={t.location} value={input.businessLocation} maxLength={280} onChange={event => setInput({ ...input, businessLocation: event.target.value })} /></label>
-            <label><span>{t.email}</span><input aria-label={t.email} type="email" value={input.contactEmail} maxLength={280} aria-invalid={Boolean(errors.contactEmail)} onChange={event => setInput({ ...input, contactEmail: event.target.value })} /><small className={errors.contactEmail ? "field-error" : ""}>{errors.contactEmail || t.publicEmailHint}</small></label>
+            <label><span>{t.email}</span><input aria-label={t.email} type="email" value={input.contactEmail} maxLength={280} aria-invalid={Boolean(errors.contactEmail)} aria-describedby="setup-public-email-hint" onChange={event => setInput({ ...input, contactEmail: event.target.value })} /><small id="setup-public-email-hint" className={errors.contactEmail ? "field-error" : ""}>{errors.contactEmail || t.publicEmailHint}</small></label>
           </div></details>
           <div className="setup-actions"><span>{t.private}</span><button type="submit" className="admin-primary">{t.next} →</button></div>
         </form>}
@@ -251,12 +252,12 @@ export default function StoreOnboarding({ client, language, email, store, onSave
         {step === 4 && store && <div className="setup-review">
           <div className="setup-review-heading"><h2>{t.review}</h2><span className="setup-private-pill">{t.private}</span></div>
           <dl>
-            <div><dt>{t.name}</dt><dd>{store.name}</dd><button className="setup-text-button" type="button" onClick={() => go(0)}>{t.edit}</button></div>
-            <div><dt>{t.link}</dt><dd>/store/{store.slug}</dd><button className="setup-text-button" type="button" onClick={() => go(0)}>{t.edit}</button></div>
-            <div><dt>WhatsApp</dt><dd>{store.whatsappNumber}</dd><button className="setup-text-button" type="button" onClick={() => go(1)}>{t.edit}</button></div>
-            <div><dt>{t.contactReview}</dt><dd>{[store.businessLocation, store.contactEmail].filter(Boolean).join(" · ") || t.notSet}</dd><button className="setup-text-button" type="button" onClick={() => { setDetailsOpen(true); go(0); }}>{t.edit}</button></div>
-            <div><dt>{fr ? "Thème" : "Theme"}</dt><dd>{style.name} · {store.currencyCode}</dd><button className="setup-text-button" type="button" onClick={() => go(2)}>{t.edit}</button></div>
-            <div><dt>{t.products}</dt><dd>{catalogState === "ready" ? active : "…"}</dd><button className="setup-text-button" type="button" onClick={() => go(3)}>{t.edit}</button></div>
+            <div><dt>{t.name}</dt><dd><span>{store.name}</span><button className="setup-text-button" type="button" aria-label={t.edit + " — " + t.name} onClick={() => go(0)}>{t.edit}</button></dd></div>
+            <div><dt>{t.link}</dt><dd><span>/store/{store.slug}</span><button className="setup-text-button" type="button" aria-label={t.edit + " — " + t.link} onClick={() => go(0)}>{t.edit}</button></dd></div>
+            <div><dt>WhatsApp</dt><dd><span>{store.whatsappNumber}</span><button className="setup-text-button" type="button" aria-label={t.edit + " — WhatsApp"} onClick={() => go(1)}>{t.edit}</button></dd></div>
+            <div><dt>{t.contactReview}</dt><dd><span>{[store.businessLocation, store.contactEmail].filter(Boolean).join(" · ") || t.notSet}</span><button className="setup-text-button" type="button" aria-label={t.edit + " — " + t.contactReview} onClick={() => { setDetailsOpen(true); go(0); }}>{t.edit}</button></dd></div>
+            <div><dt>{fr ? "Thème" : "Theme"}</dt><dd><span>{style.name} · {store.currencyCode}</span><button className="setup-text-button" type="button" aria-label={t.edit + " — " + (fr ? "Thème" : "Theme")} onClick={() => go(2)}>{t.edit}</button></dd></div>
+            <div><dt>{t.products}</dt><dd><span>{catalogState === "ready" ? active : "…"}</span><button className="setup-text-button" type="button" aria-label={t.edit + " — " + t.products} onClick={() => go(3)}>{t.edit}</button></dd></div>
           </dl>
           {catalogState === "loading" && <p role="status">{t.loading}</p>}
           {catalogState === "error" && <div className="form-message error" role="alert">{t.loadError} <button type="button" className="setup-text-button" onClick={() => setAttempt(value => value + 1)}>{t.retry}</button></div>}
