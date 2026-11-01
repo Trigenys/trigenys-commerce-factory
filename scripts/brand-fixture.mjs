@@ -5,8 +5,8 @@ export const store={id:storeId,role:"owner",name:"Atelier de Douala",slug:"ateli
 export const product={id:productId,storeId,name:"Sac Signature",slug:"sac-signature",description:"Une pièce pour tous les jours",price:"18500.00",currencyCode:"XAF",category:"Accessoires",stockLabel:"À confirmer",status:"active",sortOrder:0,imageUrls:["/landing/fashion-480.webp"],variants:[{name:"Couleur",value:"Camel"},{name:"Couleur",value:"Noir"}]};
 export const now="2026-10-10T12:00:00.000Z";
 export const order={id:orderId,storeSlug:store.slug,storeName:store.name,reference:"CF-33333333",status:"requested",paymentMethod:"momo",paymentStatus:"pending",currencyCode:"XAF",total:"37000.00",lines:[{productId,quantity:2,variants:{Couleur:"Noir"},name:product.name,slug:product.slug,unitPrice:"18500.00",amount:"37000.00"}],createdAt:now,updatedAt:now,version:0,history:[{at:now,status:"requested",paymentStatus:"pending"}],customerName:"Cliente de démonstration",customerPhone:null,note:"À retirer samedi"};
-export async function brandFixture(browser,base,{profile="owner",authenticated=true,hasStore=true,language="fr",width,hasTouch=false}={}){
-  const context=await browser.newContext({locale:language==="fr" ? "fr-FR" : "en-GB",reducedMotion:"reduce",hasTouch,...(width ? {viewport:{width,height:900}}:{})});
+export async function brandFixture(browser,base,{profile="owner",authenticated=true,hasStore=true,language="fr",width,height=900,hasTouch=false}={}){
+  const context=await browser.newContext({locale:language==="fr" ? "fr-FR" : "en-GB",reducedMotion:"reduce",hasTouch,...(width ? {viewport:{width,height}}:{})});
   await context.addInitScript(({language})=>localStorage.setItem("commerce-factory-language",language),{language});
   const page=await context.newPage();const state={authenticated,profile,hasStore,orders:[structuredClone(order)],products:[structuredClone(product)],store:structuredClone(store),calls:[],failConfig:false,failStore:false,loseOrderResponse:false,pendingOrder:null,invitations:[],tickets:[]};
   state.browserErrors=[];

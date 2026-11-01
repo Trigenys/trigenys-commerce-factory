@@ -1,5 +1,5 @@
 import { useDraft, useUnsavedChanges } from "../lib/drafts";
-import { FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState, type RefObject } from "react";
 import MerchantNotice, { useMerchantNotice } from "./MerchantNotice";
 import AppIcon from "./AppIcon";
 import MerchantImage from "./MerchantImage";
@@ -357,7 +357,10 @@ export default function ProductCatalog({
   showNotices = true,
   onEditorPreviewChange,
   onEditorOpenChange,
-  onCatalogStateChange
+  onCatalogStateChange,
+  onGuidedBack,
+  guidedActionsRef,
+  onBusyChange
 }: {
   client: CommerceAuthClient;
   store: Store;
@@ -368,6 +371,9 @@ export default function ProductCatalog({
   onEditorPreviewChange?: (product: Product | null) => void;
   onEditorOpenChange?: (open: boolean) => void;
   onCatalogStateChange?: (state: "loading" | "ready" | "error") => void;
+  onGuidedBack?: () => void;
+  guidedActionsRef?: RefObject<HTMLDivElement | null>;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const t = copy[language];
   const [products, setProducts] = useState<Product[]>([]);
@@ -395,6 +401,8 @@ export default function ProductCatalog({
   const categoryNameRef = useRef<HTMLInputElement>(null);
   const categoryHelpId = useId();
   const [mediaBusy, setMediaBusy] = useState(false);
+  useEffect(() => { onBusyChange?.(busy || mediaBusy); }, [busy, mediaBusy, onBusyChange]);
+  useEffect(() => () => onBusyChange?.(false), [onBusyChange]);
   const [pendingDeleteUrls, setPendingDeleteUrls] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -976,7 +984,7 @@ export default function ProductCatalog({
 
   return (
     <section className="catalog-panel" aria-labelledby="catalog-title">
-      <div className="catalog-heading workspace-page-heading">
+      <div className={"catalog-heading workspace-page-heading" + (guided && editor ? " visually-hidden" : "")}>
         <div>
           {guided ? <h2 id="catalog-title">{language === "fr" ? "Votre produit" : "Your product"}</h2> : <h1 id="catalog-title">{t.title}</h1>}
           {!guided && <p>{t.body}</p>}
@@ -993,12 +1001,12 @@ export default function ProductCatalog({
       </div>
 
       {showNotices && <MerchantNotice notice={notice} language={language} onDismiss={dismiss} />}
-      {editor ? <p className="draft-note" role="status">{language === "fr" ? "Brouillon conservé dans cet onglet. Enregistrez pour appliquer vos modifications." : "Draft kept in this tab. Save to apply changes."}</p> : null}
+      {editor && !guided ? <p className="draft-note" role="status">{language === "fr" ? "Brouillon conservé dans cet onglet. Enregistrez pour appliquer vos modifications." : "Draft kept in this tab. Save to apply changes."}</p> : null}
       {error ? <p className="form-message error">{error}{guided && !catalogLoaded && <button type="button" className="admin-secondary" onClick={() => setLoadAttempt(value => value + 1)}>{language === "fr" ? "Réessayer" : "Retry"}</button>}</p> : null}
 
       {editor ? (
         <form className="catalog-editor" onSubmit={save} noValidate={guided}>
-          <div className="workspace-form-heading"><h2>{editor.id ? (language === "fr" ? "Modifier le produit" : "Edit product") : (language === "fr" ? "Nouveau produit" : "New product")}</h2><p>{language === "fr" ? "Renseignez les informations du produit, puis enregistrez." : "Enter product details, then save."}</p></div>
+          {!guided && <div className="workspace-form-heading"><h2>{editor.id ? (language === "fr" ? "Modifier le produit" : "Edit product") : (language === "fr" ? "Nouveau produit" : "New product")}</h2><p>{language === "fr" ? "Renseignez les informations du produit, puis enregistrez." : "Enter product details, then save."}</p></div>}
           <fieldset className="admin-form admin-form-grid catalog-fields" disabled={busy || mediaBusy} aria-label={language === "fr" ? "Informations du produit" : "Product details"}>
             {fields && <>
               {fields.name}
@@ -1011,7 +1019,8 @@ export default function ProductCatalog({
             </>}
           </fieldset>
 
-          <div className="catalog-editor-actions">
+          <div className="catalog-editor-actions" ref={guidedActionsRef}>
+            {guided && onGuidedBack && <button type="button" className="admin-secondary setup-product-back" disabled={busy || mediaBusy} onClick={onGuidedBack}>← {language === "fr" ? "Retour" : "Back"}</button>}
             <button
               type="button"
               className="admin-secondary"

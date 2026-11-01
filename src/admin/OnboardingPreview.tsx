@@ -37,10 +37,9 @@ export default function OnboardingPreview({ client, input, store, products, prod
     products: shown.map(product => ({ ...product, imageUrls: product.imageUrls.flatMap(url => sources[url] ? [sources[url]] : []) }))
   };
   const content = <div className="setup-preview-content">
-    <div className="setup-preview-heading"><span className="setup-live-dot" aria-hidden="true" /><strong>{t.previewTitle}</strong></div>
-    <p className="setup-preview-note">{example ? t.example : productDraft ? t.unsavedProduct : t.realPreview}</p>
+    <p className="setup-preview-note">{example ? t.example : productDraft ? t.unsavedProduct : t.realPreview} {language === "fr" ? "Commandes désactivées dans l’aperçu." : "Ordering is disabled in the preview."}</p>
     {failed.length > 0 && <p role="status">{language === "fr" ? "Certaines images n’ont pas pu être chargées." : "Some images could not be loaded."} <button type="button" className="setup-text-button" onClick={retry}>{t.retry}</button></p>}
-    <LiveThemePreview storefront={preview} language={language} />
+    <LiveThemePreview storefront={preview} language={language} compact />
   </div>;
   return <aside className="setup-preview" aria-label={t.previewTitle}>
     {!open && <div className="setup-preview-desktop">{content}</div>}

@@ -1,0 +1,9 @@
+.whatsapp-field { display: grid; gap: 8px; min-width: 0; }
+.whatsapp-field[hidden] { display: none !important; }
+.whatsapp-field > label { font-size: .84rem; font-weight: 700; }
+.whatsapp-input { display: grid; grid-template-columns: minmax(150px, .85fr) minmax(0, 1fr); gap: 8px; min-width: 0; }
+.admin-shell .whatsapp-input :is(input, select) { box-sizing: border-box; width: 100%; min-width: 0; min-height: 46px; margin: 0; padding: 10px 12px; border: 1px solid #7b8b7d; border-radius: 12px; background: #fffdf8; font: inherit; font-size: 1rem; color: #142d25; }
+.whatsapp-field > small { color: #4a6155; font-size: .76rem; line-height: 1.6; }
+.whatsapp-field > small.field-error { color: #a13c29; }
+.admin-shell .whatsapp-input input[aria-invalid="true"] { border-color: #a13c29; }
+@media (max-width: 550px) { .whatsapp-input { grid-template-columns: minmax(0, 1fr); } }
