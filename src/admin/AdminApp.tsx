@@ -1,7 +1,7 @@
 import MerchantWorkspace from "./MerchantWorkspace";
 import StoreOnboarding from "./StoreOnboarding";
 import LocationInput from "./LocationInput";
-import WhatsAppInput from "./WhatsAppInput";
+import WhatsAppInput, { phoneDisplayValue } from "./WhatsAppInput";
 import { resolveStoreTheme, themeFonts } from "../../shared/store-themes";
 import { themeShellProps } from "../storefront/theme-style";
 import { slugify, initials, validStoreDraft, storeToInput, fieldError } from "./store-input";
@@ -348,7 +348,7 @@ function BusinessFields({
         <select
           aria-label={t.country}
           value={input.countryCode}
-          onChange={(event) => setInput({ ...input, countryCode: event.target.value })}
+          onChange={(event) => setInput({ ...input, countryCode: event.target.value, whatsappNumber: phoneDisplayValue(input.whatsappNumber, input.countryCode) || "" })}
         >
           <option value="CM">Cameroun</option>
           <option value="CI">Côte d’Ivoire</option>

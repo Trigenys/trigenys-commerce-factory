@@ -318,7 +318,7 @@ try {
     const f = await fixture();
     await f.context.addInitScript(() => {
       sessionStorage.setItem("commerce-onboarding:owner@example.com", JSON.stringify({
-        name: "Ancien brouillon", slug: "ancien-brouillon", whatsappNumber: "", countryCode: "CM", currencyCode: "XAF",
+        name: "Ancien brouillon", slug: "ancien-brouillon", whatsappNumber: "237670000001", countryCode: "CM", currencyCode: "XAF",
         description: "Description conservée", businessLocation: "", contactEmail: "", theme: "clean", themeSettings: {}
       }));
       sessionStorage.setItem("commerce-onboarding:progress:owner@example.com", JSON.stringify({ version: 1, step: 99, storeId: null, sector: "invalid", slugTouched: true }));
@@ -328,7 +328,20 @@ try {
     await f.page.locator(".setup-optional").getByText("Ajouter une description et des coordonnées", { exact: false }).click();
     assert.equal(await f.page.getByLabel("Courte description", { exact: true }).inputValue(), "Description conservée");
     assert.equal(f.state.calls.filter(c => c.method === "POST").length, 0);
-    report.checks.push("Old validated drafts survive; malformed progress cannot skip required setup");
+    await f.page.getByRole("button", { name: "Continuer →", exact: true }).click();
+    const legacyPhone = f.page.getByLabel("Numéro WhatsApp", { exact: true }); await legacyPhone.waitFor();
+    assert.equal((await legacyPhone.inputValue()).replace(/\D/g, "").slice(-9), "670000001");
+    assert.equal(await f.page.getByLabel("Indicatif WhatsApp", { exact: true }).inputValue(), "CM");
+    await phoneValue(f.page, "237670000001");
+    await f.page.locator(".setup-optional summary").click();
+    await f.page.getByLabel("Pays", { exact: true }).selectOption("SN");
+    await phoneValue(f.page, "+237670000001");
+    assert.equal(await f.page.getByLabel("Indicatif WhatsApp", { exact: true }).inputValue(), "CM");
+    await f.page.getByRole("button", { name: "Continuer →", exact: true }).click();
+    await f.page.getByRole("button", { name: "Enregistrer et ajouter un produit →", exact: true }).click();
+    await f.page.getByLabel("Nom du produit", { exact: true }).waitFor();
+    assert.equal(f.state.store.whatsappNumber, "+237670000001"); assert.equal(f.state.store.countryCode, "SN");
+    report.checks.push("Old validated drafts survive; malformed progress cannot skip setup; legacy national phone keeps its original calling code on country change and saves canonically");
     await f.context.close();
   }
   assert.deepEqual(runtimeErrors, [], "No browser runtime or React state errors");

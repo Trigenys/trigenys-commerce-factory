@@ -8,7 +8,7 @@ import { themeSampleImage } from "../themes/sample-images";
 import ThemePicker from "../themes/ThemePicker";
 import ProductCatalog from "./ProductCatalog";
 import LocationInput from "./LocationInput";
-import WhatsAppInput from "./WhatsAppInput";
+import WhatsAppInput, { phoneDisplayValue } from "./WhatsAppInput";
 import { useChromeHeight } from "./merchant-chrome";
 import OnboardingPreview from "./OnboardingPreview";
 import { setupCopy } from "./setup-copy";
@@ -246,7 +246,7 @@ export default function StoreOnboarding({ client, language, email, store, onSave
           <details className="setup-optional"><summary>{t.preferences}<small>{input.countryCode} · {input.currencyCode}</small></summary><div className="setup-optional-fields">
             <label><span>{t.country}</span><select aria-label={t.country} value={input.countryCode} onChange={event => {
               const countryCode = event.target.value;
-              setInput({ ...input, countryCode, currencyCode: input.currencyCode === currencyForCountry[input.countryCode] ? currencyForCountry[countryCode] : input.currencyCode });
+              setInput({ ...input, countryCode, whatsappNumber: phoneDisplayValue(input.whatsappNumber, input.countryCode) || "", currencyCode: input.currencyCode === currencyForCountry[input.countryCode] ? currencyForCountry[countryCode] : input.currencyCode });
             }}>{countries.map(([code, french, english]) => <option key={code} value={code}>{fr ? french : english}</option>)}</select></label>
             <label><span>{t.currency}</span><select aria-label={t.currency} value={input.currencyCode} onChange={event => setInput({ ...input, currencyCode: event.target.value })}>{currencies.map(code => <option key={code} value={code}>{code === "XAF" ? "XAF — FCFA CEMAC" : code === "XOF" ? "XOF — FCFA UEMOA" : code}</option>)}</select></label>
           </div></details>
