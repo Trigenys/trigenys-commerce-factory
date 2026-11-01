@@ -88,7 +88,7 @@ try{
     const social=state.requests.find(r=>r.path.endsWith('/sign-in/social'));assert.ok(!JSON.stringify(social.body).includes(invitation));await check(page,'google-invitation-preserved');report.checks.push('Invitation secret stays in tab storage and resumes after Google callback');await context.close();
   }
   {
-    const {context,page}=await fixture({authenticated:false,hasStore:false});await page.goto(base+'/app');await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Continuer avec Google',exact:true}).click();await page.getByRole('heading',{name:'Votre boutique, sans labyrinthe.',exact:true}).waitFor();await check(page,'google-new-merchant-onboarding');await context.close();
+    const {context,page}=await fixture({authenticated:false,hasStore:false});await page.goto(base+'/app');await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Continuer avec Google',exact:true}).click();await page.getByRole('heading',{name:'Donnons vie à votre boutique.',exact:true}).waitFor();await check(page,'google-new-merchant-onboarding');await context.close();
   }
   for(const language of ['fr','en']){
     const {context,page,state}=await fixture({authenticated:false,language});state.googleError=true;await page.goto(base+'/app/login');await page.getByRole('button',{name:language==='fr' ? 'Continuer avec Google':'Continue with Google',exact:true}).click();await page.getByRole('alert').waitFor();await check(page,'google-error-'+language);assert.equal(state.authenticated,false);await context.close();

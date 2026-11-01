@@ -48,6 +48,7 @@ export default function MerchantOverview({ client, store, language, onUpdated }:
       <a className="admin-primary" href={route("products") + "&new=1"}><AppIcon name="plus" />{fr ? "Ajouter un produit" : "Add a product"}</a>
     </div></header>
     <MerchantNotice notice={notice} language={language} onDismiss={dismiss} />
+    {owner && !live && <p className="workspace-store-hint"><a href={route("overview") + "&setup=1"}>{fr ? "Reprendre la création guidée de ma boutique" : "Resume guided store setup"} ↗</a></p>}
     {loading && <p className="workspace-loading" role="status">{fr ? "Chargement de votre activité…" : "Loading your activity…"}</p>}
     {(errors.products || errors.orders) && <div className="workspace-inline-alert" role="alert"><span>{[errors.products, errors.orders].filter(Boolean).join(" ")}</span><button className="admin-secondary" type="button" onClick={() => setAttempt(value => value + 1)}>{fr ? "Réessayer" : "Try again"}</button></div>}
     <div className="dashboard-cards">{stats.map(item => <article className="dashboard-stat" key={item.label}><div><span>{item.label}</span><AppIcon name={item.icon} /></div><strong>{loading ? "…" : item.error ? "—" : item.count}</strong><a href={route(item.page)}>{item.detail}<AppIcon name="arrow" /></a></article>)}</div>

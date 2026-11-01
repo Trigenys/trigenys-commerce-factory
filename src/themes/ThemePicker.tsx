@@ -4,18 +4,30 @@ import { themeShellProps } from "../storefront/theme-style";
 import { themeSampleImage } from "./sample-images";
 import "./theme-picker.css";
 
-export default function ThemePicker({ value, settings, language, onChange, imageUrl, customization = true }: {
+export default function ThemePicker({ value, settings, language, onChange, imageUrl, customization = true, initialSector = "all", compact = false }: {
   value: StoreTheme;
   settings: ThemeSettings;
   language: ThemeLanguage;
   onChange: (theme: StoreTheme, settings: ThemeSettings) => void;
   imageUrl?: string;
   customization?: boolean;
+  initialSector?: ThemeSector | "all";
+  compact?: boolean;
 }) {
-  const [sector, setSector] = useState<ThemeSector | "all">("all");
+  const [sector, setSector] = useState<ThemeSector | "all">(initialSector);
   const id = useId();
   const selected = resolveStoreTheme(value, settings);
   const themes = storeThemeIds.filter((key) => sector === "all" || storeThemes[key].sector === sector);
+  const customizationFields = <div className="theme-customization">
+      <label><span>{language === "fr" ? "Couleur d’accent" : "Accent color"}</span><input type="color" value={selected.tokens.accent} onChange={(event) => onChange(value, { ...settings, accent: event.target.value })} /></label>
+      <label><span>{language === "fr" ? "Typographie" : "Typography"}</span><select aria-label={language === "fr" ? "Typographie" : "Typography"} value={settings.font ?? ""} onChange={(event) => {
+        const next = { ...settings }; if (event.target.value) next.font = event.target.value as ThemeSettings["font"]; else delete next.font; onChange(value, next);
+      }}><option value="">{language === "fr" ? "Selon le thème" : "Theme default"}</option><option value="sans">Sans serif</option><option value="serif">{language === "fr" ? "Éditoriale" : "Editorial"}</option><option value="display">{language === "fr" ? "Graphique" : "Display"}</option></select></label>
+      <label><span>{language === "fr" ? "Images des produits" : "Product images"}</span><select aria-label={language === "fr" ? "Images des produits" : "Product images"} value={settings.imageFit ?? ""} onChange={(event) => {
+        const next = { ...settings }; if (event.target.value) next.imageFit = event.target.value as ThemeSettings["imageFit"]; else delete next.imageFit; onChange(value, next);
+      }}><option value="">{language === "fr" ? "Selon le thème" : "Theme default"}</option><option value="contain">{language === "fr" ? "Produit entier" : "Whole product"}</option><option value="cover">{language === "fr" ? "Remplir le cadre" : "Fill the frame"}</option></select></label>
+      <button type="button" className="theme-reset" onClick={() => onChange(value, {})}>{language === "fr" ? "Rétablir le style du thème" : "Reset theme style"}</button>
+    </div>;
   return <fieldset className="theme-picker">
     <legend>{language === "fr" ? "Choisissez votre univers" : "Choose your style"}</legend>
     <div className="theme-picker-toolbar">
@@ -44,15 +56,6 @@ export default function ThemePicker({ value, settings, language, onChange, image
       })}
     </div>
     <p className="theme-selected-description"><b>{selected.name}</b> · {selected.description[language]}</p>
-    {customization ? <div className="theme-customization">
-      <label><span>{language === "fr" ? "Couleur d’accent" : "Accent color"}</span><input type="color" value={selected.tokens.accent} onChange={(event) => onChange(value, { ...settings, accent: event.target.value })} /></label>
-      <label><span>{language === "fr" ? "Typographie" : "Typography"}</span><select aria-label={language === "fr" ? "Typographie" : "Typography"} value={settings.font ?? ""} onChange={(event) => {
-        const next = { ...settings }; if (event.target.value) next.font = event.target.value as ThemeSettings["font"]; else delete next.font; onChange(value, next);
-      }}><option value="">{language === "fr" ? "Selon le thème" : "Theme default"}</option><option value="sans">Sans serif</option><option value="serif">{language === "fr" ? "Éditoriale" : "Editorial"}</option><option value="display">{language === "fr" ? "Graphique" : "Display"}</option></select></label>
-      <label><span>{language === "fr" ? "Images des produits" : "Product images"}</span><select aria-label={language === "fr" ? "Images des produits" : "Product images"} value={settings.imageFit ?? ""} onChange={(event) => {
-        const next = { ...settings }; if (event.target.value) next.imageFit = event.target.value as ThemeSettings["imageFit"]; else delete next.imageFit; onChange(value, next);
-      }}><option value="">{language === "fr" ? "Selon le thème" : "Theme default"}</option><option value="contain">{language === "fr" ? "Produit entier" : "Whole product"}</option><option value="cover">{language === "fr" ? "Remplir le cadre" : "Fill the frame"}</option></select></label>
-      <button type="button" className="theme-reset" onClick={() => onChange(value, {})}>{language === "fr" ? "Rétablir le style du thème" : "Reset theme style"}</button>
-    </div> : null}
+    {customization ? compact ? <details className="setup-optional"><summary>{language === "fr" ? "Personnaliser les couleurs et les images" : "Customize colors and images"}</summary>{customizationFields}</details> : customizationFields : null}
   </fieldset>;
 }
