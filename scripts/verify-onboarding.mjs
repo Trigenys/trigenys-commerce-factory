@@ -69,7 +69,7 @@ try {
     assert.match(await page.locator(".setup-link").innerText(), /maison-seve/);
     await page.getByRole("button", { name: fr ? "Beauté & soins" : "Beauty & haircare", exact: false }).click();
     if (width < 1051) {
-      const toggle = page.getByRole("button", { name: fr ? "Voir l’aperçu ↗" : "View preview ↗", exact: true });
+      const toggle = page.getByRole("button", { name: fr ? "Voir l’aperçu" : "View preview", exact: true });
       await toggle.click(); await page.getByRole("dialog").waitFor();
       assert.ok(await page.getByRole("dialog").getByText("Maison Sève", { exact: true }).count());
       await screen(page, "preview-" + language + "-" + width);
@@ -79,6 +79,7 @@ try {
     await page.getByRole("button", { name: fr ? "Continuer →" : "Continue →", exact: true }).click();
     assert.equal(await page.getByLabel(fr ? "Numéro WhatsApp" : "WhatsApp number", { exact: true }).getAttribute("aria-invalid"), "true");
     await page.getByLabel(fr ? "Numéro WhatsApp" : "WhatsApp number", { exact: true }).fill("+237670000001");
+    assert.equal(await page.getByLabel(fr ? "Numéro WhatsApp" : "WhatsApp number", { exact: true }).getAttribute("aria-invalid"), "false");
     await screen(page, "contact-" + language + "-" + width);
     await page.getByRole("button", { name: fr ? "← Retour" : "← Back", exact: true }).click();
     assert.equal(await page.getByLabel(fr ? "Nom de la boutique" : "Store name", { exact: true }).inputValue(), "Maison Sève");

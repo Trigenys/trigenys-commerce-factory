@@ -106,6 +106,12 @@ export default function StoreOnboarding({ client, language, email, store, onSave
     progress.setValue({ ...progress.value, step: next, storeId: store?.id || progress.value.storeId });
     focusStep.current = true; setStep(next);
   }
+  function clearFieldError(field: string) {
+    setErrors(current => {
+      if (!current[field]) return current;
+      const next = { ...current }; delete next[field]; return next;
+    });
+  }
   function report(found: Record<string, string>, next: Step) {
     setErrors(found); setError("");
     if (found.contactEmail) setDetailsOpen(true);
@@ -204,10 +210,12 @@ export default function StoreOnboarding({ client, language, email, store, onSave
         <p className="setup-save-state" role="status"><span aria-hidden="true">○</span>{!draft.available || !progress.available ? t.noStorage : store && !dirty ? t.savedDraft : t.localDraft}</p>
         {step === 0 && <form className="setup-fields" onSubmit={advance} noValidate>
           <label><span>{t.name}</span><input aria-label={t.name} value={input.name} maxLength={120} autoComplete="organization" aria-describedby="setup-name-hint" aria-invalid={Boolean(errors.name)} onChange={event => {
-            const name = event.target.value; setInput({ ...input, name, slug: progress.value.slugTouched ? input.slug : slugify(name) });
+            const name = event.target.value; clearFieldError("name");
+            if (!progress.value.slugTouched) clearFieldError("slug");
+            setInput({ ...input, name, slug: progress.value.slugTouched ? input.slug : slugify(name) });
           }} /><small id="setup-name-hint">{errors.name || t.nameHint}</small></label>
           <div className="setup-link"><div><span>{t.link}</span><button type="button" className="setup-text-button" onClick={() => setEditLink(!editLink)} aria-expanded={editLink}>{t.editLink}</button></div>
-            {editLink ? <label><span className="visually-hidden">{fr ? "Adresse de la boutique" : "Store address"}</span><div className="slug-field"><small>/store/</small><input aria-label={fr ? "Adresse de la boutique" : "Store address"} value={input.slug} maxLength={63} aria-invalid={Boolean(errors.slug)} aria-describedby="setup-link-hint" onChange={event => { progress.setValue({ ...progress.value, slugTouched: true }); setInput({ ...input, slug: slugify(event.target.value) }); }} /></div></label> : <p>/store/<strong>{input.slug || (fr ? "votre-boutique" : "your-store")}</strong></p>}
+            {editLink ? <label><span className="visually-hidden">{fr ? "Adresse de la boutique" : "Store address"}</span><div className="slug-field"><small>/store/</small><input aria-label={fr ? "Adresse de la boutique" : "Store address"} value={input.slug} maxLength={63} aria-invalid={Boolean(errors.slug)} aria-describedby="setup-link-hint" onChange={event => { clearFieldError("slug"); progress.setValue({ ...progress.value, slugTouched: true }); setInput({ ...input, slug: slugify(event.target.value) }); }} /></div></label> : <p>/store/<strong>{input.slug || (fr ? "votre-boutique" : "your-store")}</strong></p>}
             <small id="setup-link-hint" className={errors.slug ? "field-error" : ""}>{errors.slug || t.linkHint}</small>
           </div>
           <fieldset className="setup-sectors"><legend>{t.sector} <small>{t.optional}</small></legend><div className="setup-sector-grid">
@@ -218,12 +226,12 @@ export default function StoreOnboarding({ client, language, email, store, onSave
           <details className="setup-optional" open={detailsOpen} onToggle={event => setDetailsOpen(event.currentTarget.open)}><summary>{t.details} <small>{t.optional}</small></summary><div className="setup-optional-fields">
             <label><span>{t.description}</span><textarea aria-label={t.description} value={input.description} maxLength={280} rows={3} onChange={event => setInput({ ...input, description: event.target.value })} /></label>
             <label><span>{t.location}</span><input aria-label={t.location} value={input.businessLocation} maxLength={280} onChange={event => setInput({ ...input, businessLocation: event.target.value })} /></label>
-            <label><span>{t.email}</span><input aria-label={t.email} type="email" value={input.contactEmail} maxLength={280} aria-invalid={Boolean(errors.contactEmail)} aria-describedby="setup-public-email-hint" onChange={event => setInput({ ...input, contactEmail: event.target.value })} /><small id="setup-public-email-hint" className={errors.contactEmail ? "field-error" : ""}>{errors.contactEmail || t.publicEmailHint}</small></label>
+            <label><span>{t.email}</span><input aria-label={t.email} type="email" value={input.contactEmail} maxLength={280} aria-invalid={Boolean(errors.contactEmail)} aria-describedby="setup-public-email-hint" onChange={event => { clearFieldError("contactEmail"); setInput({ ...input, contactEmail: event.target.value }); }} /><small id="setup-public-email-hint" className={errors.contactEmail ? "field-error" : ""}>{errors.contactEmail || t.publicEmailHint}</small></label>
           </div></details>
           <div className="setup-actions"><span>{t.private}</span><button type="submit" className="admin-primary">{t.next} →</button></div>
         </form>}
         {step === 1 && <form className="setup-fields" onSubmit={advance} noValidate>
-          <label><span>{t.phone}</span><div className="setup-phone"><span aria-hidden="true">↗</span><input aria-label={t.phone} type="tel" autoComplete="tel" inputMode="tel" value={input.whatsappNumber} maxLength={30} placeholder="670 00 00 01" aria-describedby="setup-phone-hint" aria-invalid={Boolean(errors.whatsappNumber)} onChange={event => setInput({ ...input, whatsappNumber: event.target.value })} /></div><small id="setup-phone-hint" className={errors.whatsappNumber ? "field-error" : ""}>{errors.whatsappNumber || t.phoneHint}</small></label>
+          <label><span>{t.phone}</span><div className="setup-phone"><span aria-hidden="true">↗</span><input aria-label={t.phone} type="tel" autoComplete="tel" inputMode="tel" value={input.whatsappNumber} maxLength={30} placeholder="670 00 00 01" aria-describedby="setup-phone-hint" aria-invalid={Boolean(errors.whatsappNumber)} onChange={event => { clearFieldError("whatsappNumber"); setInput({ ...input, whatsappNumber: event.target.value }); }} /></div><small id="setup-phone-hint" className={errors.whatsappNumber ? "field-error" : ""}>{errors.whatsappNumber || t.phoneHint}</small></label>
           <div className="setup-conversation"><span>{t.conversation} · {input.name || t.heading}</span><p>{t.message}</p><small>{fr ? "Illustration — aucun message n’est envoyé." : "Illustration — no message is sent."}</small></div>
           <details className="setup-optional"><summary>{t.preferences}<small>{input.countryCode} · {input.currencyCode}</small></summary><div className="setup-optional-fields">
             <label><span>{t.country}</span><select aria-label={t.country} value={input.countryCode} onChange={event => {
